@@ -32,7 +32,10 @@ describe('AccountController', () => {
     const module: TestingModule = await Test.createTestingModule({
       controllers: [AccountController],
       providers: [
-        { provide: GetAllAccountsUseCase, useValue: { execute: getAllExecute } },
+        {
+          provide: GetAllAccountsUseCase,
+          useValue: { execute: getAllExecute },
+        },
         { provide: CreateAccountUseCase, useValue: { execute: createExecute } },
         { provide: UpdateAccountUseCase, useValue: { execute: updateExecute } },
         { provide: DeleteAccountUseCase, useValue: { execute: removeExecute } },
