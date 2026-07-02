@@ -14,5 +14,59 @@ model MovementType {
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
 
+  categories Category[]
+  movements  Movement[]
+
   @@map("movement_types")
+}
+
+model Account {
+  id        String   @id @default(uuid())
+  name      String
+  type      String
+  isActive  Boolean  @default(true) @map("is_active")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  movements Movement[]
+
+  @@map("accounts")
+}
+
+model Category {
+  id             String   @id @default(uuid())
+  name           String
+  movementTypeId String   @map("movement_type_id")
+  isActive       Boolean  @default(true) @map("is_active")
+  createdAt      DateTime @default(now()) @map("created_at")
+  updatedAt      DateTime @updatedAt @map("updated_at")
+
+  movementType MovementType @relation(fields: [movementTypeId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  movements    Movement[]
+
+  @@unique([name, movementTypeId])
+  @@index([movementTypeId])
+  @@map("categories")
+}
+
+model Movement {
+  id             String   @id @default(uuid())
+  amount         Decimal  @db.Decimal(14, 2)
+  date           DateTime
+  note           String?
+  accountId      String   @map("account_id")
+  categoryId     String   @map("category_id")
+  movementTypeId String   @map("movement_type_id")
+  createdAt      DateTime @default(now()) @map("created_at")
+  updatedAt      DateTime @updatedAt @map("updated_at")
+
+  account      Account      @relation(fields: [accountId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  category     Category     @relation(fields: [categoryId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  movementType MovementType @relation(fields: [movementTypeId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+
+  @@index([accountId])
+  @@index([categoryId])
+  @@index([movementTypeId])
+  @@index([date])
+  @@map("movements")
 }
