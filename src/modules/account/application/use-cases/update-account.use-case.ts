@@ -29,9 +29,7 @@ export class UpdateAccountUseCase {
     private readonly repository: AccountRepositoryPort,
   ) {}
 
-  async execute(
-    command: UpdateAccountCommand,
-  ): Promise<UpdateAccountResponse> {
+  async execute(command: UpdateAccountCommand): Promise<UpdateAccountResponse> {
     try {
       const account = await this.repository.findById(command.id);
       if (!account)

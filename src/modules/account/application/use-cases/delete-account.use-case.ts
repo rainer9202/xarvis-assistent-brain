@@ -23,9 +23,7 @@ export class DeleteAccountUseCase {
     private readonly repository: AccountRepositoryPort,
   ) {}
 
-  async execute(
-    command: DeleteAccountCommand,
-  ): Promise<DeleteAccountResponse> {
+  async execute(command: DeleteAccountCommand): Promise<DeleteAccountResponse> {
     try {
       const account = await this.repository.findById(command.id);
       if (!account)

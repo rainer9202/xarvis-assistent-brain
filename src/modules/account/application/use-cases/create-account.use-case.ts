@@ -30,9 +30,7 @@ export class CreateAccountUseCase {
     private readonly repository: AccountRepositoryPort,
   ) {}
 
-  async execute(
-    command: CreateAccountCommand,
-  ): Promise<CreateAccountResponse> {
+  async execute(command: CreateAccountCommand): Promise<CreateAccountResponse> {
     try {
       if (!VALID_ACCOUNT_TYPES.includes(command.type))
         throw new ValidationException(
