@@ -1,0 +1,4 @@
+pnpm lint
+# gga run — temporarily disabled: hangs when invoking the claude provider
+# nested inside an active Claude Code session. Needs investigation before
+# re-enabling.

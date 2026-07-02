@@ -1,0 +1,18 @@
+generator client {
+  provider = "prisma-client"
+  output   = "../src/config/database/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model MovementType {
+  id        String   @id @default(uuid())
+  name      String   @unique
+  isDefault Boolean  @default(false) @map("is_default")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@map("movement_types")
+}
