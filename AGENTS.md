@@ -27,6 +27,34 @@ Run a single test file:
 pnpm test -- --testPathPattern=movement-type
 ```
 
+### Docker (local)
+
+`docker-compose.yml` is for local development only — it runs the app (hot-reload, `development` Dockerfile stage) plus a local Postgres container. It has no production equivalent.
+
+```bash
+docker compose up          # app on :3000 + Postgres on :5432
+docker compose up --build  # rebuild the app image after dependency changes
+docker compose down -v     # stop and wipe the local db volume
+```
+
+On a rootless Podman host (no `docker` CLI, `podman.socket` active instead) use the `docker-compose` binary against the podman socket:
+```bash
+export DOCKER_HOST="unix:///run/user/$(id -u)/podman/podman.sock"
+docker-compose up -d
+```
+
+First time only, once containers are up, apply the schema and seed data (there are no Prisma migrations yet, so this project uses `db push` rather than `migrate deploy`):
+```bash
+docker compose exec app npx prisma db push
+docker compose exec app pnpm db:seed
+```
+
+On Fedora/RHEL (SELinux enforcing), the bind mount uses the `:Z` flag so the container can read the source — don't drop it when editing the volume list.
+
+### Deployment (Dokploy)
+
+Production only containerizes the Node.js app — the `runtime` stage in `Dockerfile` (`docker build .` targets it by default, being the last stage). Dokploy provides Postgres as a separate managed service; the container never runs its own database. Point `DATABASE_URL` at the Dokploy-provisioned Postgres instance via environment variables in Dokploy — do not bake credentials into the image.
+
 ## Architecture
 
 Hexagonal architecture with one NestJS module per feature. Each module is fully self-contained.
