@@ -1,0 +1,63 @@
+import { Inject, Injectable } from '@nestjs/common';
+import {
+  DomainException,
+  NotFoundException,
+  ValidationException,
+} from '@shared/exceptions/domain.exception';
+import { ACCOUNT_TYPES } from '../../domain/enums/account-type.enum';
+import { ACCOUNT_REPOSITORY } from '../../domain/ports/account.repository.port';
+import type { AccountRepositoryPort } from '../../domain/ports/account.repository.port';
+
+export type UpdateAccountResponse = {
+  id: string;
+};
+
+export class UpdateAccountCommand {
+  constructor(
+    public readonly id: string,
+    public readonly userId: string,
+    public readonly name?: string,
+    public readonly type?: string,
+    public readonly isActive?: boolean,
+  ) {}
+}
+
+@Injectable()
+export class UpdateAccountUseCase {
+  constructor(
+    @Inject(ACCOUNT_REPOSITORY)
+    private readonly repository: AccountRepositoryPort,
+  ) {}
+
+  async execute(command: UpdateAccountCommand): Promise<UpdateAccountResponse> {
+    try {
+      const account = await this.repository.findById(
+        command.id,
+        command.userId,
+      );
+      if (!account)
+        throw new NotFoundException(`Account "${command.id}" not found`);
+
+      if (command.name !== undefined) account.name = command.name;
+      if (command.type !== undefined) {
+        if (
+          !ACCOUNT_TYPES.includes(
+            command.type as (typeof ACCOUNT_TYPES)[number],
+          )
+        )
+          throw new ValidationException(
+            `Account type "${command.type}" is invalid. Must be one of: ${ACCOUNT_TYPES.join(', ')}`,
+          );
+        account.type = command.type;
+      }
+      if (command.isActive !== undefined) account.isActive = command.isActive;
+
+      const saved = await this.repository.update(account);
+
+      return { id: saved.id! };
+    } catch (error) {
+      if (error instanceof DomainException) throw error;
+      throw new Error(`Unexpected error updating account: ${error}`);
+    }
+  }
+}
