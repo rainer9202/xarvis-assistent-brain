@@ -1,0 +1,270 @@
+import { INestApplication } from '@nestjs/common';
+import { PrismaService } from '@config/database/prisma.service';
+import request from 'supertest';
+import { createAuthenticatedUser, createTestApp } from '../utils/test-app';
+
+describe('Movement (e2e)', () => {
+  let app: INestApplication;
+  let prisma: PrismaService;
+  let cookie: string;
+  let userId: string;
+  let expenseTypeId: string;
+  let transferTypeId: string;
+  let categoryId: string;
+  let accountA: string;
+  let accountB: string;
+  const movementIds: string[] = [];
+
+  beforeAll(async () => {
+    ({ app, prisma } = await createTestApp());
+    ({ cookie, userId } = await createAuthenticatedUser(app));
+
+    expenseTypeId = (
+      await prisma.movementType.findFirstOrThrow({ where: { name: 'expense' } })
+    ).id;
+    transferTypeId = (
+      await prisma.movementType.findFirstOrThrow({
+        where: { name: 'transfer' },
+      })
+    ).id;
+
+    const category = await prisma.category.create({
+      data: {
+        name: `MovementSpec-${Date.now()}`,
+        movementTypeId: expenseTypeId,
+        userId,
+      },
+    });
+    categoryId = category.id;
+
+    const [a, b] = await Promise.all([
+      prisma.account.create({
+        data: { name: `A-${Date.now()}`, type: 'bank', userId },
+      }),
+      prisma.account.create({
+        data: { name: `B-${Date.now()}`, type: 'bank', userId },
+      }),
+    ]);
+    accountA = a.id;
+    accountB = b.id;
+  });
+
+  afterAll(async () => {
+    await prisma.movement.deleteMany({ where: { id: { in: movementIds } } });
+    await prisma.category.delete({ where: { id: categoryId } });
+    await prisma.account.deleteMany({
+      where: { id: { in: [accountA, accountB] } },
+    });
+    await app.close();
+  });
+
+  it('creates an expense movement and reflects it in the account balance', async () => {
+    const res = await request(app.getHttpServer())
+      .post('/movements')
+      .set('Cookie', cookie)
+      .send({
+        amountCents: 2500,
+        date: new Date().toISOString(),
+        accountId: accountA,
+        categoryId,
+        movementTypeId: expenseTypeId,
+      })
+      .expect(201);
+    movementIds.push(res.body.data.id);
+
+    await request(app.getHttpServer())
+      .get(`/accounts/${accountA}`)
+      .set('Cookie', cookie)
+      .expect(200)
+      .expect((getRes) => {
+        expect(getRes.body.data.balanceCents).toBe(-2500);
+      });
+  });
+
+  it('transfers funds between two accounts from a single movement', async () => {
+    const res = await request(app.getHttpServer())
+      .post('/movements')
+      .set('Cookie', cookie)
+      .send({
+        amountCents: 1000,
+        date: new Date().toISOString(),
+        accountId: accountA,
+        toAccountId: accountB,
+        categoryId,
+        movementTypeId: transferTypeId,
+      })
+      .expect(201);
+    movementIds.push(res.body.data.id);
+
+    await request(app.getHttpServer())
+      .get(`/movements/${res.body.data.id}`)
+      .set('Cookie', cookie)
+      .expect(200)
+      .expect((getRes) => {
+        expect(getRes.body.data.toAccountId).toBe(accountB);
+      });
+
+    await request(app.getHttpServer())
+      .get(`/accounts/${accountB}`)
+      .set('Cookie', cookie)
+      .expect(200)
+      .expect((getRes) => {
+        expect(getRes.body.data.balanceCents).toBe(1000);
+      });
+  });
+
+  it('🔍 rejects a transfer without toAccountId', async () => {
+    await request(app.getHttpServer())
+      .post('/movements')
+      .set('Cookie', cookie)
+      .send({
+        amountCents: 500,
+        date: new Date().toISOString(),
+        accountId: accountA,
+        categoryId,
+        movementTypeId: transferTypeId,
+      })
+      .expect(400);
+  });
+
+  it('🔍 rejects toAccountId on a non-transfer movement', async () => {
+    await request(app.getHttpServer())
+      .post('/movements')
+      .set('Cookie', cookie)
+      .send({
+        amountCents: 500,
+        date: new Date().toISOString(),
+        accountId: accountA,
+        toAccountId: accountB,
+        categoryId,
+        movementTypeId: expenseTypeId,
+      })
+      .expect(400);
+  });
+
+  it('🔍 rejects a transfer to the same account', async () => {
+    await request(app.getHttpServer())
+      .post('/movements')
+      .set('Cookie', cookie)
+      .send({
+        amountCents: 500,
+        date: new Date().toISOString(),
+        accountId: accountA,
+        toAccountId: accountA,
+        categoryId,
+        movementTypeId: transferTypeId,
+      })
+      .expect(400);
+  });
+
+  it('🔍 applies the same transfer-symmetry checks on update', async () => {
+    const createRes = await request(app.getHttpServer())
+      .post('/movements')
+      .set('Cookie', cookie)
+      .send({
+        amountCents: 300,
+        date: new Date().toISOString(),
+        accountId: accountA,
+        categoryId,
+        movementTypeId: expenseTypeId,
+      })
+      .expect(201);
+    movementIds.push(createRes.body.data.id);
+
+    await request(app.getHttpServer())
+      .patch(`/movements/${createRes.body.data.id}`)
+      .set('Cookie', cookie)
+      .send({ movementTypeId: transferTypeId })
+      .expect(400);
+  });
+
+  it('rejects an invalid amountCents', async () => {
+    await request(app.getHttpServer())
+      .post('/movements')
+      .set('Cookie', cookie)
+      .send({
+        amountCents: 0,
+        date: new Date().toISOString(),
+        accountId: accountA,
+        categoryId,
+        movementTypeId: expenseTypeId,
+      })
+      .expect(400);
+  });
+
+  it('deletes a movement', async () => {
+    const createRes = await request(app.getHttpServer())
+      .post('/movements')
+      .set('Cookie', cookie)
+      .send({
+        amountCents: 100,
+        date: new Date().toISOString(),
+        accountId: accountA,
+        categoryId,
+        movementTypeId: expenseTypeId,
+      })
+      .expect(201);
+
+    await request(app.getHttpServer())
+      .delete(`/movements/${createRes.body.data.id}`)
+      .set('Cookie', cookie)
+      .expect(200)
+      .expect((res) => {
+        expect(res.body.data).toEqual({ id: createRes.body.data.id });
+      });
+  });
+
+  it('returns 404 for a nonexistent movement id', async () => {
+    await request(app.getHttpServer())
+      .get('/movements/00000000-0000-0000-0000-000000000000')
+      .set('Cookie', cookie)
+      .expect(404);
+  });
+
+  it("🔍 a second user cannot create a movement against the first user's account, and cannot transfer into it either", async () => {
+    const { cookie: otherCookie } = await createAuthenticatedUser(app);
+
+    await request(app.getHttpServer())
+      .post('/movements')
+      .set('Cookie', otherCookie)
+      .send({
+        amountCents: 500,
+        date: new Date().toISOString(),
+        accountId: accountA,
+        categoryId,
+        movementTypeId: expenseTypeId,
+      })
+      .expect(404);
+
+    const otherAccountRes = await request(app.getHttpServer())
+      .post('/accounts')
+      .set('Cookie', otherCookie)
+      .send({ name: `Other-${Date.now()}`, type: 'bank' })
+      .expect(201);
+    const otherCategoryRes = await request(app.getHttpServer())
+      .post('/categories')
+      .set('Cookie', otherCookie)
+      .send({ name: `OtherCat-${Date.now()}`, movementTypeId: expenseTypeId })
+      .expect(201);
+
+    await request(app.getHttpServer())
+      .post('/movements')
+      .set('Cookie', otherCookie)
+      .send({
+        amountCents: 500,
+        date: new Date().toISOString(),
+        accountId: otherAccountRes.body.data.id,
+        toAccountId: accountA,
+        categoryId: otherCategoryRes.body.data.id,
+        movementTypeId: transferTypeId,
+      })
+      .expect(404);
+
+    await prisma.category.delete({
+      where: { id: otherCategoryRes.body.data.id },
+    });
+    await prisma.account.delete({
+      where: { id: otherAccountRes.body.data.id },
+    });
+  });
+});

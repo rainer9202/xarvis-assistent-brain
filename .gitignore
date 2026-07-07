@@ -6,3 +6,6 @@ coverage
 
 /generated/prisma
 src/config/database/generated
+
+# Per-developer local overrides, not shared team config
+.claude/settings.local.json
