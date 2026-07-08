@@ -1,6 +1,6 @@
 import { Provider } from '@nestjs/common';
 import { betterAuth } from 'better-auth';
-import { bearer } from 'better-auth/plugins';
+import { bearer, openAPI } from 'better-auth/plugins';
 import { prismaAdapter } from 'better-auth/adapters/prisma';
 import { PrismaService } from '@config/database/prisma.service';
 
@@ -32,7 +32,10 @@ function createAuth(prisma: PrismaService) {
       .filter(Boolean),
     // Lets non-browser clients (mobile apps, other services) authenticate
     // via `Authorization: Bearer <token>` instead of a session cookie.
-    plugins: [bearer()],
+    // openAPI() generates a schema for these /auth/* routes (sign-in,
+    // sign-up, etc.) — src/main.ts merges it into the main Swagger document,
+    // since Nest's own reflection never sees these Express-mounted routes.
+    plugins: [bearer(), openAPI()],
     rateLimit: {
       enabled: true, // don't rely on the "production only" default — enable explicitly in every env
       window: 60, // seconds

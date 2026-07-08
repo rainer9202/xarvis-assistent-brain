@@ -47,9 +47,31 @@ async function bootstrap() {
     .setTitle('Xarvis Brain API')
     .setDescription('API de gestión financiera personal')
     .setVersion('1.0')
+    .addBearerAuth()
     .build();
 
   const document = SwaggerModule.createDocument(app, config);
+  // Every Nest-routed operation requires the bearer token by default (there's
+  // no per-controller @ApiBearerAuth() to maintain as new modules are added).
+  document.security = [{ bearer: [] }];
+
+  // /auth/* (sign-in, sign-up, ...) is mounted directly on the raw Express
+  // adapter above, so Nest's own reflection never sees those routes — merge
+  // Better-Auth's own generated OpenAPI schema (from the openAPI() plugin in
+  // auth.provider.ts) into the same document, under its real /auth prefix,
+  // so they're visible and callable from this same Swagger UI.
+  const authSchema = await auth.api.generateOpenAPISchema();
+  for (const [path, pathItem] of Object.entries(authSchema.paths ?? {})) {
+    document.paths[`/auth${path}`] = pathItem;
+  }
+  document.components = {
+    ...document.components,
+    schemas: {
+      ...document.components?.schemas,
+      ...authSchema.components?.schemas,
+    },
+  };
+
   SwaggerModule.setup('docs', app, document);
 
   await app.listen(process.env.PORT ?? 3000);
