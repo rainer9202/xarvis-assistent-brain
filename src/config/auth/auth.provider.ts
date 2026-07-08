@@ -33,6 +33,41 @@ function createAuth(prisma: PrismaService) {
     // Lets non-browser clients (mobile apps, other services) authenticate
     // via `Authorization: Bearer <token>` instead of a session cookie.
     plugins: [bearer()],
+    rateLimit: {
+      enabled: true, // don't rely on the "production only" default — enable explicitly in every env
+      window: 60, // seconds
+      max: 20, // generous default across the whole /auth/* surface
+      customRules: {
+        '/sign-in/email': { window: 60, max: 5 },
+        '/sign-up/email': { window: 60, max: 5 },
+      },
+      // storage stays at its default (`memory`): single-container Dokploy
+      // deployment, so no need for `database`/`secondary-storage` yet — memory
+      // storage resets on restart and doesn't share state across replicas,
+      // revisit only if the app is ever scaled horizontally.
+    },
+    advanced: {
+      ipAddress: {
+        // Better-Auth's `getIp()` (used to build the per-client rate-limit
+        // bucket key) only trusts a client-supplied `X-Forwarded-For` header
+        // when the immediate hop is a known proxy. Without this, either (a)
+        // an attacker spoofs a fresh IP on every request and evades the
+        // 5-req/60s sign-in/sign-up limit entirely, or (b) once 2+ hops
+        // appear in XFF, `getIp()` returns null and every client on that
+        // path shares ONE bucket — one abusive client locks out everyone.
+        // Defaults to the standard RFC1918 private ranges, which is
+        // reasonable for a containerized Dokploy deployment where the
+        // reverse proxy sits on the same private Docker network — tighten
+        // this to the exact proxy IP/CIDR once it's confirmed in production.
+        trustedProxies: (
+          process.env.TRUSTED_PROXIES ??
+          '10.0.0.0/8,172.16.0.0/12,192.168.0.0/16'
+        )
+          .split(',')
+          .map((proxy) => proxy.trim())
+          .filter(Boolean),
+      },
+    },
   });
 }
 

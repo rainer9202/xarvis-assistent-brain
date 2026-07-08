@@ -7,10 +7,15 @@ import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import { toNodeHandler } from 'better-auth/node';
 import { AppModule } from './app.module';
 import { AUTH, Auth } from '@config/auth/auth.provider';
+import { validateEnv } from '@config/env/validate-env';
 import { DomainExceptionFilter } from '@shared/exceptions/http-exception.filter';
 import { ResponseInterceptor } from '@shared/interceptors/response.interceptor';
 
 async function bootstrap() {
+  // Fail fast on missing/invalid env vars before Nest (and Better-Auth
+  // internals) start booting — see @config/env/validate-env.ts.
+  validateEnv();
+
   // bodyParser: false because Better-Auth's handler needs the raw request
   // body — Nest's default global body parser would already have consumed
   // it by the time the auth route runs otherwise.

@@ -8,6 +8,7 @@ import { AccountModule } from '@modules/money-manager/account/account.module';
 import { CategoryModule } from '@modules/money-manager/category/category.module';
 import { MovementModule } from '@modules/money-manager/movement/movement.module';
 import { ReportModule } from '@modules/money-manager/report/report.module';
+import { HealthModule } from './health/health.module';
 
 @Module({
   imports: [
@@ -18,6 +19,7 @@ import { ReportModule } from '@modules/money-manager/report/report.module';
     CategoryModule,
     MovementModule,
     ReportModule,
+    HealthModule,
   ],
   providers: [{ provide: APP_GUARD, useClass: AuthGuard }],
 })
