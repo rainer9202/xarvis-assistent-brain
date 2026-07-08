@@ -1,5 +1,6 @@
 import { Provider } from '@nestjs/common';
 import { betterAuth } from 'better-auth';
+import { bearer } from 'better-auth/plugins';
 import { prismaAdapter } from 'better-auth/adapters/prisma';
 import { PrismaService } from '@config/database/prisma.service';
 
@@ -22,6 +23,16 @@ function createAuth(prisma: PrismaService) {
       process.env.BETTER_AUTH_URL ??
       `http://localhost:${process.env.PORT ?? 3000}`,
     basePath: '/auth',
+    // This app is API-only (no server-rendered frontend of its own), so any
+    // browser client lives on a different origin — Better-Auth needs these
+    // origins allow-listed to accept cross-site cookie/session requests.
+    trustedOrigins: (process.env.CORS_ORIGINS ?? '')
+      .split(',')
+      .map((origin) => origin.trim())
+      .filter(Boolean),
+    // Lets non-browser clients (mobile apps, other services) authenticate
+    // via `Authorization: Bearer <token>` instead of a session cookie.
+    plugins: [bearer()],
   });
 }
 

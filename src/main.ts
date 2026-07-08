@@ -18,6 +18,17 @@ async function bootstrap() {
     bodyParser: false,
   });
 
+  // Registered before the raw auth mount below: Express runs middleware/routes
+  // in registration order, and the auth handler responds directly without
+  // calling next(), so CORS headers would never reach /auth/* otherwise.
+  app.enableCors({
+    origin: (process.env.CORS_ORIGINS ?? '')
+      .split(',')
+      .map((origin) => origin.trim())
+      .filter(Boolean),
+    credentials: true,
+  });
+
   const auth = app.get<Auth>(AUTH);
   app.getHttpAdapter().getInstance().all('/auth/*splat', toNodeHandler(auth));
   app.use(express.json());
