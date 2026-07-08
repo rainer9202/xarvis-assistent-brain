@@ -62,7 +62,7 @@ Production only containerizes the Node.js app — the `runtime` stage in `Docker
 Hexagonal architecture with one NestJS module per feature. Each module is fully self-contained. Feature modules are grouped under a business-domain folder (`src/modules/<domain>/<feature>/`), since this project hosts multiple business domains over time — not a single one.
 
 Current domains:
-- `money-manager` — `movement-type`, `account`, `category`, `movement` (the personal-finance ledger).
+- `money-manager` — `movement-type`, `account`, `category`, `movement`, `report` (the personal-finance ledger).
 
 ### Module structure
 
@@ -82,6 +82,8 @@ src/modules/<domain>/<feature>/
 
 Cross-module imports (see "Cross-module dependencies" below) use the full path, e.g. `@modules/money-manager/movement-type/application/use-cases/get-movement-type-by-id.use-case`.
 
+A feature with no persistence of its own (e.g. `report`, which only aggregates another feature's exported use case) skips `domain/` entirely — no entity or port to define — and keeps just `application/use-cases/` + `infrastructure/controllers/`. This is intentional, not a shortcut.
+
 **Dependency rule (enforced):** `domain` → nothing. `application` → `domain` only. `infrastructure` → `application` + `domain`. Flag any import that violates this direction.
 
 ### Shared
@@ -90,7 +92,8 @@ Cross-module imports (see "Cross-module dependencies" below) use the full path, 
 - `src/shared/exceptions/domain.exception.ts` — `DomainException` base + `NotFoundException`, `ValidationException`, `ConflictException`
 - `src/shared/exceptions/http-exception.filter.ts` — maps domain exceptions to HTTP status codes; registered globally in `main.ts`
 - `src/shared/interceptors/response.interceptor.ts` — wraps all successful responses as `{ statusCode, ...body }`; registered globally in `main.ts`
-- `src/shared/decorators/` — custom decorators (currently empty)
+- `src/shared/decorators/current-user.decorator.ts` — `@CurrentUser()`, reads the authenticated user Better-Auth's `AuthGuard` attached to the request
+- `src/shared/guards/auth.guard.ts` — `AuthGuard`, registered globally via `APP_GUARD` in `app.module.ts`
 
 ### Database
 
