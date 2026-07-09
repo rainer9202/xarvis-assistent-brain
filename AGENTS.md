@@ -17,7 +17,7 @@ pnpm db:migrate         # run Prisma migrations (prisma migrate dev)
 pnpm db:seed            # seed default data (tsx prisma/seed.ts)
 ```
 
-`pnpm test:e2e` boots the real `AppModule` (real Prisma, no mocks) against Postgres, so the `db` service from `docker-compose.yml` must be up on `localhost:5432` first (`docker compose up -d db`, then `npx prisma migrate deploy` and `pnpm db:seed` once). It never reads the project's own `.env` — `test/setup-env.ts` (wired via Jest's `setupFiles`) hardcodes the local docker-compose `DATABASE_URL` (plus a throwaway `BETTER_AUTH_SECRET`/`BETTER_AUTH_URL`) unless the environment already sets them, specifically so e2e runs can never accidentally hit whatever remote database `.env` happens to point at. e2e specs use `@swc/jest` (not `ts-jest`, which the unit test config uses) with `transformIgnorePatterns: []` (transforms all of `node_modules`) because Prisma 7's generated client and Better-Auth's dependency tree (`better-call`, `@noble/hashes`, `jose`, etc.) ship real ESM — plain `tsc`-based transforms and any node_modules allowlist regex turn into permanent whack-a-mole as new transitive ESM deps show up. Every e2e spec must call `createAuthenticatedUser(app)` from `test/utils/test-app.ts` (signs up a throwaway user via the real `/auth/sign-up/email` route and returns a session cookie) and set that cookie on every request — the global `AuthGuard` rejects unauthenticated requests with 401.
+`pnpm test:e2e` boots the real `AppModule` (real Prisma, no mocks) against Postgres, so the `db` service from `docker-compose.yml` must be up on `localhost:5432` first (`docker compose up -d db`, then `npx prisma migrate deploy` and `pnpm db:seed` once). It never reads the project's own `.env` — `test/setup-env.ts` (wired via Jest's `setupFiles`) hardcodes the local docker-compose `DATABASE_URL` (plus a throwaway `JWT_SECRET`/`JWT_EXPIRES_IN`) unless the environment already sets them, specifically so e2e runs can never accidentally hit whatever remote database `.env` happens to point at. e2e specs use `@swc/jest` (not `ts-jest`, which the unit test config uses) with `transformIgnorePatterns: []` (transforms all of `node_modules`) because Prisma 7's generated client ships real ESM — plain `tsc`-based transforms and any node_modules allowlist regex turn into permanent whack-a-mole as new transitive ESM deps show up. Every e2e spec must call `createAuthenticatedUser(app)` from `test/utils/test-app.ts` (signs up a throwaway user via the real `POST /auth/sign-up` route and returns a Bearer access token) and send it as an `Authorization: Bearer <token>` header on every request — the global `JwtAuthGuard` rejects unauthenticated requests with 401.
 
 After modifying `prisma/schema.prisma`, regenerate the client:
 ```bash
@@ -94,8 +94,8 @@ A feature with no persistence of its own (e.g. `report`, which only aggregates a
 - `src/shared/exceptions/domain.exception.ts` — `DomainException` base + `NotFoundException`, `ValidationException`, `ConflictException`
 - `src/shared/exceptions/http-exception.filter.ts` — maps domain exceptions to HTTP status codes; registered globally in `main.ts`
 - `src/shared/interceptors/response.interceptor.ts` — wraps all successful responses as `{ statusCode, ...body }`; registered globally in `main.ts`
-- `src/shared/decorators/current-user.decorator.ts` — `@CurrentUser()`, reads the authenticated user Better-Auth's `AuthGuard` attached to the request
-- `src/shared/guards/auth.guard.ts` — `AuthGuard`, registered globally via `APP_GUARD` in `app.module.ts`
+- `src/shared/decorators/current-user.decorator.ts` — `@CurrentUser()`, reads the authenticated user the `JwtAuthGuard` attached to the request
+- `src/shared/guards/jwt-auth.guard.ts` — `JwtAuthGuard`, registered globally via `APP_GUARD` in `app.module.ts`
 
 ### Database
 
