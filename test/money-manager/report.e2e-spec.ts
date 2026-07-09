@@ -6,7 +6,7 @@ import { createAuthenticatedUser, createTestApp } from '../utils/test-app';
 describe('Report (e2e)', () => {
   let app: INestApplication;
   let prisma: PrismaService;
-  let cookie: string;
+  let token: string;
   let userId: string;
   let expenseTypeId: string;
   let categoryId: string;
@@ -14,7 +14,7 @@ describe('Report (e2e)', () => {
 
   beforeAll(async () => {
     ({ app, prisma } = await createTestApp());
-    ({ cookie, userId } = await createAuthenticatedUser(app));
+    ({ token, userId } = await createAuthenticatedUser(app));
 
     expenseTypeId = (
       await prisma.movementType.findFirstOrThrow({ where: { name: 'expense' } })
@@ -52,7 +52,7 @@ describe('Report (e2e)', () => {
 
     await request(app.getHttpServer())
       .post('/movements')
-      .set('Cookie', cookie)
+      .set('Authorization', `Bearer ${token}`)
       .send({
         amountCents: 1500,
         date: new Date().toISOString(),
@@ -64,7 +64,7 @@ describe('Report (e2e)', () => {
 
     const res = await request(app.getHttpServer())
       .get('/reports/balance')
-      .set('Cookie', cookie)
+      .set('Authorization', `Bearer ${token}`)
       .expect(200);
 
     const accountA = res.body.data.accounts.find(
@@ -84,11 +84,11 @@ describe('Report (e2e)', () => {
   });
 
   it("🔍 excludes other users' accounts from the report", async () => {
-    const { cookie: otherCookie } = await createAuthenticatedUser(app);
+    const { token: otherToken } = await createAuthenticatedUser(app);
 
     const res = await request(app.getHttpServer())
       .get('/reports/balance')
-      .set('Cookie', otherCookie)
+      .set('Authorization', `Bearer ${otherToken}`)
       .expect(200);
 
     expect(res.body.data.accounts).toEqual([]);

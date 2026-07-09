@@ -11,68 +11,17 @@ model User {
   id            String   @id @default(uuid())
   name          String
   email         String   @unique
+  password      String
   emailVerified Boolean  @default(false) @map("email_verified")
   image         String?
   createdAt     DateTime @default(now()) @map("created_at")
   updatedAt     DateTime @updatedAt @map("updated_at")
 
-  sessions     Session[]
-  authAccounts AuthAccount[]
   accounts     Account[]
   categories   Category[]
   movements    Movement[]
 
   @@map("users")
-}
-
-model Session {
-  id        String   @id @default(uuid())
-  expiresAt DateTime @map("expires_at")
-  token     String   @unique
-  createdAt DateTime @default(now()) @map("created_at")
-  updatedAt DateTime @updatedAt @map("updated_at")
-  ipAddress String?  @map("ip_address")
-  userAgent String?  @map("user_agent")
-  userId    String   @map("user_id")
-
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-  @@map("sessions")
-}
-
-// Prisma model is named AuthAccount (mapped to modelName: "authAccount" in
-// the Better-Auth config) because `Account` is already taken by the ledger's
-// own bank-account model below — same table-name style collision avoided via
-// @@map, but the Prisma Client property collision needs the modelName remap.
-model AuthAccount {
-  id                    String    @id @default(uuid())
-  accountId             String    @map("account_id")
-  providerId            String    @map("provider_id")
-  userId                String    @map("user_id")
-  accessToken           String?   @map("access_token")
-  refreshToken          String?   @map("refresh_token")
-  idToken               String?   @map("id_token")
-  accessTokenExpiresAt  DateTime? @map("access_token_expires_at")
-  refreshTokenExpiresAt DateTime? @map("refresh_token_expires_at")
-  scope                 String?
-  password              String?
-  createdAt             DateTime  @default(now()) @map("created_at")
-  updatedAt             DateTime  @updatedAt @map("updated_at")
-
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-  @@map("auth_accounts")
-}
-
-model Verification {
-  id         String   @id @default(uuid())
-  identifier String
-  value      String
-  expiresAt  DateTime @map("expires_at")
-  createdAt  DateTime @default(now()) @map("created_at")
-  updatedAt  DateTime @updatedAt @map("updated_at")
-
-  @@map("verifications")
 }
 
 model MovementType {

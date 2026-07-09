@@ -23,7 +23,7 @@ describe('Health (e2e)', () => {
     });
   });
 
-  it('🔍 an existing protected route still requires auth (the @Public() bypass did not leak)', async () => {
+  it('🔍 GET /accounts with no auth still returns 401 (JwtAuthGuard regression check)', async () => {
     await request(app.getHttpServer()).get('/accounts').expect(401);
   });
 });

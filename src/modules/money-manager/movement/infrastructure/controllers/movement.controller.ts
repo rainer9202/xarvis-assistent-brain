@@ -32,7 +32,7 @@ import { GetMovementByIdUseCase } from '../../application/use-cases/get-movement
 import { CreateMovementDto } from '../dto/create-movement.dto';
 import { UpdateMovementDto } from '../dto/update-movement.dto';
 import { CurrentUser } from '@shared/decorators/current-user.decorator';
-import type { AuthenticatedRequest } from '@shared/guards/auth.guard';
+import type { AuthenticatedRequest } from '@shared/decorators/current-user.decorator';
 
 const domainName = 'movements';
 

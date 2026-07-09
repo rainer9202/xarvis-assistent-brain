@@ -6,12 +6,12 @@ import { createAuthenticatedUser, createTestApp } from '../utils/test-app';
 describe('MovementType (e2e)', () => {
   let app: INestApplication;
   let prisma: PrismaService;
-  let cookie: string;
+  let token: string;
   const createdIds: string[] = [];
 
   beforeAll(async () => {
     ({ app, prisma } = await createTestApp());
-    ({ cookie } = await createAuthenticatedUser(app));
+    ({ token } = await createAuthenticatedUser(app));
   });
 
   afterAll(async () => {
@@ -26,7 +26,7 @@ describe('MovementType (e2e)', () => {
   it('GET /movement-types returns the seeded default types', async () => {
     const res = await request(app.getHttpServer())
       .get('/movement-types')
-      .set('Cookie', cookie)
+      .set('Authorization', `Bearer ${token}`)
       .expect(200);
 
     const names = res.body.data.map(
@@ -40,7 +40,7 @@ describe('MovementType (e2e)', () => {
   it('creates and deletes a custom movement type', async () => {
     const createRes = await request(app.getHttpServer())
       .post('/movement-types')
-      .set('Cookie', cookie)
+      .set('Authorization', `Bearer ${token}`)
       .send({ name: `custom-${Date.now()}` })
       .expect(201);
 
@@ -49,7 +49,7 @@ describe('MovementType (e2e)', () => {
 
     await request(app.getHttpServer())
       .delete(`/movement-types/${id}`)
-      .set('Cookie', cookie)
+      .set('Authorization', `Bearer ${token}`)
       .expect(200)
       .expect((res) => {
         expect(res.body.data).toEqual({ id });
@@ -62,14 +62,14 @@ describe('MovementType (e2e)', () => {
     const name = `custom-${Date.now()}`;
     const createRes = await request(app.getHttpServer())
       .post('/movement-types')
-      .set('Cookie', cookie)
+      .set('Authorization', `Bearer ${token}`)
       .send({ name })
       .expect(201);
     createdIds.push(createRes.body.data.id);
 
     await request(app.getHttpServer())
       .post('/movement-types')
-      .set('Cookie', cookie)
+      .set('Authorization', `Bearer ${token}`)
       .send({ name })
       .expect(409);
   });
@@ -81,7 +81,7 @@ describe('MovementType (e2e)', () => {
 
     await request(app.getHttpServer())
       .delete(`/movement-types/${seeded.id}`)
-      .set('Cookie', cookie)
+      .set('Authorization', `Bearer ${token}`)
       .expect(400)
       .expect((res) => {
         expect(res.body.message).toContain(
@@ -93,7 +93,7 @@ describe('MovementType (e2e)', () => {
   it('🔍 returns 404 for a nonexistent movement type id', async () => {
     await request(app.getHttpServer())
       .delete('/movement-types/00000000-0000-0000-0000-000000000000')
-      .set('Cookie', cookie)
+      .set('Authorization', `Bearer ${token}`)
       .expect(404);
   });
 });

@@ -11,18 +11,14 @@ const HEALTH_CHECK_TIMEOUT_MS = 3000;
 
 // This controller intentionally has no use-case layer: a health check has no
 // domain logic to hold (it only pings infrastructure), so it talks to
-// PrismaService directly instead of going through application/use-cases —
-// see AGENTS.md's "Authentication and data ownership" section for the
-// documented rationale. Not an oversight — do not flag as bypassing the
-// use-case layer.
+// PrismaService directly instead of going through application/use-cases.
+// Not an oversight — do not flag as bypassing the use-case layer.
 @Controller('health')
 export class HealthController {
   private readonly logger = new Logger(HealthController.name);
 
   constructor(private readonly prisma: PrismaService) {}
 
-  // @Public() lives on the handler (not the class) so any future route added
-  // to this controller doesn't silently inherit the auth bypass.
   @Public()
   @Get()
   async check() {

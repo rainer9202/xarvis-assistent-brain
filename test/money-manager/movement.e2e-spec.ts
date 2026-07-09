@@ -6,7 +6,7 @@ import { createAuthenticatedUser, createTestApp } from '../utils/test-app';
 describe('Movement (e2e)', () => {
   let app: INestApplication;
   let prisma: PrismaService;
-  let cookie: string;
+  let token: string;
   let userId: string;
   let expenseTypeId: string;
   let transferTypeId: string;
@@ -17,7 +17,7 @@ describe('Movement (e2e)', () => {
 
   beforeAll(async () => {
     ({ app, prisma } = await createTestApp());
-    ({ cookie, userId } = await createAuthenticatedUser(app));
+    ({ token, userId } = await createAuthenticatedUser(app));
 
     expenseTypeId = (
       await prisma.movementType.findFirstOrThrow({ where: { name: 'expense' } })
@@ -61,7 +61,7 @@ describe('Movement (e2e)', () => {
   it('creates an expense movement and reflects it in the account balance', async () => {
     const res = await request(app.getHttpServer())
       .post('/movements')
-      .set('Cookie', cookie)
+      .set('Authorization', `Bearer ${token}`)
       .send({
         amountCents: 2500,
         date: new Date().toISOString(),
@@ -74,7 +74,7 @@ describe('Movement (e2e)', () => {
 
     await request(app.getHttpServer())
       .get(`/accounts/${accountA}`)
-      .set('Cookie', cookie)
+      .set('Authorization', `Bearer ${token}`)
       .expect(200)
       .expect((getRes) => {
         expect(getRes.body.data.balanceCents).toBe(-2500);
@@ -84,7 +84,7 @@ describe('Movement (e2e)', () => {
   it('transfers funds between two accounts from a single movement', async () => {
     const res = await request(app.getHttpServer())
       .post('/movements')
-      .set('Cookie', cookie)
+      .set('Authorization', `Bearer ${token}`)
       .send({
         amountCents: 1000,
         date: new Date().toISOString(),
@@ -98,7 +98,7 @@ describe('Movement (e2e)', () => {
 
     await request(app.getHttpServer())
       .get(`/movements/${res.body.data.id}`)
-      .set('Cookie', cookie)
+      .set('Authorization', `Bearer ${token}`)
       .expect(200)
       .expect((getRes) => {
         expect(getRes.body.data.toAccountId).toBe(accountB);
@@ -106,7 +106,7 @@ describe('Movement (e2e)', () => {
 
     await request(app.getHttpServer())
       .get(`/accounts/${accountB}`)
-      .set('Cookie', cookie)
+      .set('Authorization', `Bearer ${token}`)
       .expect(200)
       .expect((getRes) => {
         expect(getRes.body.data.balanceCents).toBe(1000);
@@ -116,7 +116,7 @@ describe('Movement (e2e)', () => {
   it('🔍 rejects a transfer without toAccountId', async () => {
     await request(app.getHttpServer())
       .post('/movements')
-      .set('Cookie', cookie)
+      .set('Authorization', `Bearer ${token}`)
       .send({
         amountCents: 500,
         date: new Date().toISOString(),
@@ -130,7 +130,7 @@ describe('Movement (e2e)', () => {
   it('🔍 rejects toAccountId on a non-transfer movement', async () => {
     await request(app.getHttpServer())
       .post('/movements')
-      .set('Cookie', cookie)
+      .set('Authorization', `Bearer ${token}`)
       .send({
         amountCents: 500,
         date: new Date().toISOString(),
@@ -145,7 +145,7 @@ describe('Movement (e2e)', () => {
   it('🔍 rejects a transfer to the same account', async () => {
     await request(app.getHttpServer())
       .post('/movements')
-      .set('Cookie', cookie)
+      .set('Authorization', `Bearer ${token}`)
       .send({
         amountCents: 500,
         date: new Date().toISOString(),
@@ -160,7 +160,7 @@ describe('Movement (e2e)', () => {
   it('🔍 applies the same transfer-symmetry checks on update', async () => {
     const createRes = await request(app.getHttpServer())
       .post('/movements')
-      .set('Cookie', cookie)
+      .set('Authorization', `Bearer ${token}`)
       .send({
         amountCents: 300,
         date: new Date().toISOString(),
@@ -173,7 +173,7 @@ describe('Movement (e2e)', () => {
 
     await request(app.getHttpServer())
       .patch(`/movements/${createRes.body.data.id}`)
-      .set('Cookie', cookie)
+      .set('Authorization', `Bearer ${token}`)
       .send({ movementTypeId: transferTypeId })
       .expect(400);
   });
@@ -181,7 +181,7 @@ describe('Movement (e2e)', () => {
   it('rejects an invalid amountCents', async () => {
     await request(app.getHttpServer())
       .post('/movements')
-      .set('Cookie', cookie)
+      .set('Authorization', `Bearer ${token}`)
       .send({
         amountCents: 0,
         date: new Date().toISOString(),
@@ -195,7 +195,7 @@ describe('Movement (e2e)', () => {
   it('deletes a movement', async () => {
     const createRes = await request(app.getHttpServer())
       .post('/movements')
-      .set('Cookie', cookie)
+      .set('Authorization', `Bearer ${token}`)
       .send({
         amountCents: 100,
         date: new Date().toISOString(),
@@ -207,7 +207,7 @@ describe('Movement (e2e)', () => {
 
     await request(app.getHttpServer())
       .delete(`/movements/${createRes.body.data.id}`)
-      .set('Cookie', cookie)
+      .set('Authorization', `Bearer ${token}`)
       .expect(200)
       .expect((res) => {
         expect(res.body.data).toEqual({ id: createRes.body.data.id });
@@ -217,16 +217,16 @@ describe('Movement (e2e)', () => {
   it('returns 404 for a nonexistent movement id', async () => {
     await request(app.getHttpServer())
       .get('/movements/00000000-0000-0000-0000-000000000000')
-      .set('Cookie', cookie)
+      .set('Authorization', `Bearer ${token}`)
       .expect(404);
   });
 
   it("🔍 a second user cannot create a movement against the first user's account, and cannot transfer into it either", async () => {
-    const { cookie: otherCookie } = await createAuthenticatedUser(app);
+    const { token: otherToken } = await createAuthenticatedUser(app);
 
     await request(app.getHttpServer())
       .post('/movements')
-      .set('Cookie', otherCookie)
+      .set('Authorization', `Bearer ${otherToken}`)
       .send({
         amountCents: 500,
         date: new Date().toISOString(),
@@ -238,18 +238,18 @@ describe('Movement (e2e)', () => {
 
     const otherAccountRes = await request(app.getHttpServer())
       .post('/accounts')
-      .set('Cookie', otherCookie)
+      .set('Authorization', `Bearer ${otherToken}`)
       .send({ name: `Other-${Date.now()}`, type: 'bank' })
       .expect(201);
     const otherCategoryRes = await request(app.getHttpServer())
       .post('/categories')
-      .set('Cookie', otherCookie)
+      .set('Authorization', `Bearer ${otherToken}`)
       .send({ name: `OtherCat-${Date.now()}`, movementTypeId: expenseTypeId })
       .expect(201);
 
     await request(app.getHttpServer())
       .post('/movements')
-      .set('Cookie', otherCookie)
+      .set('Authorization', `Bearer ${otherToken}`)
       .send({
         amountCents: 500,
         date: new Date().toISOString(),

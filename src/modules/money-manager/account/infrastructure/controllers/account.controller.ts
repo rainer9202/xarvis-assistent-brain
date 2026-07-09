@@ -32,7 +32,7 @@ import { GetAccountByIdUseCase } from '../../application/use-cases/get-account-b
 import { CreateAccountDto } from '../dto/create-account.dto';
 import { UpdateAccountDto } from '../dto/update-account.dto';
 import { CurrentUser } from '@shared/decorators/current-user.decorator';
-import type { AuthenticatedRequest } from '@shared/guards/auth.guard';
+import type { AuthenticatedRequest } from '@shared/decorators/current-user.decorator';
 
 const domainName = 'accounts';
 

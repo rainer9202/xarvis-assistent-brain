@@ -32,7 +32,7 @@ import { GetAllCategoriesUseCase } from '../../application/use-cases/get-all-cat
 import { CreateCategoryDto } from '../dto/create-category.dto';
 import { UpdateCategoryDto } from '../dto/update-category.dto';
 import { CurrentUser } from '@shared/decorators/current-user.decorator';
-import type { AuthenticatedRequest } from '@shared/guards/auth.guard';
+import type { AuthenticatedRequest } from '@shared/decorators/current-user.decorator';
 
 const domainName = 'categories';
 

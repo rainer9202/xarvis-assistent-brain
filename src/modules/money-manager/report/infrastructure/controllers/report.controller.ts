@@ -2,7 +2,7 @@ import { Controller, Get } from '@nestjs/common';
 import { ApiOkResponse, ApiTags } from '@nestjs/swagger';
 import { GetBalanceReportUseCase } from '../../application/use-cases/get-balance-report.use-case';
 import { CurrentUser } from '@shared/decorators/current-user.decorator';
-import type { AuthenticatedRequest } from '@shared/guards/auth.guard';
+import type { AuthenticatedRequest } from '@shared/decorators/current-user.decorator';
 
 @ApiTags('reports')
 @Controller('reports')

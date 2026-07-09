@@ -11,10 +11,9 @@ services:
     environment:
       DATABASE_URL: postgresql://postgres:postgres@db:5432/xarvis_brain?schema=public
       PORT: 3000
-      BETTER_AUTH_SECRET: ${BETTER_AUTH_SECRET:?set BETTER_AUTH_SECRET in .env}
-      BETTER_AUTH_URL: ${BETTER_AUTH_URL:-http://localhost:3000}
       CORS_ORIGINS: ${CORS_ORIGINS:-}
-      TRUSTED_PROXIES: ${TRUSTED_PROXIES:-}
+      JWT_SECRET: ${JWT_SECRET:?set JWT_SECRET in .env}
+      JWT_EXPIRES_IN: ${JWT_EXPIRES_IN:-2h}
     volumes:
       # :Z relabels the bind mount for exclusive container access under
       # SELinux (enforcing on Fedora/RHEL hosts); harmless no-op elsewhere.
