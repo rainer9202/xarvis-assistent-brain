@@ -18,14 +18,15 @@ API docs (Swagger) are served at `http://localhost:3000/docs`.
 
 ## Authentication
 
-Auth is [Better-Auth](https://better-auth.com), running self-hosted inside this app against the same Postgres — not a third-party service. Every endpoint except `/auth/*` and `/docs` requires a session.
+Auth is hand-rolled JWT (`@nestjs/jwt` for signing/verification, `argon2` for password hashing) — no third-party auth provider, no session cookies. Every endpoint except `/auth/*` and `/docs` requires a `Bearer` access token.
 
 ```bash
-curl -c cookies.txt -X POST http://localhost:3000/auth/sign-up/email \
+curl -X POST http://localhost:3000/auth/sign-up \
   -H 'Content-Type: application/json' \
   -d '{"email":"you@example.com","password":"...","name":"Your Name"}'
+# => { "data": { "id": "...", "accessToken": "..." } }
 
-curl -b cookies.txt http://localhost:3000/accounts
+curl -H 'Authorization: Bearer <accessToken>' http://localhost:3000/accounts
 ```
 
 Each user only sees their own accounts, categories, and movements. `movement-type` (expense/income/transfer) is a shared, global taxonomy — not per-user.
