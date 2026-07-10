@@ -104,6 +104,57 @@ describe('Movement (e2e)', () => {
       });
   });
 
+  it('filters GET /movements by accountId, matching both source and destination', async () => {
+    const expenseRes = await request(app.getHttpServer())
+      .post('/movements')
+      .set('Authorization', `Bearer ${token}`)
+      .send({
+        amountCents: 500,
+        date: new Date().toISOString(),
+        accountId: accountA,
+        categoryId,
+        movementType: expenseType,
+      })
+      .expect(201);
+    movementIds.push(expenseRes.body.data.id);
+
+    const transferRes = await request(app.getHttpServer())
+      .post('/movements')
+      .set('Authorization', `Bearer ${token}`)
+      .send({
+        amountCents: 300,
+        date: new Date().toISOString(),
+        accountId: accountA,
+        toAccountId: accountB,
+        categoryId,
+        movementType: transferType,
+      })
+      .expect(201);
+    movementIds.push(transferRes.body.data.id);
+
+    const filteredByA = await request(app.getHttpServer())
+      .get('/movements')
+      .query({ accountId: accountA })
+      .set('Authorization', `Bearer ${token}`)
+      .expect(200);
+    const idsForA = filteredByA.body.data.map((m: { id: string }) => m.id);
+    expect(idsForA).toEqual(
+      expect.arrayContaining([
+        expenseRes.body.data.id,
+        transferRes.body.data.id,
+      ]),
+    );
+
+    const filteredByB = await request(app.getHttpServer())
+      .get('/movements')
+      .query({ accountId: accountB })
+      .set('Authorization', `Bearer ${token}`)
+      .expect(200);
+    const idsForB = filteredByB.body.data.map((m: { id: string }) => m.id);
+    expect(idsForB).toEqual(expect.arrayContaining([transferRes.body.data.id]));
+    expect(idsForB).not.toContain(expenseRes.body.data.id);
+  });
+
   it('🔍 rejects a transfer without toAccountId', async () => {
     await request(app.getHttpServer())
       .post('/movements')

@@ -83,13 +83,21 @@ describe('MovementController', () => {
       ];
       getAllExecute.mockResolvedValue(data);
 
-      const result = await controller.findAll(user);
+      const result = await controller.findAll({}, user);
 
-      expect(getAllExecute).toHaveBeenCalledWith(user.id);
+      expect(getAllExecute).toHaveBeenCalledWith(user.id, undefined);
       expect(result).toEqual({
         message: 'Get all movements successfully',
         data,
       });
+    });
+
+    it('passes accountId through to GetAllMovementsUseCase when provided', async () => {
+      getAllExecute.mockResolvedValue([]);
+
+      await controller.findAll({ accountId: 'acc-1' }, user);
+
+      expect(getAllExecute).toHaveBeenCalledWith(user.id, 'acc-1');
     });
   });
 

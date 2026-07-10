@@ -13,9 +13,17 @@ type Decimal = Prisma.Decimal;
 export class PrismaMovementRepository implements MovementRepositoryPort {
   constructor(private readonly prisma: PrismaService) {}
 
-  async findAll(userId: string): Promise<MovementEntity[]> {
+  async findAll(userId: string, accountId?: string): Promise<MovementEntity[]> {
     const records = await this.prisma.movement.findMany({
-      where: { userId },
+      where: {
+        userId,
+        // Matches both directions so a transfer INTO this account shows up
+        // in its history too, not just movements originating from it —
+        // mirrors the same OR pattern countMovementsByAccountId() uses.
+        ...(accountId
+          ? { OR: [{ accountId }, { toAccountId: accountId }] }
+          : {}),
+      },
       orderBy: { date: 'desc' },
     });
     return records.map((r) => this.toEntity(r));

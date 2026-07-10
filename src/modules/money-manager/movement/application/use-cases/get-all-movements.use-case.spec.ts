@@ -35,7 +35,7 @@ describe('GetAllMovementsUseCase', () => {
 
     const result = await useCase.execute('user-1');
 
-    expect(repository.findAll).toHaveBeenCalledWith('user-1');
+    expect(repository.findAll).toHaveBeenCalledWith('user-1', undefined);
     expect(result).toEqual([
       {
         id: 'mov-1',

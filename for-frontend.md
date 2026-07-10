@@ -132,6 +132,7 @@ the list):
   "name": "Main Checking",
   "type": "bank",
   "isActive": true,
+  "isPrincipal": true,
   "balanceCents": 123456,
   "createdAt": "2026-07-09T00:00:00.000Z"
 }
@@ -150,6 +151,10 @@ column, so it is always consistent with the movement ledger.
 `balanceCents` is **not** an accepted create field — a new account always starts at 0 regardless
 of what you send; any `balanceCents` in the body is silently stripped.
 
+`isPrincipal` is **not** an accepted create field either — it is entirely server-decided. The
+first account a user ever creates automatically becomes `isPrincipal: true`; every account after
+that defaults to `false`. Sending `isPrincipal` in the create body has no effect.
+
 Response `201`, `data`: `{ "id": "uuid" }`.
 
 Error: `400` — invalid `type`: `"type must be one of the following values: cash, bank, card"`
@@ -162,6 +167,13 @@ Error: `400` — invalid `type`: `"type must be one of the following values: cas
 | `name` | string, optional | non-empty if present, max 50 chars |
 | `type` | string, optional | one of `cash \| bank \| card` if present |
 | `isActive` | boolean, optional | manual active/inactive toggle |
+| `isPrincipal` | boolean, optional | `true` to make **this** account principal; `false` is rejected |
+
+Sending `{ "isPrincipal": true }` atomically switches the principal account: this account becomes
+principal and whichever account was previously principal for this user is unset in the same
+operation — no separate call needed. Sending `{ "isPrincipal": false }` is always rejected with
+`400`, because there must always be exactly one principal account once a user has any account at
+all — you cannot un-principal an account directly, only make a *different* one principal instead.
 
 All fields optional/independent — send only what changed. Response `200`, `data`: `{ "id": "uuid" }`.
 
@@ -169,10 +181,14 @@ Errors:
 - `404` — `"Account \"<id>\" not found"` (also returned for another user's account id — see §6)
 - `400` — invalid `type` value, same message pattern as create (this is enforced again in the
   use case, not just at the DTO layer)
+- `400` — `"Cannot unset the principal account directly — mark a different account as principal
+  instead"` when `isPrincipal: false` is sent
 
 **DELETE /accounts/:id** → `200`, `data`: `{ "id": "uuid" }`.
 
 Errors:
+- `400` — `"The principal account cannot be deleted — mark a different account as principal
+  first"` (`ValidationException`)
 - `404` — not found / not yours
 - `400` — referenced by movements: `"Account cannot be deleted because it is referenced by existing movements"` (`ValidationException`)
 
@@ -240,10 +256,17 @@ Errors:
 | PATCH | `/movements/:id` |
 | DELETE | `/movements/:id` |
 
-**`GET /movements` takes no query parameters** — no date-range filter, no `accountId` filter, no
-pagination. It always returns the caller's **entire** movement history in one array. If you need
-filtering/sorting/pagination in the UI, do it client-side or treat it as a gap to raise with the
-backend team.
+**`GET /movements` accepts one optional query param: `accountId`** (e.g.
+`GET /movements?accountId=<uuid>`). When present, it returns only movements where that account is
+either the source (`accountId`) or the destination of a transfer (`toAccountId`) — so a transfer
+into the account shows up in its history too, not just movements originating from it. Without the
+param, it returns the caller's **entire** movement history in one array, same as before. There is
+still no date-range filter, no other field filter, and no pagination — treat those as a gap to
+raise with the backend team if you need them.
+
+This is the intended way to build "load this account's movements": resolve the target account's
+`id` (e.g. the principal account, see §5.2) and pass it as `accountId` — don't fetch everything and
+filter client-side, the backend now does this for you.
 
 **GET /movements** and **GET /movements/:id** → `data` shape (array / single object):
 
@@ -355,6 +378,13 @@ with directly.
 
 ## 6. Business rules a frontend must respect
 
+- **A user always has exactly one principal account once they have any account at all.** The
+  first account ever created is auto-marked `isPrincipal: true`; every account after that starts
+  `false`. It can't be un-principaled directly and it can't be deleted — the only way to change
+  which account is principal is `PATCH` a *different* account with `{ "isPrincipal": true }`,
+  which atomically swaps it. Use this field to decide which account's movements to load by
+  default when the app boots (via `GET /movements?accountId=<principal account's id>`, see §5.4),
+  instead of guessing (e.g. "first in the list").
 - **Money is always integer cents on the wire.** Never send a float; only format
   `amountCents / 100` for display.
 - **Never send `userId` anywhere.** It doesn't exist on any request DTO — the API derives it

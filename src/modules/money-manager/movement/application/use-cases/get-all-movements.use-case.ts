@@ -22,9 +22,12 @@ export class GetAllMovementsUseCase {
     private readonly repository: MovementRepositoryPort,
   ) {}
 
-  async execute(userId: string): Promise<GetAllMovementsResponse[]> {
+  async execute(
+    userId: string,
+    accountId?: string,
+  ): Promise<GetAllMovementsResponse[]> {
     try {
-      const entities = await this.repository.findAll(userId);
+      const entities = await this.repository.findAll(userId, accountId);
       return entities.map((item) => ({
         id: item.id!,
         amountCents: item.amountCents,
