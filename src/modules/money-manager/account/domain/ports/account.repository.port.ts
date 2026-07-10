@@ -17,6 +17,8 @@ export interface AccountRepositoryPort {
     id: string,
     userId: string,
   ): Promise<AccountBalance | null>;
+  countByUserId(userId: string): Promise<number>;
+  setPrincipal(id: string, userId: string): Promise<void>;
 }
 
 export const ACCOUNT_REPOSITORY = Symbol('AccountRepositoryPort');

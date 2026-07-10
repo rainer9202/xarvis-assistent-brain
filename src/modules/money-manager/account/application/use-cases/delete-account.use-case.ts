@@ -34,6 +34,11 @@ export class DeleteAccountUseCase {
       if (!account)
         throw new NotFoundException(`Account "${command.id}" not found`);
 
+      if (account.isPrincipal)
+        throw new ValidationException(
+          'The principal account cannot be deleted — mark a different account as principal first',
+        );
+
       const referencingMovements =
         await this.repository.countMovementsByAccountId(command.id);
       if (referencingMovements > 0)

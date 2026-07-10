@@ -173,4 +173,95 @@ describe('Account (e2e)', () => {
       .set('Authorization', `Bearer ${otherToken}`)
       .expect(404);
   });
+
+  // One consolidated e2e test walking through every isPrincipal business rule
+  // on a single fresh user, rather than one fresh user per rule — sign-up is
+  // rate-limited at 5 requests/60s per IP (shared across sign-up/sign-in, see
+  // AGENTS.md), and this spec already spends one sign-up on `beforeAll` and
+  // one on the "second user" test above, so budget for extra sign-ups here
+  // is tight.
+  it('🔍 enforces the full principal-account lifecycle: first account auto-principal, atomic switch, reject direct unset, block delete', async () => {
+    const { token: freshToken } = await createAuthenticatedUser(app);
+
+    const firstRes = await request(app.getHttpServer())
+      .post('/accounts')
+      .set('Authorization', `Bearer ${freshToken}`)
+      .send({ name: `First-${Date.now()}`, type: 'bank' })
+      .expect(201);
+    const firstId = firstRes.body.data.id;
+    createdIds.push(firstId);
+
+    const secondRes = await request(app.getHttpServer())
+      .post('/accounts')
+      .set('Authorization', `Bearer ${freshToken}`)
+      .send({ name: `Second-${Date.now()}`, type: 'cash' })
+      .expect(201);
+    const secondId = secondRes.body.data.id;
+    createdIds.push(secondId);
+
+    // The first account ever created for this user is auto-principal; the
+    // second defaults to non-principal.
+    await request(app.getHttpServer())
+      .get(`/accounts/${firstId}`)
+      .set('Authorization', `Bearer ${freshToken}`)
+      .expect(200)
+      .expect((res) => {
+        expect(res.body.data.isPrincipal).toBe(true);
+      });
+
+    await request(app.getHttpServer())
+      .get(`/accounts/${secondId}`)
+      .set('Authorization', `Bearer ${freshToken}`)
+      .expect(200)
+      .expect((res) => {
+        expect(res.body.data.isPrincipal).toBe(false);
+      });
+
+    // Directly unsetting the current principal is rejected.
+    await request(app.getHttpServer())
+      .patch(`/accounts/${firstId}`)
+      .set('Authorization', `Bearer ${freshToken}`)
+      .send({ isPrincipal: false })
+      .expect(400);
+
+    // Making the second account principal atomically unsets the first.
+    await request(app.getHttpServer())
+      .patch(`/accounts/${secondId}`)
+      .set('Authorization', `Bearer ${freshToken}`)
+      .send({ isPrincipal: true })
+      .expect(200)
+      .expect((res) => {
+        expect(res.body.data).toEqual({ id: secondId });
+      });
+
+    await request(app.getHttpServer())
+      .get(`/accounts/${firstId}`)
+      .set('Authorization', `Bearer ${freshToken}`)
+      .expect(200)
+      .expect((res) => {
+        expect(res.body.data.isPrincipal).toBe(false);
+      });
+
+    await request(app.getHttpServer())
+      .get(`/accounts/${secondId}`)
+      .set('Authorization', `Bearer ${freshToken}`)
+      .expect(200)
+      .expect((res) => {
+        expect(res.body.data.isPrincipal).toBe(true);
+      });
+
+    // The (new) principal account cannot be deleted...
+    await request(app.getHttpServer())
+      .delete(`/accounts/${secondId}`)
+      .set('Authorization', `Bearer ${freshToken}`)
+      .expect(400);
+
+    // ...but the now-non-principal first account can be, since it has zero
+    // referencing movements.
+    await request(app.getHttpServer())
+      .delete(`/accounts/${firstId}`)
+      .set('Authorization', `Bearer ${freshToken}`)
+      .expect(200);
+    createdIds.splice(createdIds.indexOf(firstId), 1);
+  });
 });

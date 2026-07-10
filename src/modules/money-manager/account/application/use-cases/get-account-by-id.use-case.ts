@@ -11,6 +11,7 @@ export type GetAccountByIdResponse = {
   name: string;
   type: string;
   isActive: boolean;
+  isPrincipal: boolean;
   balanceCents: number;
   createdAt: Date;
 };
@@ -32,6 +33,7 @@ export class GetAccountByIdUseCase {
         name: result.account.name,
         type: result.account.type,
         isActive: result.account.isActive!,
+        isPrincipal: result.account.isPrincipal!,
         balanceCents: result.balanceCents,
         createdAt: result.account.createdAt!,
       };

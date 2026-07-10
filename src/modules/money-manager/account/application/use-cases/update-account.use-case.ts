@@ -19,6 +19,7 @@ export class UpdateAccountCommand {
     public readonly name?: string,
     public readonly type?: string,
     public readonly isActive?: boolean,
+    public readonly isPrincipal?: boolean,
   ) {}
 }
 
@@ -38,6 +39,11 @@ export class UpdateAccountUseCase {
       if (!account)
         throw new NotFoundException(`Account "${command.id}" not found`);
 
+      if (command.isPrincipal === false)
+        throw new ValidationException(
+          'Cannot unset the principal account directly — mark a different account as principal instead',
+        );
+
       if (command.name !== undefined) account.name = command.name;
       if (command.type !== undefined) {
         if (
@@ -53,6 +59,9 @@ export class UpdateAccountUseCase {
       if (command.isActive !== undefined) account.isActive = command.isActive;
 
       const saved = await this.repository.update(account);
+
+      if (command.isPrincipal === true)
+        await this.repository.setPrincipal(command.id, command.userId);
 
       return { id: saved.id! };
     } catch (error) {

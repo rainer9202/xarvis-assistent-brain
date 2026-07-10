@@ -8,6 +8,7 @@ export type GetAllAccountsResponse = {
   name: string;
   type: string;
   isActive: boolean;
+  isPrincipal: boolean;
   balanceCents: number;
   createdAt: Date;
 };
@@ -27,6 +28,7 @@ export class GetAllAccountsUseCase {
         name: account.name,
         type: account.type,
         isActive: account.isActive!,
+        isPrincipal: account.isPrincipal!,
         balanceCents,
         createdAt: account.createdAt!,
       }));

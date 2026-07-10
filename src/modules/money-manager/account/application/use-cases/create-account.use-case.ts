@@ -36,11 +36,14 @@ export class CreateAccountUseCase {
           `Account type "${command.type}" is invalid. Must be one of: ${ACCOUNT_TYPES.join(', ')}`,
         );
 
+      const accountCount = await this.repository.countByUserId(command.userId);
+
       const entity = new AccountEntity({
         name: command.name,
         type: command.type,
         userId: command.userId,
         isActive: true,
+        isPrincipal: accountCount === 0,
       });
       const saved = await this.repository.save(entity);
 

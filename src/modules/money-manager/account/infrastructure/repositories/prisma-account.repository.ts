@@ -38,17 +38,54 @@ export class PrismaAccountRepository implements AccountRepositoryPort {
   }
 
   async save(entity: AccountEntity): Promise<AccountEntity> {
-    const record = await this.prisma.account.create({
-      data: {
-        id: entity.id,
-        name: entity.name,
-        type: entity.type,
-        userId: entity.userId,
-        isActive: entity.isActive,
-      },
-    });
+    try {
+      const record = await this.prisma.account.create({
+        data: {
+          id: entity.id,
+          name: entity.name,
+          type: entity.type,
+          userId: entity.userId,
+          isActive: entity.isActive,
+          isPrincipal: entity.isPrincipal,
+        },
+      });
 
-    return this.toEntity(record);
+      return this.toEntity(record);
+    } catch (error) {
+      // Closes a TOCTOU race in CreateAccountUseCase: two concurrent
+      // first-account creations for the same brand-new user can both see
+      // countByUserId() === 0 and both attempt isPrincipal: true. The
+      // partial unique index (accounts_user_id_principal_unique, see
+      // migration 20260710150000_account_principal_partial_unique_index)
+      // lets only one such row commit; the loser retries as a normal
+      // (non-principal) account instead of failing outright — same
+      // duck-typed P2002 pattern PrismaUserRepository.create() uses for
+      // the equivalent email-uniqueness race.
+      if (entity.isPrincipal && this.isUniqueConstraintViolation(error)) {
+        const record = await this.prisma.account.create({
+          data: {
+            id: entity.id,
+            name: entity.name,
+            type: entity.type,
+            userId: entity.userId,
+            isActive: entity.isActive,
+            isPrincipal: false,
+          },
+        });
+
+        return this.toEntity(record);
+      }
+      throw error;
+    }
+  }
+
+  private isUniqueConstraintViolation(error: unknown): boolean {
+    return (
+      typeof error === 'object' &&
+      error !== null &&
+      'code' in error &&
+      error.code === 'P2002'
+    );
   }
 
   async update(entity: AccountEntity): Promise<AccountEntity> {
@@ -58,6 +95,7 @@ export class PrismaAccountRepository implements AccountRepositoryPort {
         name: entity.name,
         type: entity.type,
         isActive: entity.isActive,
+        isPrincipal: entity.isPrincipal,
       },
     });
 
@@ -72,6 +110,31 @@ export class PrismaAccountRepository implements AccountRepositoryPort {
     return this.prisma.movement.count({
       where: { OR: [{ accountId }, { toAccountId: accountId }] },
     });
+  }
+
+  async countByUserId(userId: string): Promise<number> {
+    return this.prisma.account.count({ where: { userId } });
+  }
+
+  async setPrincipal(id: string, userId: string): Promise<void> {
+    // Must run as a single DB transaction: two concurrent "make X principal"
+    // requests for different accounts of the same user must not both commit
+    // and leave two principal accounts (or zero, if interleaved wrong).
+    // Wrapping the unset-old + set-new pair in one $transaction makes
+    // Postgres serialize them so the invariant (exactly one principal per
+    // user) always holds, the same way PrismaUserRepository.create() leans
+    // on a DB-level mechanism (the unique constraint) instead of an
+    // application-level check-then-act.
+    await this.prisma.$transaction([
+      this.prisma.account.updateMany({
+        where: { userId, isPrincipal: true, id: { not: id } },
+        data: { isPrincipal: false },
+      }),
+      this.prisma.account.update({
+        where: { id },
+        data: { isPrincipal: true },
+      }),
+    ]);
   }
 
   async findByIdWithBalance(

@@ -19,6 +19,8 @@ describe('GetAccountByIdUseCase', () => {
       countMovementsByAccountId: jest.fn(),
       findAllWithBalance: jest.fn(),
       findByIdWithBalance,
+      countByUserId: jest.fn(),
+      setPrincipal: jest.fn(),
     };
     useCase = new GetAccountByIdUseCase(repository);
   });
@@ -31,6 +33,7 @@ describe('GetAccountByIdUseCase', () => {
         type: 'bank',
         userId: 'user-1',
         isActive: true,
+        isPrincipal: true,
         createdAt: new Date('2024-01-01T00:00:00Z'),
       }),
       balanceCents: 5000,
@@ -44,6 +47,7 @@ describe('GetAccountByIdUseCase', () => {
       name: 'Main Checking',
       type: 'bank',
       isActive: true,
+      isPrincipal: true,
       balanceCents: 5000,
       createdAt: new Date('2024-01-01T00:00:00Z'),
     });

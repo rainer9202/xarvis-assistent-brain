@@ -94,7 +94,14 @@ export class AccountController {
     return {
       message: `The ${domainName} was updated successfully`,
       data: await this.update.execute(
-        new UpdateAccountCommand(id, user.id, dto.name, dto.type, dto.isActive),
+        new UpdateAccountCommand(
+          id,
+          user.id,
+          dto.name,
+          dto.type,
+          dto.isActive,
+          dto.isPrincipal,
+        ),
       ),
     };
   }

@@ -154,6 +154,22 @@ describe('AccountController', () => {
         data: { id: 'acc-1' },
       });
     });
+
+    it('passes dto.isPrincipal through to the command', async () => {
+      const dto: UpdateAccountDto = { isPrincipal: true };
+      let receivedCommand: UpdateAccountCommand | undefined;
+      updateExecute.mockImplementation((command: UpdateAccountCommand) => {
+        receivedCommand = command;
+        return Promise.resolve({ id: 'acc-1' });
+      });
+
+      await controller.updateOne('acc-1', dto, user);
+
+      expect(updateExecute).toHaveBeenCalledWith(
+        expect.objectContaining({ isPrincipal: true }),
+      );
+      expect(receivedCommand?.isPrincipal).toBe(true);
+    });
   });
 
   describe('deleteOne', () => {

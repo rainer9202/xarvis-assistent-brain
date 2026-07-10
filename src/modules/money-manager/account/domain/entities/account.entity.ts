@@ -5,6 +5,7 @@ export type AccountProps = BaseEntityProps & {
   type: string;
   userId: string;
   isActive?: boolean;
+  isPrincipal?: boolean;
 };
 
 export class AccountEntity extends BaseEntity {
@@ -12,6 +13,7 @@ export class AccountEntity extends BaseEntity {
   private _type: string = '';
   private _userId: string = '';
   private _isActive?: boolean;
+  private _isPrincipal?: boolean;
 
   constructor(props?: AccountProps) {
     super(props);
@@ -20,6 +22,7 @@ export class AccountEntity extends BaseEntity {
       this._type = props.type;
       this._userId = props.userId;
       this._isActive = props.isActive;
+      this._isPrincipal = props.isPrincipal;
     }
   }
 
@@ -49,5 +52,13 @@ export class AccountEntity extends BaseEntity {
 
   set isActive(value: boolean) {
     this._isActive = value;
+  }
+
+  get isPrincipal(): boolean | undefined {
+    return this._isPrincipal;
+  }
+
+  set isPrincipal(value: boolean) {
+    this._isPrincipal = value;
   }
 }

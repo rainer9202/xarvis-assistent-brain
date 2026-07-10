@@ -15,6 +15,8 @@ describe('GetAllAccountsUseCase', () => {
       countMovementsByAccountId: jest.fn(),
       findAllWithBalance: jest.fn(),
       findByIdWithBalance: jest.fn(),
+      countByUserId: jest.fn(),
+      setPrincipal: jest.fn(),
     };
     useCase = new GetAllAccountsUseCase(repository);
   });
@@ -27,6 +29,7 @@ describe('GetAllAccountsUseCase', () => {
       type: 'bank',
       userId: 'user-1',
       isActive: true,
+      isPrincipal: true,
       createdAt,
     });
     repository.findAllWithBalance.mockResolvedValue([
@@ -42,6 +45,7 @@ describe('GetAllAccountsUseCase', () => {
         name: 'Main Checking',
         type: 'bank',
         isActive: true,
+        isPrincipal: true,
         balanceCents: 4500,
         createdAt,
       },

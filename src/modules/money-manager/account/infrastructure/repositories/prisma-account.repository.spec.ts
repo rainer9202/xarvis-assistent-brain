@@ -18,13 +18,16 @@ describe('PrismaAccountRepository', () => {
       findFirst: jest.Mock;
       create: jest.Mock;
       update: jest.Mock;
+      updateMany: jest.Mock;
       delete: jest.Mock;
+      count: jest.Mock;
     };
     movement: {
       count: jest.Mock;
       groupBy: jest.Mock;
       aggregate: jest.Mock;
     };
+    $transaction: jest.Mock<Promise<unknown[]>, [unknown[]]>;
   };
 
   const record = {
@@ -33,6 +36,7 @@ describe('PrismaAccountRepository', () => {
     type: 'bank',
     userId: 'user-1',
     isActive: true,
+    isPrincipal: false,
     createdAt: new Date('2024-01-01T00:00:00Z'),
     updatedAt: new Date('2024-01-02T00:00:00Z'),
   };
@@ -44,13 +48,16 @@ describe('PrismaAccountRepository', () => {
         findFirst: jest.fn(),
         create: jest.fn(),
         update: jest.fn(),
+        updateMany: jest.fn(),
         delete: jest.fn(),
+        count: jest.fn(),
       },
       movement: {
         count: jest.fn(),
         groupBy: jest.fn(),
         aggregate: jest.fn(),
       },
+      $transaction: jest.fn<Promise<unknown[]>, [unknown[]]>(),
     };
 
     repository = new PrismaAccountRepository(
@@ -107,6 +114,7 @@ describe('PrismaAccountRepository', () => {
         type: 'bank',
         userId: 'user-1',
         isActive: true,
+        isPrincipal: true,
       });
       prisma.account.create.mockResolvedValue(record);
 
@@ -119,10 +127,84 @@ describe('PrismaAccountRepository', () => {
           type: 'bank',
           userId: 'user-1',
           isActive: true,
+          isPrincipal: true,
         },
       });
       expect(result).toBeInstanceOf(AccountEntity);
       expect(result.name).toBe('Main Checking');
+    });
+
+    // Closes the TOCTOU race in CreateAccountUseCase: two concurrent
+    // first-account creations for the same user can both compute
+    // isPrincipal: true before either commits. The DB's partial unique
+    // index (accounts_user_id_principal_unique) lets only one through; the
+    // loser's create() throws P2002, which save() catches and retries as a
+    // non-principal account instead of failing the request outright.
+    it('retries as non-principal when the principal-uniqueness index rejects a concurrent isPrincipal:true insert', async () => {
+      const entity = new AccountEntity({
+        name: 'Main Checking',
+        type: 'bank',
+        userId: 'user-1',
+        isActive: true,
+        isPrincipal: true,
+      });
+      prisma.account.create
+        .mockRejectedValueOnce(
+          Object.assign(
+            new Error('Unique constraint failed on the fields: (`user_id`)'),
+            { code: 'P2002', meta: { target: ['user_id'] } },
+          ),
+        )
+        .mockResolvedValueOnce({ ...record, isPrincipal: false });
+
+      const result = await repository.save(entity);
+
+      expect(prisma.account.create).toHaveBeenCalledTimes(2);
+      expect(prisma.account.create).toHaveBeenNthCalledWith(2, {
+        data: {
+          id: undefined,
+          name: 'Main Checking',
+          type: 'bank',
+          userId: 'user-1',
+          isActive: true,
+          isPrincipal: false,
+        },
+      });
+      expect(result.isPrincipal).toBe(false);
+    });
+
+    it('rethrows a P2002 unrelated to the principal race unchanged when isPrincipal was not requested', async () => {
+      const entity = new AccountEntity({
+        name: 'Main Checking',
+        type: 'bank',
+        userId: 'user-1',
+        isActive: true,
+        isPrincipal: false,
+      });
+      const conflict = Object.assign(new Error('conflict'), {
+        code: 'P2002',
+      });
+      prisma.account.create.mockRejectedValue(conflict);
+
+      await expect(repository.save(entity)).rejects.toThrow('conflict');
+      expect(prisma.account.create).toHaveBeenCalledTimes(1);
+    });
+
+    it('rethrows any other error unchanged', async () => {
+      const entity = new AccountEntity({
+        name: 'Main Checking',
+        type: 'bank',
+        userId: 'user-1',
+        isActive: true,
+        isPrincipal: true,
+      });
+      const unexpected = new Error('connection refused');
+      prisma.account.create.mockRejectedValue(unexpected);
+
+      await expect(repository.save(entity)).rejects.toThrow(
+        'connection refused',
+      );
+      expect(prisma.account.create).toHaveBeenCalledTimes(1);
     });
   });
 
@@ -134,6 +216,7 @@ describe('PrismaAccountRepository', () => {
         type: 'bank',
         userId: 'user-1',
         isActive: false,
+        isPrincipal: false,
       });
       prisma.account.update.mockResolvedValue({
         ...record,
@@ -145,10 +228,50 @@ describe('PrismaAccountRepository', () => {
 
       expect(prisma.account.update).toHaveBeenCalledWith({
         where: { id: 'acc-1' },
-        data: { name: 'Savings', type: 'bank', isActive: false },
+        data: {
+          name: 'Savings',
+          type: 'bank',
+          isActive: false,
+          isPrincipal: false,
+        },
       });
       expect(result.name).toBe('Savings');
       expect(result.isActive).toBe(false);
+    });
+  });
+
+  describe('countByUserId', () => {
+    it('delegates to prisma.account.count scoped to the user', async () => {
+      prisma.account.count.mockResolvedValue(2);
+
+      const result = await repository.countByUserId('user-1');
+
+      expect(prisma.account.count).toHaveBeenCalledWith({
+        where: { userId: 'user-1' },
+      });
+      expect(result).toBe(2);
+    });
+  });
+
+  describe('setPrincipal', () => {
+    it('atomically unsets the previous principal and sets the new one in a single transaction', async () => {
+      prisma.$transaction.mockResolvedValue([{ count: 1 }, record]);
+
+      await repository.setPrincipal('acc-1', 'user-1');
+
+      expect(prisma.$transaction).toHaveBeenCalledTimes(1);
+      expect(prisma.account.updateMany).toHaveBeenCalledWith({
+        where: { userId: 'user-1', isPrincipal: true, id: { not: 'acc-1' } },
+        data: { isPrincipal: false },
+      });
+      expect(prisma.account.update).toHaveBeenCalledWith({
+        where: { id: 'acc-1' },
+        data: { isPrincipal: true },
+      });
+      // Both statements must be passed into the same $transaction([...]) call
+      // rather than awaited separately, so they run atomically.
+      const [transactionArg] = prisma.$transaction.mock.calls[0];
+      expect(transactionArg).toHaveLength(2);
     });
   });
 

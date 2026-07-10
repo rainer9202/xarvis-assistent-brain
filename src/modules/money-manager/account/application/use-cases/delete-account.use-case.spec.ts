@@ -27,6 +27,8 @@ describe('DeleteAccountUseCase', () => {
       countMovementsByAccountId,
       findAllWithBalance: jest.fn(),
       findByIdWithBalance: jest.fn(),
+      countByUserId: jest.fn(),
+      setPrincipal: jest.fn(),
     };
     useCase = new DeleteAccountUseCase(repository);
   });
@@ -76,5 +78,23 @@ describe('DeleteAccountUseCase', () => {
       useCase.execute(new DeleteAccountCommand('missing', 'user-1')),
     ).rejects.toThrow(NotFoundException);
     expect(countMovementsByAccountId).not.toHaveBeenCalled();
+  });
+
+  it('throws ValidationException and does not delete the principal account, even with zero referencing movements', async () => {
+    const entity = new AccountEntity({
+      id: 'acc-1',
+      name: 'Main Checking',
+      type: 'bank',
+      userId: 'user-1',
+      isActive: true,
+      isPrincipal: true,
+    });
+    findById.mockResolvedValue(entity);
+
+    await expect(
+      useCase.execute(new DeleteAccountCommand('acc-1', 'user-1')),
+    ).rejects.toThrow(ValidationException);
+    expect(countMovementsByAccountId).not.toHaveBeenCalled();
+    expect(deleteFn).not.toHaveBeenCalled();
   });
 });
