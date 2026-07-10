@@ -10,7 +10,7 @@ import { ReportModule } from '@modules/money-manager/report/report.module';
 import { AuthModule } from '@modules/identity/auth/auth.module';
 import { JwtAuthGuard } from '@infra/guards/jwt-auth.guard';
 import { normalizeJwtExpiry } from '@config/env/normalize-jwt-expiry';
-import { HealthModule } from './health/health.module';
+import { HealthModule } from '@modules/_health/health.module';
 
 @Module({
   imports: [
