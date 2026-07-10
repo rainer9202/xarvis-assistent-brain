@@ -1,4 +1,4 @@
-import { BaseEntity, BaseEntityProps } from '@shared/domain/base.entity';
+import { BaseEntity, BaseEntityProps } from '@domain/base.entity';
 
 // emailVerified/image were pure Better-Auth leftovers with zero behavior
 // anywhere in the hand-rolled JWT auth system that replaced it — removed

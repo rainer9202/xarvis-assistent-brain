@@ -26,7 +26,7 @@ describe('SignInUseCase', () => {
 
   beforeEach(async () => {
     findByEmail = jest.fn();
-    repository = { findByEmail, create: jest.fn() };
+    repository = { findByEmail, create: jest.fn(), findAll: jest.fn() };
 
     signAsync = jest.fn().mockResolvedValue('signed-jwt-token');
     jwtService = { signAsync } as unknown as JwtService;

@@ -1,6 +1,7 @@
 import {
   Body,
   Controller,
+  Get,
   HttpCode,
   HttpStatus,
   Post,
@@ -8,7 +9,7 @@ import {
 } from '@nestjs/common';
 import { ApiCreatedResponse, ApiOkResponse, ApiTags } from '@nestjs/swagger';
 import { ThrottlerGuard } from '@nestjs/throttler';
-import { Public } from '@shared/decorators/public.decorator';
+import { Public } from '@infra/decorators/public.decorator';
 import {
   SignUpCommand,
   SignUpUseCase,
@@ -17,6 +18,7 @@ import {
   SignInCommand,
   SignInUseCase,
 } from '../../application/use-cases/sign-in.use-case';
+import { GetAllUsersUseCase } from '../../application/use-cases/get-all-users.use-case';
 import { SignUpDto } from '../dto/sign-up.dto';
 import { SignInDto } from '../dto/sign-in.dto';
 
@@ -30,6 +32,7 @@ export class AuthController {
   constructor(
     private readonly signUp: SignUpUseCase,
     private readonly signIn: SignInUseCase,
+    private readonly getAllUsers: GetAllUsersUseCase,
   ) {}
 
   @Public()
@@ -54,6 +57,19 @@ export class AuthController {
       data: await this.signIn.execute(
         new SignInCommand(dto.email, dto.password),
       ),
+    };
+  }
+
+  // TODO(remove-before-prod): debug-only endpoint, no auth guard and no
+  // ownership scoping — lists every user in the system. Delete this route
+  // (and GetAllUsersUseCase) before any non-local deployment.
+  @Public()
+  @Get('users')
+  @ApiOkResponse({ description: 'List of all users (temporary, unsecured)' })
+  async findAllUsers() {
+    return {
+      message: 'Get all users successfully',
+      data: await this.getAllUsers.execute(),
     };
   }
 }

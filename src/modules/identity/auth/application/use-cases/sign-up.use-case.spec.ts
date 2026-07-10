@@ -1,6 +1,6 @@
 import * as argon2 from 'argon2';
 import { JwtService } from '@nestjs/jwt';
-import { ConflictException } from '@shared/exceptions/domain.exception';
+import { ConflictException } from '@domain/exceptions/domain.exception';
 import { UserEntity } from '../../domain/entities/user.entity';
 import type { UserRepositoryPort } from '../../domain/ports/user.repository.port';
 import { SignUpCommand, SignUpUseCase } from './sign-up.use-case';
@@ -16,7 +16,7 @@ describe('SignUpUseCase', () => {
   beforeEach(() => {
     findByEmail = jest.fn();
     create = jest.fn();
-    repository = { findByEmail, create };
+    repository = { findByEmail, create, findAll: jest.fn() };
 
     signAsync = jest.fn().mockResolvedValue('signed-jwt-token');
     jwtService = { signAsync } as unknown as JwtService;

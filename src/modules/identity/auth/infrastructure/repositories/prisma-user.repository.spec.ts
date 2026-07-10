@@ -7,7 +7,7 @@ jest.mock('@config/database/prisma.service', () => ({
   PrismaService: jest.fn(),
 }));
 
-import { ConflictException } from '@shared/exceptions/domain.exception';
+import { ConflictException } from '@domain/exceptions/domain.exception';
 import { UserEntity } from '../../domain/entities/user.entity';
 import { PrismaUserRepository } from './prisma-user.repository';
 import type { PrismaService } from '@config/database/prisma.service';

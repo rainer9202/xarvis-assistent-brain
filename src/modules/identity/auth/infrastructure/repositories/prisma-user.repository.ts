@@ -1,7 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from '@config/database/prisma.service';
 import { UserModel } from '@config/database/generated/prisma/models.js';
-import { ConflictException } from '@shared/exceptions/domain.exception';
+import { ConflictException } from '@domain/exceptions/domain.exception';
 import { UserEntity } from '../../domain/entities/user.entity';
 import type { UserRepositoryPort } from '../../domain/ports/user.repository.port';
 
@@ -12,6 +12,11 @@ export class PrismaUserRepository implements UserRepositoryPort {
   async findByEmail(email: string): Promise<UserEntity | null> {
     const record = await this.prisma.user.findUnique({ where: { email } });
     return record ? this.toEntity(record) : null;
+  }
+
+  async findAll(): Promise<UserEntity[]> {
+    const records = await this.prisma.user.findMany();
+    return records.map((record) => this.toEntity(record));
   }
 
   async create(entity: UserEntity): Promise<UserEntity> {

@@ -1,7 +1,7 @@
 import { Inject, Injectable } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import * as argon2 from 'argon2';
-import { ConflictException } from '@shared/exceptions/domain.exception';
+import { ConflictException } from '@domain/exceptions/domain.exception';
 import { buildAuthResponse } from '../shared/build-auth-response';
 import type { AuthResponse } from '../shared/build-auth-response';
 import { UserEntity } from '../../domain/entities/user.entity';

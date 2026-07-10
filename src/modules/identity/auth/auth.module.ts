@@ -2,6 +2,7 @@ import { Module } from '@nestjs/common';
 import { ThrottlerModule } from '@nestjs/throttler';
 import { SignUpUseCase } from './application/use-cases/sign-up.use-case';
 import { SignInUseCase } from './application/use-cases/sign-in.use-case';
+import { GetAllUsersUseCase } from './application/use-cases/get-all-users.use-case';
 import { USER_REPOSITORY } from './domain/ports/user.repository.port';
 import { AuthController } from './infrastructure/controllers/auth.controller';
 import { PrismaUserRepository } from './infrastructure/repositories/prisma-user.repository';
@@ -28,6 +29,7 @@ import { PrismaUserRepository } from './infrastructure/repositories/prisma-user.
     },
     SignUpUseCase,
     SignInUseCase,
+    GetAllUsersUseCase,
   ],
   exports: [SignUpUseCase, SignInUseCase],
 })
