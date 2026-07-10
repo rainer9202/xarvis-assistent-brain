@@ -3,17 +3,16 @@ import {
   DomainException,
   NotFoundException,
   ValidationException,
-} from '@shared/exceptions/domain.exception';
+} from '@domain/exceptions/domain.exception';
+import { MOVEMENT_TYPES } from '@domain/enums/movement-type.enum';
 import { GetAccountByIdUseCase } from '@modules/money-manager/account/application/use-cases/get-account-by-id.use-case';
 import { GetCategoryByIdUseCase } from '@modules/money-manager/category/application/use-cases/get-category-by-id.use-case';
-import { GetMovementTypeByIdUseCase } from '@modules/money-manager/movement-type/application/use-cases/get-movement-type-by-id.use-case';
-import type { GetMovementTypeByIdResponse } from '@modules/money-manager/movement-type/application/use-cases/get-movement-type-by-id.use-case';
 import { MOVEMENT_REPOSITORY } from '../../domain/ports/movement.repository.port';
 import type { MovementRepositoryPort } from '../../domain/ports/movement.repository.port';
 
 // Local, duplicated per file — mirrors the EXPENSE_TYPE_NAME pattern in
 // PrismaAccountRepository rather than a shared cross-module enum file.
-const TRANSFER_TYPE_NAME = 'transfer';
+const TRANSFER_TYPE_NAME = 'Transferencia';
 
 export type UpdateMovementResponse = {
   id: string;
@@ -28,7 +27,7 @@ export class UpdateMovementCommand {
     public readonly note?: string,
     public readonly accountId?: string,
     public readonly categoryId?: string,
-    public readonly movementTypeId?: string,
+    public readonly movementType?: string,
     public readonly toAccountId?: string,
   ) {}
 }
@@ -40,7 +39,6 @@ export class UpdateMovementUseCase {
     private readonly repository: MovementRepositoryPort,
     private readonly getAccountById: GetAccountByIdUseCase,
     private readonly getCategoryById: GetCategoryByIdUseCase,
-    private readonly getMovementTypeById: GetMovementTypeByIdUseCase,
   ) {}
 
   async execute(
@@ -55,7 +53,7 @@ export class UpdateMovementUseCase {
         throw new NotFoundException(`Movement "${command.id}" not found`);
 
       const touchesTransferFields =
-        command.movementTypeId !== undefined ||
+        command.movementType !== undefined ||
         command.toAccountId !== undefined ||
         command.accountId !== undefined;
 
@@ -67,12 +65,16 @@ export class UpdateMovementUseCase {
         await this.getCategoryById.execute(command.categoryId, command.userId);
         movement.categoryId = command.categoryId;
       }
-      let movementType: GetMovementTypeByIdResponse | undefined;
-      if (command.movementTypeId !== undefined) {
-        movementType = await this.getMovementTypeById.execute(
-          command.movementTypeId,
-        );
-        movement.movementTypeId = command.movementTypeId;
+      if (command.movementType !== undefined) {
+        if (
+          !MOVEMENT_TYPES.includes(
+            command.movementType as (typeof MOVEMENT_TYPES)[number],
+          )
+        )
+          throw new ValidationException(
+            `Movement type "${command.movementType}" is invalid. Must be one of: ${MOVEMENT_TYPES.join(', ')}`,
+          );
+        movement.movementType = command.movementType;
       }
 
       if (touchesTransferFields) {
@@ -80,13 +82,8 @@ export class UpdateMovementUseCase {
           command.toAccountId !== undefined
             ? command.toAccountId
             : movement.toAccountId;
-        if (!movementType) {
-          movementType = await this.getMovementTypeById.execute(
-            movement.movementTypeId,
-          );
-        }
 
-        if (movementType.name === TRANSFER_TYPE_NAME) {
+        if (movement.movementType === TRANSFER_TYPE_NAME) {
           if (!effectiveToAccountId)
             throw new ValidationException(
               'Transfer movements require a toAccountId',

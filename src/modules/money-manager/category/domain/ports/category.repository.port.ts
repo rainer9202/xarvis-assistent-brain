@@ -3,9 +3,9 @@ import { CategoryEntity } from '../entities/category.entity';
 export interface CategoryRepositoryPort {
   findAll(userId: string): Promise<CategoryEntity[]>;
   findById(id: string, userId: string): Promise<CategoryEntity | null>;
-  findByNameAndMovementTypeId(
+  findByNameAndMovementType(
     name: string,
-    movementTypeId: string,
+    movementType: string,
     userId: string,
   ): Promise<CategoryEntity | null>;
   save(entity: CategoryEntity): Promise<CategoryEntity>;

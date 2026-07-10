@@ -2,7 +2,7 @@ import { Inject, Injectable } from '@nestjs/common';
 import {
   DomainException,
   NotFoundException,
-} from '@shared/exceptions/domain.exception';
+} from '@domain/exceptions/domain.exception';
 import { MOVEMENT_REPOSITORY } from '../../domain/ports/movement.repository.port';
 import type { MovementRepositoryPort } from '../../domain/ports/movement.repository.port';
 

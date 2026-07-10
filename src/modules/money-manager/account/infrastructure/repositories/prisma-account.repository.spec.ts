@@ -25,9 +25,6 @@ describe('PrismaAccountRepository', () => {
       groupBy: jest.Mock;
       aggregate: jest.Mock;
     };
-    movementType: {
-      findMany: jest.Mock;
-    };
   };
 
   const record = {
@@ -53,9 +50,6 @@ describe('PrismaAccountRepository', () => {
         count: jest.fn(),
         groupBy: jest.fn(),
         aggregate: jest.fn(),
-      },
-      movementType: {
-        findMany: jest.fn(),
       },
     };
 
@@ -199,24 +193,24 @@ describe('PrismaAccountRepository', () => {
 
     it('computes the type-aware signed balance in cents (income adds, expense subtracts)', async () => {
       prisma.account.findMany.mockResolvedValue([record]);
-      prisma.movementType.findMany.mockResolvedValue([
-        { id: 'mt-income', name: 'income' },
-        { id: 'mt-expense', name: 'expense' },
-      ]);
-      // No transfer type exists in this scenario, so groupBy is called once
-      // (non-transfer sums) — the transfer branch is skipped entirely.
-      prisma.movement.groupBy.mockResolvedValueOnce([
-        {
-          accountId: 'acc-1',
-          movementTypeId: 'mt-income',
-          _sum: { amount: { toFixed: () => '150.00' } },
-        },
-        {
-          accountId: 'acc-1',
-          movementTypeId: 'mt-expense',
-          _sum: { amount: { toFixed: () => '30.00' } },
-        },
-      ]);
+      // The non-transfer groupBy always excludes 'Transferencia'; here it
+      // returns income and expense sums, then the transfer groupBy calls
+      // (transfersOut, transfersIn) return empty.
+      prisma.movement.groupBy
+        .mockResolvedValueOnce([
+          {
+            accountId: 'acc-1',
+            movementType: 'Ingreso',
+            _sum: { amount: { toFixed: () => '150.00' } },
+          },
+          {
+            accountId: 'acc-1',
+            movementType: 'Gasto',
+            _sum: { amount: { toFixed: () => '30.00' } },
+          },
+        ])
+        .mockResolvedValueOnce([]) // transfersOut
+        .mockResolvedValueOnce([]); // transfersIn
 
       const result = await repository.findAllWithBalance('user-1');
 
@@ -231,8 +225,10 @@ describe('PrismaAccountRepository', () => {
 
     it('defaults balance to 0 cents when the account has zero movements — never null', async () => {
       prisma.account.findMany.mockResolvedValue([record]);
-      prisma.movementType.findMany.mockResolvedValue([]);
-      prisma.movement.groupBy.mockResolvedValueOnce([]);
+      prisma.movement.groupBy
+        .mockResolvedValueOnce([])
+        .mockResolvedValueOnce([])
+        .mockResolvedValueOnce([]);
 
       const result = await repository.findAllWithBalance('user-1');
 
@@ -244,11 +240,6 @@ describe('PrismaAccountRepository', () => {
 
     it('moves money out of the source account and into the destination account for a transfer, without counting it as income or expense', async () => {
       prisma.account.findMany.mockResolvedValue([record, accountB]);
-      prisma.movementType.findMany.mockResolvedValue([
-        { id: 'mt-income', name: 'income' },
-        { id: 'mt-expense', name: 'expense' },
-        { id: 'mt-transfer', name: 'transfer' },
-      ]);
       // Call order: non-transfer groupBy, transfersOut groupBy, transfersIn groupBy.
       prisma.movement.groupBy
         .mockResolvedValueOnce([]) // non-transfer sums: none
@@ -276,10 +267,10 @@ describe('PrismaAccountRepository', () => {
       // The non-transfer groupBy call must exclude the transfer movement type
       // and scope to this user's own account ids.
       expect(prisma.movement.groupBy).toHaveBeenNthCalledWith(1, {
-        by: ['accountId', 'movementTypeId'],
+        by: ['accountId', 'movementType'],
         where: {
           accountId: { in: ['acc-1', 'acc-2'] },
-          movementTypeId: { not: 'mt-transfer' },
+          movementType: { not: 'Transferencia' },
         },
         _sum: { amount: true },
       });
@@ -297,14 +288,9 @@ describe('PrismaAccountRepository', () => {
 
     it('computes the signed balance for a single account, excluding transfers from income/expense', async () => {
       prisma.account.findFirst.mockResolvedValue(record);
-      prisma.movementType.findMany.mockResolvedValue([
-        { id: 'mt-income', name: 'income' },
-        { id: 'mt-expense', name: 'expense' },
-        { id: 'mt-transfer', name: 'transfer' },
-      ]);
       prisma.movement.groupBy.mockResolvedValue([
         {
-          movementTypeId: 'mt-income',
+          movementType: 'Ingreso',
           _sum: { amount: { toFixed: () => '150.00' } },
         },
       ]);
@@ -320,8 +306,8 @@ describe('PrismaAccountRepository', () => {
         where: { id: 'acc-1', userId: 'user-1' },
       });
       expect(prisma.movement.groupBy).toHaveBeenCalledWith({
-        by: ['movementTypeId'],
-        where: { accountId: 'acc-1', movementTypeId: { not: 'mt-transfer' } },
+        by: ['movementType'],
+        where: { accountId: 'acc-1', movementType: { not: 'Transferencia' } },
         _sum: { amount: true },
       });
       expect(result?.account).toBeInstanceOf(AccountEntity);
@@ -331,8 +317,8 @@ describe('PrismaAccountRepository', () => {
 
     it('defaults to 0 cents when the account has zero movements', async () => {
       prisma.account.findFirst.mockResolvedValue(record);
-      prisma.movementType.findMany.mockResolvedValue([]);
       prisma.movement.groupBy.mockResolvedValue([]);
+      prisma.movement.aggregate.mockResolvedValue({ _sum: { amount: null } });
 
       const result = await repository.findByIdWithBalance('acc-1', 'user-1');
 

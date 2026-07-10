@@ -3,7 +3,7 @@ import {
   DomainException,
   NotFoundException,
   ValidationException,
-} from '@shared/exceptions/domain.exception';
+} from '@domain/exceptions/domain.exception';
 import { CATEGORY_REPOSITORY } from '../../domain/ports/category.repository.port';
 import type { CategoryRepositoryPort } from '../../domain/ports/category.repository.port';
 

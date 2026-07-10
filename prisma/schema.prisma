@@ -1,6 +1,6 @@
 generator client {
   provider = "prisma-client"
-  output   = "../src/config/database/generated/prisma"
+  output   = "../src/infrastructure/config/database/generated/prisma"
 }
 
 datasource db {
@@ -24,19 +24,6 @@ model User {
   @@map("users")
 }
 
-model MovementType {
-  id        String   @id @default(uuid())
-  name      String   @unique
-  isDefault Boolean  @default(false) @map("is_default")
-  createdAt DateTime @default(now()) @map("created_at")
-  updatedAt DateTime @updatedAt @map("updated_at")
-
-  categories Category[]
-  movements  Movement[]
-
-  @@map("movement_types")
-}
-
 model Account {
   id        String   @id @default(uuid())
   name      String
@@ -55,47 +42,43 @@ model Account {
 }
 
 model Category {
-  id             String   @id @default(uuid())
-  name           String
-  movementTypeId String   @map("movement_type_id")
-  userId         String   @map("user_id")
-  isActive       Boolean  @default(true) @map("is_active")
-  createdAt      DateTime @default(now()) @map("created_at")
-  updatedAt      DateTime @updatedAt @map("updated_at")
+  id           String   @id @default(uuid())
+  name         String
+  movementType String   @map("movement_type")
+  userId       String   @map("user_id")
+  isActive     Boolean  @default(true) @map("is_active")
+  createdAt    DateTime @default(now()) @map("created_at")
+  updatedAt    DateTime @updatedAt @map("updated_at")
 
-  movementType MovementType @relation(fields: [movementTypeId], references: [id], onDelete: Restrict, onUpdate: Cascade)
-  user         User         @relation(fields: [userId], references: [id], onDelete: Cascade)
-  movements    Movement[]
+  user      User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  movements Movement[]
 
-  @@unique([name, movementTypeId, userId])
-  @@index([movementTypeId])
+  @@unique([name, movementType, userId])
   @@index([userId])
   @@map("categories")
 }
 
 model Movement {
-  id             String   @id @default(uuid())
-  amount         Decimal  @db.Decimal(14, 2)
-  date           DateTime
-  note           String?
-  accountId      String   @map("account_id")
-  toAccountId    String?  @map("to_account_id")
-  categoryId     String   @map("category_id")
-  movementTypeId String   @map("movement_type_id")
-  userId         String   @map("user_id")
-  createdAt      DateTime @default(now()) @map("created_at")
-  updatedAt      DateTime @updatedAt @map("updated_at")
+  id           String   @id @default(uuid())
+  amount       Decimal  @db.Decimal(14, 2)
+  date         DateTime
+  note         String?
+  accountId    String   @map("account_id")
+  toAccountId  String?  @map("to_account_id")
+  categoryId   String   @map("category_id")
+  movementType String   @map("movement_type")
+  userId       String   @map("user_id")
+  createdAt    DateTime @default(now()) @map("created_at")
+  updatedAt    DateTime @updatedAt @map("updated_at")
 
-  account      Account      @relation("MovementSourceAccount", fields: [accountId], references: [id], onDelete: Restrict, onUpdate: Cascade)
-  toAccount    Account?     @relation("MovementDestinationAccount", fields: [toAccountId], references: [id], onDelete: Restrict, onUpdate: Cascade)
-  category     Category     @relation(fields: [categoryId], references: [id], onDelete: Restrict, onUpdate: Cascade)
-  movementType MovementType @relation(fields: [movementTypeId], references: [id], onDelete: Restrict, onUpdate: Cascade)
-  user         User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  account   Account  @relation("MovementSourceAccount", fields: [accountId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  toAccount Account? @relation("MovementDestinationAccount", fields: [toAccountId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  category  Category @relation(fields: [categoryId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([accountId])
   @@index([toAccountId])
   @@index([categoryId])
-  @@index([movementTypeId])
   @@index([date])
   @@index([userId])
   @@map("movements")

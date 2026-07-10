@@ -1,4 +1,4 @@
-import { NotFoundException } from '@shared/exceptions/domain.exception';
+import { NotFoundException } from '@domain/exceptions/domain.exception';
 import { CategoryEntity } from '../../domain/entities/category.entity';
 import type { CategoryRepositoryPort } from '../../domain/ports/category.repository.port';
 import { GetCategoryByIdUseCase } from './get-category-by-id.use-case';
@@ -13,7 +13,7 @@ describe('GetCategoryByIdUseCase', () => {
     repository = {
       findAll: jest.fn(),
       findById,
-      findByNameAndMovementTypeId: jest.fn(),
+      findByNameAndMovementType: jest.fn(),
       save: jest.fn(),
       update: jest.fn(),
       delete: jest.fn(),
@@ -27,7 +27,7 @@ describe('GetCategoryByIdUseCase', () => {
       new CategoryEntity({
         id: 'cat-1',
         name: 'Groceries',
-        movementTypeId: 'mt-1',
+        movementType: 'Gasto',
         userId: 'user-1',
         isActive: true,
       }),
@@ -39,7 +39,7 @@ describe('GetCategoryByIdUseCase', () => {
     expect(result).toEqual({
       id: 'cat-1',
       name: 'Groceries',
-      movementTypeId: 'mt-1',
+      movementType: 'Gasto',
       isActive: true,
     });
   });

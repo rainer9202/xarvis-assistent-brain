@@ -66,7 +66,7 @@ describe('CategoryController', () => {
         {
           id: 'cat-1',
           name: 'Groceries',
-          movementTypeId: 'mt-1',
+          movementType: 'Gasto',
           isActive: true,
           createdAt: new Date('2024-01-01T00:00:00Z'),
         },
@@ -87,7 +87,7 @@ describe('CategoryController', () => {
     it('delegates to CreateCategoryUseCase with a command built from the dto', async () => {
       const dto: CreateCategoryDto = {
         name: 'Groceries',
-        movementTypeId: 'mt-1',
+        movementType: 'Gasto',
       };
       let receivedCommand: CreateCategoryCommand | undefined;
       createExecute.mockImplementation((command: CreateCategoryCommand) => {
@@ -100,7 +100,7 @@ describe('CategoryController', () => {
       expect(createExecute).toHaveBeenCalledWith(
         expect.objectContaining({
           name: 'Groceries',
-          movementTypeId: 'mt-1',
+          movementType: 'Gasto',
           userId: user.id,
         }),
       );

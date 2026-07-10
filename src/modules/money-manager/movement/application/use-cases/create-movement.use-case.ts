@@ -2,17 +2,17 @@ import { Inject, Injectable } from '@nestjs/common';
 import {
   DomainException,
   ValidationException,
-} from '@shared/exceptions/domain.exception';
+} from '@domain/exceptions/domain.exception';
+import { MOVEMENT_TYPES } from '@domain/enums/movement-type.enum';
 import { GetAccountByIdUseCase } from '@modules/money-manager/account/application/use-cases/get-account-by-id.use-case';
 import { GetCategoryByIdUseCase } from '@modules/money-manager/category/application/use-cases/get-category-by-id.use-case';
-import { GetMovementTypeByIdUseCase } from '@modules/money-manager/movement-type/application/use-cases/get-movement-type-by-id.use-case';
 import { MovementEntity } from '../../domain/entities/movement.entity';
 import { MOVEMENT_REPOSITORY } from '../../domain/ports/movement.repository.port';
 import type { MovementRepositoryPort } from '../../domain/ports/movement.repository.port';
 
 // Local, duplicated per file — mirrors the EXPENSE_TYPE_NAME pattern in
 // PrismaAccountRepository rather than a shared cross-module enum file.
-const TRANSFER_TYPE_NAME = 'transfer';
+const TRANSFER_TYPE_NAME = 'Transferencia';
 
 export type CreateMovementResponse = {
   id: string;
@@ -25,7 +25,7 @@ export class CreateMovementCommand {
     public readonly note: string | undefined,
     public readonly accountId: string,
     public readonly categoryId: string,
-    public readonly movementTypeId: string,
+    public readonly movementType: string,
     public readonly userId: string,
     public readonly toAccountId?: string,
   ) {}
@@ -38,20 +38,25 @@ export class CreateMovementUseCase {
     private readonly repository: MovementRepositoryPort,
     private readonly getAccountById: GetAccountByIdUseCase,
     private readonly getCategoryById: GetCategoryByIdUseCase,
-    private readonly getMovementTypeById: GetMovementTypeByIdUseCase,
   ) {}
 
   async execute(
     command: CreateMovementCommand,
   ): Promise<CreateMovementResponse> {
     try {
+      if (
+        !MOVEMENT_TYPES.includes(
+          command.movementType as (typeof MOVEMENT_TYPES)[number],
+        )
+      )
+        throw new ValidationException(
+          `Movement type "${command.movementType}" is invalid. Must be one of: ${MOVEMENT_TYPES.join(', ')}`,
+        );
+
       await this.getAccountById.execute(command.accountId, command.userId);
       await this.getCategoryById.execute(command.categoryId, command.userId);
-      const movementType = await this.getMovementTypeById.execute(
-        command.movementTypeId,
-      );
 
-      if (movementType.name === TRANSFER_TYPE_NAME) {
+      if (command.movementType === TRANSFER_TYPE_NAME) {
         if (!command.toAccountId)
           throw new ValidationException(
             'Transfer movements require a toAccountId',
@@ -72,7 +77,7 @@ export class CreateMovementUseCase {
         accountId: command.accountId,
         toAccountId: command.toAccountId,
         categoryId: command.categoryId,
-        movementTypeId: command.movementTypeId,
+        movementType: command.movementType,
         userId: command.userId,
       });
       const saved = await this.repository.save(entity);

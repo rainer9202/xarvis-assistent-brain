@@ -31,8 +31,8 @@ import {
 import { GetAllCategoriesUseCase } from '../../application/use-cases/get-all-categories.use-case';
 import { CreateCategoryDto } from '../dto/create-category.dto';
 import { UpdateCategoryDto } from '../dto/update-category.dto';
-import { CurrentUser } from '@shared/decorators/current-user.decorator';
-import type { AuthenticatedRequest } from '@shared/decorators/current-user.decorator';
+import { CurrentUser } from '@infra/decorators/current-user.decorator';
+import type { AuthenticatedRequest } from '@infra/decorators/current-user.decorator';
 
 const domainName = 'categories';
 
@@ -57,7 +57,6 @@ export class CategoryController {
 
   @Post()
   @ApiCreatedResponse({ description: 'Category created' })
-  @ApiNotFoundResponse({ description: 'Movement type not found' })
   @ApiConflictResponse({
     description: 'Name already exists for this movement type',
   })
@@ -68,7 +67,7 @@ export class CategoryController {
     return {
       message: `The ${domainName} was created successfully`,
       data: await this.create.execute(
-        new CreateCategoryCommand(dto.name, dto.movementTypeId, user.id),
+        new CreateCategoryCommand(dto.name, dto.movementType, user.id),
       ),
     };
   }
@@ -88,7 +87,7 @@ export class CategoryController {
           id,
           user.id,
           dto.name,
-          dto.movementTypeId,
+          dto.movementType,
           dto.isActive,
         ),
       ),

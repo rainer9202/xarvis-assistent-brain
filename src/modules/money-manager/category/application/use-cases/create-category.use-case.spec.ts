@@ -1,49 +1,37 @@
 import {
   ConflictException,
-  NotFoundException,
-} from '@shared/exceptions/domain.exception';
+  ValidationException,
+} from '@domain/exceptions/domain.exception';
 import { CategoryEntity } from '../../domain/entities/category.entity';
 import type { CategoryRepositoryPort } from '../../domain/ports/category.repository.port';
-import type { GetMovementTypeByIdUseCase } from '@modules/money-manager/movement-type/application/use-cases/get-movement-type-by-id.use-case';
 import {
   CreateCategoryCommand,
   CreateCategoryUseCase,
 } from './create-category.use-case';
 
 describe('CreateCategoryUseCase', () => {
-  let findByNameAndMovementTypeId: jest.Mock;
+  let findByNameAndMovementType: jest.Mock;
   let save: jest.Mock;
   let repository: CategoryRepositoryPort;
-  let getMovementTypeByIdExecute: jest.Mock;
-  let getMovementTypeById: GetMovementTypeByIdUseCase;
   let useCase: CreateCategoryUseCase;
 
   beforeEach(() => {
-    findByNameAndMovementTypeId = jest.fn();
+    findByNameAndMovementType = jest.fn();
     save = jest.fn();
     repository = {
       findAll: jest.fn(),
       findById: jest.fn(),
-      findByNameAndMovementTypeId,
+      findByNameAndMovementType,
       save,
       update: jest.fn(),
       delete: jest.fn(),
       countMovementsByCategoryId: jest.fn(),
     };
-    getMovementTypeByIdExecute = jest.fn();
-    getMovementTypeById = {
-      execute: getMovementTypeByIdExecute,
-    } as unknown as GetMovementTypeByIdUseCase;
-    useCase = new CreateCategoryUseCase(repository, getMovementTypeById);
+    useCase = new CreateCategoryUseCase(repository);
   });
 
   it('creates a category defaulting isActive to true', async () => {
-    getMovementTypeByIdExecute.mockResolvedValue({
-      id: 'mt-1',
-      name: 'expense',
-      isDefault: true,
-    });
-    findByNameAndMovementTypeId.mockResolvedValue(null);
+    findByNameAndMovementType.mockResolvedValue(null);
     let savedEntity: CategoryEntity | undefined;
     save.mockImplementation((entity: CategoryEntity) => {
       savedEntity = entity;
@@ -51,20 +39,20 @@ describe('CreateCategoryUseCase', () => {
         new CategoryEntity({
           id: 'cat-1',
           name: entity.name,
-          movementTypeId: entity.movementTypeId,
+          movementType: entity.movementType,
+          userId: entity.userId,
           isActive: entity.isActive,
         }),
       );
     });
 
     const result = await useCase.execute(
-      new CreateCategoryCommand('Groceries', 'mt-1', 'user-1'),
+      new CreateCategoryCommand('Groceries', 'Gasto', 'user-1'),
     );
 
-    expect(getMovementTypeByIdExecute).toHaveBeenCalledWith('mt-1');
-    expect(findByNameAndMovementTypeId).toHaveBeenCalledWith(
+    expect(findByNameAndMovementType).toHaveBeenCalledWith(
       'Groceries',
-      'mt-1',
+      'Gasto',
       'user-1',
     );
     expect(save).toHaveBeenCalledWith(expect.any(CategoryEntity));
@@ -72,37 +60,30 @@ describe('CreateCategoryUseCase', () => {
     expect(result).toEqual({ id: 'cat-1' });
   });
 
-  it('throws NotFoundException when the movement type does not exist', async () => {
-    getMovementTypeByIdExecute.mockRejectedValue(
-      new NotFoundException('Movement type "missing" not found'),
-    );
-
+  it('throws ValidationException when the movement type is invalid', async () => {
     await expect(
       useCase.execute(
-        new CreateCategoryCommand('Groceries', 'missing', 'user-1'),
+        new CreateCategoryCommand('Groceries', 'Invalid', 'user-1'),
       ),
-    ).rejects.toThrow(NotFoundException);
+    ).rejects.toThrow(ValidationException);
     expect(save).not.toHaveBeenCalled();
   });
 
   it('throws ConflictException when a category with the same name already exists under the movement type', async () => {
-    getMovementTypeByIdExecute.mockResolvedValue({
-      id: 'mt-1',
-      name: 'expense',
-      isDefault: true,
-    });
-    findByNameAndMovementTypeId.mockResolvedValue(
+    findByNameAndMovementType.mockResolvedValue(
       new CategoryEntity({
         id: 'cat-1',
         name: 'Groceries',
-        movementTypeId: 'mt-1',
+        movementType: 'Gasto',
         userId: 'user-1',
         isActive: true,
       }),
     );
 
     await expect(
-      useCase.execute(new CreateCategoryCommand('Groceries', 'mt-1', 'user-1')),
+      useCase.execute(
+        new CreateCategoryCommand('Groceries', 'Gasto', 'user-1'),
+      ),
     ).rejects.toThrow(ConflictException);
     expect(save).not.toHaveBeenCalled();
   });

@@ -8,7 +8,7 @@ describe('Report (e2e)', () => {
   let prisma: PrismaService;
   let token: string;
   let userId: string;
-  let expenseTypeId: string;
+  const expenseType = 'Gasto';
   let categoryId: string;
   const accountIds: string[] = [];
 
@@ -16,14 +16,11 @@ describe('Report (e2e)', () => {
     ({ app, prisma } = await createTestApp());
     ({ token, userId } = await createAuthenticatedUser(app));
 
-    expenseTypeId = (
-      await prisma.movementType.findFirstOrThrow({ where: { name: 'expense' } })
-    ).id;
     categoryId = (
       await prisma.category.create({
         data: {
           name: `ReportSpec-${Date.now()}`,
-          movementTypeId: expenseTypeId,
+          movementType: expenseType,
           userId,
         },
       })
@@ -58,7 +55,7 @@ describe('Report (e2e)', () => {
         date: new Date().toISOString(),
         accountId: a.id,
         categoryId,
-        movementTypeId: expenseTypeId,
+        movementType: expenseType,
       })
       .expect(201);
 

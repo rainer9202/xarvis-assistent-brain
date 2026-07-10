@@ -23,13 +23,13 @@ export class PrismaCategoryRepository implements CategoryRepositoryPort {
     return record ? this.toEntity(record) : null;
   }
 
-  async findByNameAndMovementTypeId(
+  async findByNameAndMovementType(
     name: string,
-    movementTypeId: string,
+    movementType: string,
     userId: string,
   ): Promise<CategoryEntity | null> {
     const record = await this.prisma.category.findUnique({
-      where: { name_movementTypeId_userId: { name, movementTypeId, userId } },
+      where: { name_movementType_userId: { name, movementType, userId } },
     });
     return record ? this.toEntity(record) : null;
   }
@@ -39,7 +39,7 @@ export class PrismaCategoryRepository implements CategoryRepositoryPort {
       data: {
         id: entity.id,
         name: entity.name,
-        movementTypeId: entity.movementTypeId,
+        movementType: entity.movementType,
         userId: entity.userId,
         isActive: entity.isActive,
       },
@@ -53,7 +53,7 @@ export class PrismaCategoryRepository implements CategoryRepositoryPort {
       where: { id: entity.id! },
       data: {
         name: entity.name,
-        movementTypeId: entity.movementTypeId,
+        movementType: entity.movementType,
         isActive: entity.isActive,
       },
     });

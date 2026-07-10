@@ -97,9 +97,6 @@ describe('Account (e2e)', () => {
   });
 
   it('🔍 blocks deleting an account referenced by a movement', async () => {
-    const movementType = await prisma.movementType.findFirstOrThrow({
-      where: { name: 'expense' },
-    });
     const accountRes = await request(app.getHttpServer())
       .post('/accounts')
       .set('Authorization', `Bearer ${token}`)
@@ -111,7 +108,7 @@ describe('Account (e2e)', () => {
     const categoryRes = await request(app.getHttpServer())
       .post('/categories')
       .set('Authorization', `Bearer ${token}`)
-      .send({ name: `Cat-${Date.now()}`, movementTypeId: movementType.id })
+      .send({ name: `Cat-${Date.now()}`, movementType: 'Gasto' })
       .expect(201);
     const categoryId = categoryRes.body.data.id;
 
@@ -123,7 +120,7 @@ describe('Account (e2e)', () => {
         date: new Date().toISOString(),
         accountId,
         categoryId,
-        movementTypeId: movementType.id,
+        movementType: 'Gasto',
       })
       .expect(201);
 

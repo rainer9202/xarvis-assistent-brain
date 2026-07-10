@@ -1,4 +1,4 @@
-import { BaseEntity, BaseEntityProps } from '@shared/domain/base.entity';
+import { BaseEntity, BaseEntityProps } from '@domain/base.entity';
 
 export type MovementProps = BaseEntityProps & {
   amountCents: number;
@@ -7,7 +7,7 @@ export type MovementProps = BaseEntityProps & {
   accountId: string;
   toAccountId?: string;
   categoryId: string;
-  movementTypeId: string;
+  movementType: string;
   userId: string;
 };
 
@@ -18,7 +18,7 @@ export class MovementEntity extends BaseEntity {
   private _accountId: string = '';
   private _toAccountId?: string;
   private _categoryId: string = '';
-  private _movementTypeId: string = '';
+  private _movementType: string = '';
   private _userId: string = '';
 
   constructor(props?: MovementProps) {
@@ -30,7 +30,7 @@ export class MovementEntity extends BaseEntity {
       this._accountId = props.accountId;
       this._toAccountId = props.toAccountId;
       this._categoryId = props.categoryId;
-      this._movementTypeId = props.movementTypeId;
+      this._movementType = props.movementType;
       this._userId = props.userId;
     }
   }
@@ -83,12 +83,12 @@ export class MovementEntity extends BaseEntity {
     this._categoryId = value;
   }
 
-  get movementTypeId(): string {
-    return this._movementTypeId;
+  get movementType(): string {
+    return this._movementType;
   }
 
-  set movementTypeId(value: string) {
-    this._movementTypeId = value;
+  set movementType(value: string) {
+    this._movementType = value;
   }
 
   get userId(): string {

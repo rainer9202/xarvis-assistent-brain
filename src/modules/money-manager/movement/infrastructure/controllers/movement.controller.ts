@@ -31,8 +31,8 @@ import { GetAllMovementsUseCase } from '../../application/use-cases/get-all-move
 import { GetMovementByIdUseCase } from '../../application/use-cases/get-movement-by-id.use-case';
 import { CreateMovementDto } from '../dto/create-movement.dto';
 import { UpdateMovementDto } from '../dto/update-movement.dto';
-import { CurrentUser } from '@shared/decorators/current-user.decorator';
-import type { AuthenticatedRequest } from '@shared/decorators/current-user.decorator';
+import { CurrentUser } from '@infra/decorators/current-user.decorator';
+import type { AuthenticatedRequest } from '@infra/decorators/current-user.decorator';
 
 const domainName = 'movements';
 
@@ -72,7 +72,7 @@ export class MovementController {
   @Post()
   @ApiCreatedResponse({ description: 'Movement created' })
   @ApiNotFoundResponse({
-    description: 'Account, category, or movement type not found',
+    description: 'Account or category not found',
   })
   async createOne(
     @Body() dto: CreateMovementDto,
@@ -87,7 +87,7 @@ export class MovementController {
           dto.note,
           dto.accountId,
           dto.categoryId,
-          dto.movementTypeId,
+          dto.movementType,
           user.id,
           dto.toAccountId,
         ),
@@ -98,7 +98,7 @@ export class MovementController {
   @Patch(':id')
   @ApiOkResponse({ description: 'Movement updated' })
   @ApiNotFoundResponse({
-    description: 'Movement, account, category, or movement type not found',
+    description: 'Movement, account, or category not found',
   })
   async updateOne(
     @Param('id') id: string,
@@ -116,7 +116,7 @@ export class MovementController {
           dto.note,
           dto.accountId,
           dto.categoryId,
-          dto.movementTypeId,
+          dto.movementType,
           dto.toAccountId,
         ),
       ),

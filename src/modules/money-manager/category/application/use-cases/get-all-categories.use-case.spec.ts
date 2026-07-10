@@ -10,7 +10,7 @@ describe('GetAllCategoriesUseCase', () => {
     repository = {
       findAll: jest.fn(),
       findById: jest.fn(),
-      findByNameAndMovementTypeId: jest.fn(),
+      findByNameAndMovementType: jest.fn(),
       save: jest.fn(),
       update: jest.fn(),
       delete: jest.fn(),
@@ -24,7 +24,7 @@ describe('GetAllCategoriesUseCase', () => {
     const entity = new CategoryEntity({
       id: 'cat-1',
       name: 'Groceries',
-      movementTypeId: 'mt-1',
+      movementType: 'Gasto',
       userId: 'user-1',
       isActive: true,
       createdAt,
@@ -38,7 +38,7 @@ describe('GetAllCategoriesUseCase', () => {
       {
         id: 'cat-1',
         name: 'Groceries',
-        movementTypeId: 'mt-1',
+        movementType: 'Gasto',
         isActive: true,
         createdAt,
       },

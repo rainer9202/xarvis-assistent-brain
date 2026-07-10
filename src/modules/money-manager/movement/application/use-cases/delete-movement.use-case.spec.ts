@@ -1,4 +1,4 @@
-import { NotFoundException } from '@shared/exceptions/domain.exception';
+import { NotFoundException } from '@domain/exceptions/domain.exception';
 import { MovementEntity } from '../../domain/entities/movement.entity';
 import type { MovementRepositoryPort } from '../../domain/ports/movement.repository.port';
 import {
@@ -32,7 +32,7 @@ describe('DeleteMovementUseCase', () => {
       date: new Date('2024-01-01T00:00:00Z'),
       accountId: 'acc-1',
       categoryId: 'cat-1',
-      movementTypeId: 'mt-1',
+      movementType: 'Gasto',
       userId: 'user-1',
     });
     findById.mockResolvedValue(entity);

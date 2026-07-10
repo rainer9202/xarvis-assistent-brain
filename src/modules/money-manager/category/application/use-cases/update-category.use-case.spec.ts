@@ -1,10 +1,10 @@
 import {
   ConflictException,
   NotFoundException,
-} from '@shared/exceptions/domain.exception';
+  ValidationException,
+} from '@domain/exceptions/domain.exception';
 import { CategoryEntity } from '../../domain/entities/category.entity';
 import type { CategoryRepositoryPort } from '../../domain/ports/category.repository.port';
-import type { GetMovementTypeByIdUseCase } from '@modules/money-manager/movement-type/application/use-cases/get-movement-type-by-id.use-case';
 import {
   UpdateCategoryCommand,
   UpdateCategoryUseCase,
@@ -12,38 +12,32 @@ import {
 
 describe('UpdateCategoryUseCase', () => {
   let findById: jest.Mock;
-  let findByNameAndMovementTypeId: jest.Mock;
+  let findByNameAndMovementType: jest.Mock;
   let update: jest.Mock;
   let repository: CategoryRepositoryPort;
-  let getMovementTypeByIdExecute: jest.Mock;
-  let getMovementTypeById: GetMovementTypeByIdUseCase;
   let useCase: UpdateCategoryUseCase;
 
   beforeEach(() => {
     findById = jest.fn();
-    findByNameAndMovementTypeId = jest.fn();
+    findByNameAndMovementType = jest.fn();
     update = jest.fn();
     repository = {
       findAll: jest.fn(),
       findById,
-      findByNameAndMovementTypeId,
+      findByNameAndMovementType,
       save: jest.fn(),
       update,
       delete: jest.fn(),
       countMovementsByCategoryId: jest.fn(),
     };
-    getMovementTypeByIdExecute = jest.fn();
-    getMovementTypeById = {
-      execute: getMovementTypeByIdExecute,
-    } as unknown as GetMovementTypeByIdUseCase;
-    useCase = new UpdateCategoryUseCase(repository, getMovementTypeById);
+    useCase = new UpdateCategoryUseCase(repository);
   });
 
   it('applies only the provided fields, leaving the rest unchanged', async () => {
     const existing = new CategoryEntity({
       id: 'cat-1',
       name: 'Groceries',
-      movementTypeId: 'mt-1',
+      movementType: 'Gasto',
       userId: 'user-1',
       isActive: true,
     });
@@ -57,15 +51,15 @@ describe('UpdateCategoryUseCase', () => {
     );
 
     expect(findById).toHaveBeenCalledWith('cat-1', 'user-1');
-    expect(findByNameAndMovementTypeId).toHaveBeenCalledWith(
+    expect(findByNameAndMovementType).toHaveBeenCalledWith(
       'Supermarket',
-      'mt-1',
+      'Gasto',
       'user-1',
     );
     expect(update).toHaveBeenCalledWith(
       expect.objectContaining({
         name: 'Supermarket',
-        movementTypeId: 'mt-1',
+        movementType: 'Gasto',
         isActive: true,
       }),
     );
@@ -83,41 +77,38 @@ describe('UpdateCategoryUseCase', () => {
     expect(update).not.toHaveBeenCalled();
   });
 
-  it('revalidates the movement type when movementTypeId is provided, propagating NotFoundException', async () => {
+  it('revalidates the movement type when movementType is provided, throwing ValidationException on an invalid value', async () => {
     const existing = new CategoryEntity({
       id: 'cat-1',
       name: 'Groceries',
-      movementTypeId: 'mt-1',
+      movementType: 'Gasto',
       userId: 'user-1',
       isActive: true,
     });
     findById.mockResolvedValue(existing);
-    getMovementTypeByIdExecute.mockRejectedValue(
-      new NotFoundException('Movement type "missing" not found'),
-    );
 
     await expect(
       useCase.execute(
-        new UpdateCategoryCommand('cat-1', 'user-1', undefined, 'missing'),
+        new UpdateCategoryCommand('cat-1', 'user-1', undefined, 'Invalid'),
       ),
-    ).rejects.toThrow(NotFoundException);
+    ).rejects.toThrow(ValidationException);
     expect(update).not.toHaveBeenCalled();
   });
 
-  it('throws ConflictException when the new name/movementTypeId collides with another category', async () => {
+  it('throws ConflictException when the new name/movementType collides with another category', async () => {
     const existing = new CategoryEntity({
       id: 'cat-1',
       name: 'Groceries',
-      movementTypeId: 'mt-1',
+      movementType: 'Gasto',
       userId: 'user-1',
       isActive: true,
     });
     findById.mockResolvedValue(existing);
-    findByNameAndMovementTypeId.mockResolvedValue(
+    findByNameAndMovementType.mockResolvedValue(
       new CategoryEntity({
         id: 'cat-2',
         name: 'Supermarket',
-        movementTypeId: 'mt-1',
+        movementType: 'Gasto',
         userId: 'user-1',
         isActive: true,
       }),
@@ -135,12 +126,12 @@ describe('UpdateCategoryUseCase', () => {
     const existing = new CategoryEntity({
       id: 'cat-1',
       name: 'Groceries',
-      movementTypeId: 'mt-1',
+      movementType: 'Gasto',
       userId: 'user-1',
       isActive: true,
     });
     findById.mockResolvedValue(existing);
-    findByNameAndMovementTypeId.mockResolvedValue(existing);
+    findByNameAndMovementType.mockResolvedValue(existing);
     update.mockImplementation((entity: CategoryEntity) =>
       Promise.resolve(entity),
     );
@@ -152,11 +143,11 @@ describe('UpdateCategoryUseCase', () => {
     expect(result).toEqual({ id: 'cat-1' });
   });
 
-  it('does not re-check uniqueness when neither name nor movementTypeId changes', async () => {
+  it('does not re-check uniqueness when neither name nor movementType changes', async () => {
     const existing = new CategoryEntity({
       id: 'cat-1',
       name: 'Groceries',
-      movementTypeId: 'mt-1',
+      movementType: 'Gasto',
       userId: 'user-1',
       isActive: true,
     });
@@ -169,8 +160,7 @@ describe('UpdateCategoryUseCase', () => {
       new UpdateCategoryCommand('cat-1', 'user-1', undefined, undefined, false),
     );
 
-    expect(findByNameAndMovementTypeId).not.toHaveBeenCalled();
-    expect(getMovementTypeByIdExecute).not.toHaveBeenCalled();
+    expect(findByNameAndMovementType).not.toHaveBeenCalled();
     expect(result).toEqual({ id: 'cat-1' });
   });
 });

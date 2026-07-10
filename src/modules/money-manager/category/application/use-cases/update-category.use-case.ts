@@ -3,8 +3,9 @@ import {
   ConflictException,
   DomainException,
   NotFoundException,
-} from '@shared/exceptions/domain.exception';
-import { GetMovementTypeByIdUseCase } from '@modules/money-manager/movement-type/application/use-cases/get-movement-type-by-id.use-case';
+  ValidationException,
+} from '@domain/exceptions/domain.exception';
+import { MOVEMENT_TYPES } from '@domain/enums/movement-type.enum';
 import { CATEGORY_REPOSITORY } from '../../domain/ports/category.repository.port';
 import type { CategoryRepositoryPort } from '../../domain/ports/category.repository.port';
 
@@ -17,7 +18,7 @@ export class UpdateCategoryCommand {
     public readonly id: string,
     public readonly userId: string,
     public readonly name?: string,
-    public readonly movementTypeId?: string,
+    public readonly movementType?: string,
     public readonly isActive?: boolean,
   ) {}
 }
@@ -27,7 +28,6 @@ export class UpdateCategoryUseCase {
   constructor(
     @Inject(CATEGORY_REPOSITORY)
     private readonly repository: CategoryRepositoryPort,
-    private readonly getMovementTypeById: GetMovementTypeByIdUseCase,
   ) {}
 
   async execute(
@@ -42,24 +42,31 @@ export class UpdateCategoryUseCase {
         throw new NotFoundException(`Category "${command.id}" not found`);
 
       const uniquenessKeyChanged =
-        command.name !== undefined || command.movementTypeId !== undefined;
+        command.name !== undefined || command.movementType !== undefined;
 
-      if (command.movementTypeId !== undefined) {
-        await this.getMovementTypeById.execute(command.movementTypeId);
-        category.movementTypeId = command.movementTypeId;
+      if (command.movementType !== undefined) {
+        if (
+          !MOVEMENT_TYPES.includes(
+            command.movementType as (typeof MOVEMENT_TYPES)[number],
+          )
+        )
+          throw new ValidationException(
+            `Movement type "${command.movementType}" is invalid. Must be one of: ${MOVEMENT_TYPES.join(', ')}`,
+          );
+        category.movementType = command.movementType;
       }
       if (command.name !== undefined) category.name = command.name;
       if (command.isActive !== undefined) category.isActive = command.isActive;
 
       if (uniquenessKeyChanged) {
-        const existing = await this.repository.findByNameAndMovementTypeId(
+        const existing = await this.repository.findByNameAndMovementType(
           category.name,
-          category.movementTypeId,
+          category.movementType,
           category.userId,
         );
         if (existing && existing.id !== category.id)
           throw new ConflictException(
-            `Category "${category.name}" already exists for movement type "${category.movementTypeId}"`,
+            `Category "${category.name}" already exists for movement type "${category.movementType}"`,
           );
       }
 

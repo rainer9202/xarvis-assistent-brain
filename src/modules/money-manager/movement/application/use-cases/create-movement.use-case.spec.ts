@@ -1,12 +1,11 @@
 import {
   NotFoundException,
   ValidationException,
-} from '@shared/exceptions/domain.exception';
+} from '@domain/exceptions/domain.exception';
 import { MovementEntity } from '../../domain/entities/movement.entity';
 import type { MovementRepositoryPort } from '../../domain/ports/movement.repository.port';
 import type { GetAccountByIdUseCase } from '@modules/money-manager/account/application/use-cases/get-account-by-id.use-case';
 import type { GetCategoryByIdUseCase } from '@modules/money-manager/category/application/use-cases/get-category-by-id.use-case';
-import type { GetMovementTypeByIdUseCase } from '@modules/money-manager/movement-type/application/use-cases/get-movement-type-by-id.use-case';
 import {
   CreateMovementCommand,
   CreateMovementUseCase,
@@ -19,8 +18,6 @@ describe('CreateMovementUseCase', () => {
   let getAccountById: GetAccountByIdUseCase;
   let getCategoryByIdExecute: jest.Mock;
   let getCategoryById: GetCategoryByIdUseCase;
-  let getMovementTypeByIdExecute: jest.Mock;
-  let getMovementTypeById: GetMovementTypeByIdUseCase;
   let useCase: CreateMovementUseCase;
 
   const date = new Date('2024-01-01T00:00:00Z');
@@ -42,19 +39,14 @@ describe('CreateMovementUseCase', () => {
     getCategoryById = {
       execute: getCategoryByIdExecute,
     } as unknown as GetCategoryByIdUseCase;
-    getMovementTypeByIdExecute = jest.fn();
-    getMovementTypeById = {
-      execute: getMovementTypeByIdExecute,
-    } as unknown as GetMovementTypeByIdUseCase;
     useCase = new CreateMovementUseCase(
       repository,
       getAccountById,
       getCategoryById,
-      getMovementTypeById,
     );
   });
 
-  it('validates account, category, and movement type existence then creates the movement', async () => {
+  it('validates account and category existence then creates the movement', async () => {
     getAccountByIdExecute.mockResolvedValue({
       id: 'acc-1',
       name: 'Main Checking',
@@ -64,13 +56,8 @@ describe('CreateMovementUseCase', () => {
     getCategoryByIdExecute.mockResolvedValue({
       id: 'cat-1',
       name: 'Groceries',
-      movementTypeId: 'mt-1',
+      movementType: 'Gasto',
       isActive: true,
-    });
-    getMovementTypeByIdExecute.mockResolvedValue({
-      id: 'mt-1',
-      name: 'expense',
-      isDefault: true,
     });
     let savedEntity: MovementEntity | undefined;
     save.mockImplementation((entity: MovementEntity) => {
@@ -83,7 +70,8 @@ describe('CreateMovementUseCase', () => {
           note: entity.note,
           accountId: entity.accountId,
           categoryId: entity.categoryId,
-          movementTypeId: entity.movementTypeId,
+          movementType: entity.movementType,
+          userId: entity.userId,
         }),
       );
     });
@@ -95,18 +83,35 @@ describe('CreateMovementUseCase', () => {
         'Weekly groceries',
         'acc-1',
         'cat-1',
-        'mt-1',
+        'Gasto',
         'user-1',
       ),
     );
 
     expect(getAccountByIdExecute).toHaveBeenCalledWith('acc-1', 'user-1');
     expect(getCategoryByIdExecute).toHaveBeenCalledWith('cat-1', 'user-1');
-    expect(getMovementTypeByIdExecute).toHaveBeenCalledWith('mt-1');
     expect(save).toHaveBeenCalledWith(expect.any(MovementEntity));
     expect(savedEntity?.amountCents).toBe(1500);
     expect(savedEntity?.note).toBe('Weekly groceries');
     expect(result).toEqual({ id: 'mov-1' });
+  });
+
+  it('throws ValidationException when the movement type is invalid', async () => {
+    await expect(
+      useCase.execute(
+        new CreateMovementCommand(
+          1500,
+          date,
+          undefined,
+          'acc-1',
+          'cat-1',
+          'Invalid',
+          'user-1',
+        ),
+      ),
+    ).rejects.toThrow(ValidationException);
+    expect(save).not.toHaveBeenCalled();
+    expect(getAccountByIdExecute).not.toHaveBeenCalled();
   });
 
   it('propagates NotFoundException when the account does not exist and does not save', async () => {
@@ -122,7 +127,7 @@ describe('CreateMovementUseCase', () => {
           undefined,
           'missing',
           'cat-1',
-          'mt-1',
+          'Gasto',
           'user-1',
         ),
       ),
@@ -149,40 +154,7 @@ describe('CreateMovementUseCase', () => {
           undefined,
           'acc-1',
           'missing',
-          'mt-1',
-          'user-1',
-        ),
-      ),
-    ).rejects.toThrow(NotFoundException);
-    expect(save).not.toHaveBeenCalled();
-  });
-
-  it('propagates NotFoundException when the movement type does not exist and does not save', async () => {
-    getAccountByIdExecute.mockResolvedValue({
-      id: 'acc-1',
-      name: 'Main Checking',
-      type: 'bank',
-      isActive: true,
-    });
-    getCategoryByIdExecute.mockResolvedValue({
-      id: 'cat-1',
-      name: 'Groceries',
-      movementTypeId: 'mt-1',
-      isActive: true,
-    });
-    getMovementTypeByIdExecute.mockRejectedValue(
-      new NotFoundException('Movement type "missing" not found'),
-    );
-
-    await expect(
-      useCase.execute(
-        new CreateMovementCommand(
-          1500,
-          date,
-          undefined,
-          'acc-1',
-          'cat-1',
-          'missing',
+          'Gasto',
           'user-1',
         ),
       ),
@@ -203,13 +175,8 @@ describe('CreateMovementUseCase', () => {
       getCategoryByIdExecute.mockResolvedValue({
         id: 'cat-1',
         name: 'Transfers',
-        movementTypeId: 'mt-transfer',
+        movementType: 'Transferencia',
         isActive: true,
-      });
-      getMovementTypeByIdExecute.mockResolvedValue({
-        id: 'mt-transfer',
-        name: 'transfer',
-        isDefault: true,
       });
       save.mockImplementation((entity: MovementEntity) =>
         Promise.resolve(
@@ -221,7 +188,8 @@ describe('CreateMovementUseCase', () => {
             accountId: entity.accountId,
             toAccountId: entity.toAccountId,
             categoryId: entity.categoryId,
-            movementTypeId: entity.movementTypeId,
+            movementType: entity.movementType,
+            userId: entity.userId,
           }),
         ),
       );
@@ -240,7 +208,8 @@ describe('CreateMovementUseCase', () => {
             accountId: entity.accountId,
             toAccountId: entity.toAccountId,
             categoryId: entity.categoryId,
-            movementTypeId: entity.movementTypeId,
+            movementType: entity.movementType,
+            userId: entity.userId,
           }),
         );
       });
@@ -252,7 +221,7 @@ describe('CreateMovementUseCase', () => {
           'Transfer to savings',
           'acc-1',
           'cat-1',
-          'mt-transfer',
+          'Transferencia',
           'user-1',
           'acc-2',
         ),
@@ -271,7 +240,7 @@ describe('CreateMovementUseCase', () => {
             undefined,
             'acc-1',
             'cat-1',
-            'mt-transfer',
+            'Transferencia',
             'user-1',
           ),
         ),
@@ -288,7 +257,7 @@ describe('CreateMovementUseCase', () => {
             undefined,
             'acc-1',
             'cat-1',
-            'mt-transfer',
+            'Transferencia',
             'user-1',
             'acc-1',
           ),
@@ -319,7 +288,7 @@ describe('CreateMovementUseCase', () => {
             undefined,
             'acc-1',
             'cat-1',
-            'mt-transfer',
+            'Transferencia',
             'user-1',
             'missing',
           ),
@@ -329,12 +298,6 @@ describe('CreateMovementUseCase', () => {
     });
 
     it('throws ValidationException when a non-transfer movement provides a toAccountId', async () => {
-      getMovementTypeByIdExecute.mockResolvedValue({
-        id: 'mt-1',
-        name: 'expense',
-        isDefault: true,
-      });
-
       await expect(
         useCase.execute(
           new CreateMovementCommand(
@@ -343,7 +306,7 @@ describe('CreateMovementUseCase', () => {
             undefined,
             'acc-1',
             'cat-1',
-            'mt-1',
+            'Gasto',
             'user-1',
             'acc-2',
           ),

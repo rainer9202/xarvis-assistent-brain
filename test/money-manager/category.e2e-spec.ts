@@ -8,16 +8,12 @@ describe('Category (e2e)', () => {
   let prisma: PrismaService;
   let token: string;
   let userId: string;
-  let movementTypeId: string;
+  const movementType = 'Gasto';
   const createdIds: string[] = [];
 
   beforeAll(async () => {
     ({ app, prisma } = await createTestApp());
     ({ token, userId } = await createAuthenticatedUser(app));
-    const movementType = await prisma.movementType.findFirstOrThrow({
-      where: { name: 'expense' },
-    });
-    movementTypeId = movementType.id;
   });
 
   afterAll(async () => {
@@ -29,21 +25,21 @@ describe('Category (e2e)', () => {
     const res = await request(app.getHttpServer())
       .post('/categories')
       .set('Authorization', `Bearer ${token}`)
-      .send({ name: `Groceries-${Date.now()}`, movementTypeId })
+      .send({ name: `Groceries-${Date.now()}`, movementType })
       .expect(201);
 
     createdIds.push(res.body.data.id);
   });
 
-  it('rejects a nonexistent movementTypeId', async () => {
+  it('rejects an invalid movementType', async () => {
     await request(app.getHttpServer())
       .post('/categories')
       .set('Authorization', `Bearer ${token}`)
       .send({
         name: `Ghost-${Date.now()}`,
-        movementTypeId: '00000000-0000-0000-0000-000000000000',
+        movementType: 'NotARealType',
       })
-      .expect(404);
+      .expect(400);
   });
 
   it('rejects a duplicate name within the same movement type', async () => {
@@ -51,30 +47,30 @@ describe('Category (e2e)', () => {
     const first = await request(app.getHttpServer())
       .post('/categories')
       .set('Authorization', `Bearer ${token}`)
-      .send({ name, movementTypeId })
+      .send({ name, movementType })
       .expect(201);
     createdIds.push(first.body.data.id);
 
     await request(app.getHttpServer())
       .post('/categories')
       .set('Authorization', `Bearer ${token}`)
-      .send({ name, movementTypeId })
+      .send({ name, movementType })
       .expect(409);
   });
 
-  it('🔍 enforces the same movementTypeId existence check on update', async () => {
+  it('🔍 enforces the same movementType validation check on update', async () => {
     const createRes = await request(app.getHttpServer())
       .post('/categories')
       .set('Authorization', `Bearer ${token}`)
-      .send({ name: `ToUpdate-${Date.now()}`, movementTypeId })
+      .send({ name: `ToUpdate-${Date.now()}`, movementType })
       .expect(201);
     createdIds.push(createRes.body.data.id);
 
     await request(app.getHttpServer())
       .patch(`/categories/${createRes.body.data.id}`)
       .set('Authorization', `Bearer ${token}`)
-      .send({ movementTypeId: '00000000-0000-0000-0000-000000000000' })
-      .expect(404);
+      .send({ movementType: 'NotARealType' })
+      .expect(400);
   });
 
   it('🔍 blocks deleting a category referenced by a movement', async () => {
@@ -84,7 +80,7 @@ describe('Category (e2e)', () => {
     const categoryRes = await request(app.getHttpServer())
       .post('/categories')
       .set('Authorization', `Bearer ${token}`)
-      .send({ name: `Referenced-${Date.now()}`, movementTypeId })
+      .send({ name: `Referenced-${Date.now()}`, movementType })
       .expect(201);
     const categoryId = categoryRes.body.data.id;
     createdIds.push(categoryId);
@@ -95,7 +91,7 @@ describe('Category (e2e)', () => {
         date: new Date(),
         accountId: account.id,
         categoryId,
-        movementTypeId,
+        movementType,
         userId,
       },
     });
@@ -119,7 +115,7 @@ describe('Category (e2e)', () => {
     const createRes = await request(app.getHttpServer())
       .post('/categories')
       .set('Authorization', `Bearer ${token}`)
-      .send({ name, movementTypeId })
+      .send({ name, movementType })
       .expect(201);
     createdIds.push(createRes.body.data.id);
 
@@ -128,7 +124,7 @@ describe('Category (e2e)', () => {
     const otherCreateRes = await request(app.getHttpServer())
       .post('/categories')
       .set('Authorization', `Bearer ${otherToken}`)
-      .send({ name, movementTypeId })
+      .send({ name, movementType })
       .expect(201);
 
     await request(app.getHttpServer())

@@ -1,0 +1,396 @@
+# Xarvis Brain API — Frontend Integration Reference
+
+Pure HTTP contract for building a frontend against this API. No backend internals below —
+if you need architecture/implementation details, that's a different document.
+
+## 1. Running instance
+
+- Local dev: `docker compose up` (from the API repo) exposes the API on `http://localhost:3000`.
+- Interactive OpenAPI/Swagger UI is served at `GET /docs` (bearer-auth enabled in the UI).
+- The API reads `CORS_ORIGINS` (comma-separated list of allowed origins) and sends
+  `Access-Control-Allow-Credentials: true`. **Your frontend's dev origin (e.g.
+  `http://localhost:5173`) must be added to `CORS_ORIGINS` in the API's `docker-compose.yml`/env,
+  or every browser request will be blocked by CORS** — this is configured on the API side, not
+  something the frontend can work around.
+- All request bodies are parsed with `whitelist: true, transform: true`: unknown/extra fields in
+  a JSON body are silently stripped (not rejected), and primitive fields are coerced to their
+  declared type. Do not rely on the API echoing back fields you didn't declare in a DTO.
+
+## 2. Authentication flow
+
+1. `POST /auth/sign-up` or `POST /auth/sign-in` → response contains `data.accessToken` (a JWT)
+   and `data.id` (the user's id).
+2. Store the token client-side (e.g. memory + localStorage/sessionStorage — your call).
+3. Attach it to **every other request**: `Authorization: Bearer <accessToken>`.
+4. Token lifetime is ~2 hours by default (server-controlled, not guaranteed to stay 2h). There is
+   **no refresh-token endpoint**. When the token expires, every protected request starts
+   returning `401 Unauthorized` — the frontend must detect this and route the user back to
+   sign-in (re-authenticate from scratch, no silent refresh is possible).
+5. There is **no logout/revocation endpoint**. "Logging out" is purely a frontend action:
+   discard the stored token. The token remains cryptographically valid server-side until it
+   naturally expires — the API has no way to invalidate it early.
+6. `POST /auth/sign-up` and `POST /auth/sign-in` share a combined rate limit: **5 requests per
+   60 seconds per client IP** across both routes. The 6th request in that window gets `429`
+   regardless of which of the two routes it hits. Design the auth UI to handle `429` gracefully
+   (e.g. "too many attempts, try again in a minute" — do not auto-retry in a tight loop).
+7. Never send a `userId` field in any request body — there is no such field on any DTO. The user
+   is always derived from the bearer token server-side.
+8. `GET /auth/users` lists every user in the system (`id`, `name`, `email`, `createdAt`, no
+   password) with **no auth guard at all**. This is a temporary debug endpoint and will be removed
+   before any non-local deployment — do not build any real feature against it.
+
+## 3. Response envelope
+
+**Every** response (success or error) is JSON. Success shape:
+
+```json
+{ "statusCode": 200, "message": "human-readable string", "data": { /* endpoint-specific */ } }
+```
+
+`statusCode` mirrors the actual HTTP status. `data` is `null`/absent only if the use case itself
+returns nothing meaningful (does not currently happen — every success response has a `data`).
+
+### Error shapes
+
+There are two distinct error shapes depending on where the error originated:
+
+**A. class-validator DTO validation failures** (malformed request body) — Nest's default shape,
+`message` is a **string array**, one entry per failed rule:
+
+```json
+{
+  "statusCode": 400,
+  "message": ["email must be an email", "password must be longer than or equal to 8 characters"],
+  "error": "Bad Request"
+}
+```
+
+**B. Domain-level errors** (business rules, not-found, conflicts) — `message` is a **single
+string**, `error` is the exception class name:
+
+```json
+{ "statusCode": 404, "message": "Account \"<id>\" not found", "error": "NotFoundException" }
+```
+
+| Exception class | HTTP status | Meaning |
+|---|---|---|
+| `NotFoundException` | 404 | Resource missing OR belongs to a different user (see §6) |
+| `ValidationException` | 400 | A business rule was violated (e.g. delete-guard, transfer rules) |
+| `ConflictException` | 409 | Uniqueness violation (duplicate name/email) |
+
+**C. Framework-level errors** not routed through the domain filter:
+
+| Case | Status | Body |
+|---|---|---|
+| Missing/invalid/expired bearer token on any protected route | 401 | `{"statusCode":401,"message":"Unauthorized"}` |
+| Wrong password or unknown email on sign-in | 401 | `{"statusCode":401,"message":"Unauthorized"}` (deliberately generic — never reveals which field was wrong, and the unknown-email path is timing-padded to match the known-email path) |
+| Rate limit exceeded on `/auth/*` | 429 | Nest/`@nestjs/throttler` default `ThrottlerException` body (not a domain exception) |
+| Database unreachable on `GET /health` | 503 | `{"statusCode":503,"message":"Database unreachable","error":"Service Unavailable"}` |
+
+There is no generic 500 error contract to design against — treat any 500 as unexpected.
+
+## 4. Money representation
+
+**Every amount in every request and response body is an integer number of cents**
+(`amountCents`, `balanceCents`, `totalBalanceCents`) — never a float, never a decimal string.
+Convert to a display currency format (`amountCents / 100`) only at render time; never send a
+float back to the API.
+
+## 5. Resources
+
+### 5.0 Movement types (closed enum, not a resource)
+
+`MovementType` is **not** an API resource anymore — there is no `/movement-types` route of any
+kind (no list, no create, no delete). It is a fixed, compile-time enum with exactly three values:
+
+```
+"Gasto" | "Ingreso" | "Transferencia"
+```
+
+Anywhere a request body previously took a `movementTypeId` (UUID, looked up via `GET
+/movement-types`), it now takes a plain `movementType` string that must be exactly one of the
+three values above — validate/select against a hardcoded list client-side, no lookup call needed.
+An invalid value is rejected with `400` (class-validator shape, e.g. `"movementType must be one of
+the following values: Gasto, Ingreso, Transferencia"`).
+
+### 5.2 Accounts (owned by the caller)
+
+| Method | Path |
+|---|---|
+| GET | `/accounts` |
+| GET | `/accounts/:id` |
+| POST | `/accounts` |
+| PATCH | `/accounts/:id` |
+| DELETE | `/accounts/:id` |
+
+**GET /accounts** and **GET /accounts/:id** → `data` shape (single object for `:id`, array for
+the list):
+
+```json
+{
+  "id": "uuid",
+  "name": "Main Checking",
+  "type": "bank",
+  "isActive": true,
+  "balanceCents": 123456,
+  "createdAt": "2026-07-09T00:00:00.000Z"
+}
+```
+
+`balanceCents` is computed live from the account's movements on every read — it is not a stored
+column, so it is always consistent with the movement ledger.
+
+**POST /accounts**
+
+| Field | Type | Constraints |
+|---|---|---|
+| `name` | string | required, non-empty, max 50 chars |
+| `type` | string | required, must be exactly one of `"cash" \| "bank" \| "card"` |
+
+`balanceCents` is **not** an accepted create field — a new account always starts at 0 regardless
+of what you send; any `balanceCents` in the body is silently stripped.
+
+Response `201`, `data`: `{ "id": "uuid" }`.
+
+Error: `400` — invalid `type`: `"type must be one of the following values: cash, bank, card"`
+(class-validator shape, `message` is a string array).
+
+**PATCH /accounts/:id**
+
+| Field | Type | Constraints |
+|---|---|---|
+| `name` | string, optional | non-empty if present, max 50 chars |
+| `type` | string, optional | one of `cash \| bank \| card` if present |
+| `isActive` | boolean, optional | manual active/inactive toggle |
+
+All fields optional/independent — send only what changed. Response `200`, `data`: `{ "id": "uuid" }`.
+
+Errors:
+- `404` — `"Account \"<id>\" not found"` (also returned for another user's account id — see §6)
+- `400` — invalid `type` value, same message pattern as create (this is enforced again in the
+  use case, not just at the DTO layer)
+
+**DELETE /accounts/:id** → `200`, `data`: `{ "id": "uuid" }`.
+
+Errors:
+- `404` — not found / not yours
+- `400` — referenced by movements: `"Account cannot be deleted because it is referenced by existing movements"` (`ValidationException`)
+
+### 5.3 Categories (owned by the caller)
+
+| Method | Path |
+|---|---|
+| GET | `/categories` |
+| POST | `/categories` |
+| PATCH | `/categories/:id` |
+| DELETE | `/categories/:id` |
+
+**There is no `GET /categories/:id` route.** To resolve a single category, fetch the full list
+via `GET /categories` and find it client-side.
+
+**GET /categories** → `data`: array of
+
+```json
+{ "id": "uuid", "name": "Groceries", "movementType": "Gasto", "isActive": true, "createdAt": "2026-07-09T00:00:00.000Z" }
+```
+
+**POST /categories**
+
+| Field | Type | Constraints |
+|---|---|---|
+| `name` | string | required, non-empty, max 50 chars |
+| `movementType` | string | required, must be exactly one of `"Gasto" \| "Ingreso" \| "Transferencia"` |
+
+Response `201`, `data`: `{ "id": "uuid" }`.
+
+Errors:
+- `400` — invalid `movementType`: `"movementType must be one of the following values: Gasto, Ingreso, Transferencia"`
+  (class-validator shape, `message` is a string array)
+- `409` — the `(name, movementType)` pair already exists **for this user**:
+  `"Category \"<name>\" already exists for movement type \"<movementType>\""`
+  (uniqueness is per-user — two different users can each have a "Groceries" category under the
+  same movement type without conflicting with each other)
+
+**PATCH /categories/:id**
+
+| Field | Type | Constraints |
+|---|---|---|
+| `name` | string, optional | non-empty, max 50 chars |
+| `movementType` | string, optional | one of `Gasto \| Ingreso \| Transferencia` if present (enforced again in the use case, not just at the DTO layer) |
+| `isActive` | boolean, optional | manual toggle |
+
+Response `200`, `data`: `{ "id": "uuid" }`.
+
+Errors: `404` (category not found / not yours), `400` (invalid `movementType`), and 409
+(uniqueness conflict, re-checked whenever `name` and/or `movementType` changes) as create.
+
+**DELETE /categories/:id** → `200`, `data`: `{ "id": "uuid" }`.
+
+Errors:
+- `404` — not found / not yours
+- `400` — referenced by movements: `"Category cannot be deleted because it is referenced by existing movements"`
+
+### 5.4 Movements (owned by the caller)
+
+| Method | Path |
+|---|---|
+| GET | `/movements` |
+| GET | `/movements/:id` |
+| POST | `/movements` |
+| PATCH | `/movements/:id` |
+| DELETE | `/movements/:id` |
+
+**`GET /movements` takes no query parameters** — no date-range filter, no `accountId` filter, no
+pagination. It always returns the caller's **entire** movement history in one array. If you need
+filtering/sorting/pagination in the UI, do it client-side or treat it as a gap to raise with the
+backend team.
+
+**GET /movements** and **GET /movements/:id** → `data` shape (array / single object):
+
+```json
+{
+  "id": "uuid",
+  "amountCents": 1500,
+  "date": "2026-07-09T00:00:00.000Z",
+  "note": "Weekly groceries",
+  "accountId": "uuid",
+  "toAccountId": null,
+  "categoryId": "uuid",
+  "movementType": "Gasto",
+  "createdAt": "2026-07-09T00:00:00.000Z"
+}
+```
+
+`note` and `toAccountId` are omitted/`undefined` when not set (do not assume they are always
+present keys). There is no `updatedAt` in the movement response shape.
+
+**POST /movements**
+
+| Field | Type | Constraints |
+|---|---|---|
+| `amountCents` | integer | required, `>= 1` (zero/negative rejected) |
+| `date` | string | required, ISO-8601 (a bare date like `"2026-07-09"` or a full datetime are both accepted) |
+| `note` | string, optional | max 255 chars |
+| `accountId` | string (UUID) | required, must be your own account |
+| `categoryId` | string (UUID) | **required on every movement, including transfers** — there is no cross-check that the category's own `movementType` matches this movement's `movementType`; any of your own categories is accepted |
+| `movementType` | string | required, must be exactly one of `"Gasto" \| "Ingreso" \| "Transferencia"` |
+| `toAccountId` | string (UUID), optional | see transfer rules below |
+
+Transfer rules (driven by the literal string `"Transferencia"` — no lookup call needed, just
+compare `movementType === "Transferencia"` client-side too if you want to mirror this logic in the
+UI):
+- If `movementType` is **not** `"Transferencia"`: `toAccountId` must be absent/omitted, else
+  `400` — `"toAccountId is only allowed for transfer movements"`.
+- If `movementType` **is** `"Transferencia"`:
+  - `toAccountId` is required, else `400` — `"Transfer movements require a toAccountId"`.
+  - `toAccountId === accountId` → `400` — `"Cannot transfer to the same account"`.
+  - `toAccountId` must also be your own account (same ownership check as `accountId`).
+  - A valid transfer debits `accountId` and credits `toAccountId` by the same `amountCents` — one
+    row represents both legs.
+
+Response `201`, `data`: `{ "id": "uuid" }`.
+
+Errors:
+- `400` — validation failures above, invalid `movementType`, or malformed body (class-validator shape)
+- `404` — `accountId`, `categoryId`, or `toAccountId` not found or not yours:
+  `"Account \"<id>\" not found"` / `"Category \"<id>\" not found"` — same ownership-scoped 404
+  pattern as everywhere else (never 403)
+
+**PATCH /movements/:id**
+
+All fields from create are optional and independently settable — send only what changed:
+`amountCents?`, `date?`, `note?`, `accountId?`, `categoryId?`, `movementType?`, `toAccountId?`
+(same type/constraint rules as create, just optional).
+
+**Important business rule for the UI**: transfer validation is re-run whenever `accountId`,
+`categoryId` is not involved but `movementType` **or** `toAccountId` **or** `accountId`
+changes. When re-validating, the "effective" `toAccountId` is the one you send in this request if
+present, otherwise the movement's existing `toAccountId` is reused. Practically: if you PATCH a
+transfer movement's `accountId` without resending `toAccountId`, the existing `toAccountId` is
+still validated against the new `accountId` (e.g. it will reject if the existing `toAccountId`
+now equals the new `accountId`). If you change `movementType` away from `"Transferencia"` without
+clearing `toAccountId` server-side data, and the movement still has a stored `toAccountId`, the
+"not allowed for non-transfer" rule fires using that stored value.
+
+Response `200`, `data`: `{ "id": "uuid" }`.
+
+Errors: same 400/404 set as create, plus `404` — `"Movement \"<id>\" not found"` if the movement
+itself doesn't exist or isn't yours.
+
+**DELETE /movements/:id** → `200`, `data`: `{ "id": "uuid" }`. No delete-guard — movements have
+nothing referencing them, so delete always succeeds once ownership/existence is confirmed.
+
+Error: `404` — `"Movement \"<id>\" not found"`.
+
+### 5.5 Reports
+
+| Method | Path |
+|---|---|
+| GET | `/reports/balance` |
+
+**GET /reports/balance** → `200`, `data`:
+
+```json
+{
+  "accounts": [
+    { "id": "uuid", "name": "Main Checking", "balanceCents": 123456 },
+    { "id": "uuid", "name": "Cash Wallet", "balanceCents": 5000 }
+  ],
+  "totalBalanceCents": 128456
+}
+```
+
+One row per the caller's account plus the sum across all of them. No filtering (e.g. by date
+range) — this is a full-history snapshot.
+
+### 5.6 Health
+
+| Method | Path |
+|---|---|
+| GET | `/health` |
+
+Public, no auth required. `200` → `{"data":{"database":"up"}}`. `503` if the database is
+unreachable — useful for an app-level "backend is down" banner, not something end users interact
+with directly.
+
+## 6. Business rules a frontend must respect
+
+- **Money is always integer cents on the wire.** Never send a float; only format
+  `amountCents / 100` for display.
+- **Never send `userId` anywhere.** It doesn't exist on any request DTO — the API derives it
+  from the bearer token. Sending one has no effect (stripped by `whitelist: true`).
+- **Ownership is enforced by indistinguishable 404s, never 403.** A resource that belongs to a
+  different user and a resource that simply doesn't exist return the exact same
+  `404 NotFoundException` shape. Do not build any UI logic that expects a distinct
+  "forbidden" state for `Account`/`Category`/`Movement` — there isn't one.
+- **Account `type` is a closed enum**: `cash | bank | card`. Build the create/edit account form
+  as a fixed select, not a free-text field — anything else is rejected with 400.
+- **`movementType` is also a closed enum**: `Gasto | Ingreso | Transferencia` (see §5.0). Build
+  the category/movement type picker as a fixed select too — no API call needed to populate it.
+- **A movement's `categoryId` is always required**, even for transfers. There's no
+  category-vs-movement-type cross-validation, so the UI is free to let users pick any of their
+  categories regardless of the movement's type, but should probably still filter the category
+  picker by matching `movementType` for a sane UX (the backend won't do it for you).
+- **Transfers need `toAccountId`; everything else must omit it.** Drive the "is this a transfer"
+  form branch off `movementType === "Transferencia"` directly — it's a hardcoded string, not an id
+  you need to resolve via an API call.
+- **Delete guards exist for `Account` and `Category`** (blocked with `400` if referenced by
+  existing movements, respectively) but **not** for `Movement` itself (movements are always
+  deletable, nothing references them). Build delete-confirmation UX accordingly — a failed
+  account/category delete should surface the exact `400` message to the user (it's already a
+  complete, human-readable sentence).
+- **`Category` has no GET-by-id route.** Any single-item lookup for it must be done by filtering
+  the list endpoint client-side.
+- **Auth rate limiting is shared and combined** across `/auth/sign-up` and `/auth/sign-in` — 5
+  requests/60s per IP total, not 5 each. Handle `429` on the auth screen without hammering retry.
+- **JWT is fully stateless.** No logout endpoint, no server-side revocation, no refresh token.
+  "Log out" = discard the token client-side. Token expiry (~2h) surfaces only as a `401` on the
+  next request — there is no proactive "your session is about to expire" signal from the API.
+- **Extra/unknown JSON fields are silently dropped**, not rejected — do not rely on a 400 to
+  catch a typo'd field name in a request body; it will just be ignored.
+
+## 7. Things verified live but worth double-checking if the API changes
+
+Everything above was cross-checked against the actual controller/DTO/use-case source as of this
+writing. If the API's behavior ever seems to contradict this document, trust a fresh `curl`
+against the running instance over this file — treat this as a snapshot, not a live contract.

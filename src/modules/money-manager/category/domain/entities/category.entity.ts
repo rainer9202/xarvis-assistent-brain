@@ -1,15 +1,15 @@
-import { BaseEntity, BaseEntityProps } from '@shared/domain/base.entity';
+import { BaseEntity, BaseEntityProps } from '@domain/base.entity';
 
 export type CategoryProps = BaseEntityProps & {
   name: string;
-  movementTypeId: string;
+  movementType: string;
   userId: string;
   isActive?: boolean;
 };
 
 export class CategoryEntity extends BaseEntity {
   private _name: string = '';
-  private _movementTypeId: string = '';
+  private _movementType: string = '';
   private _userId: string = '';
   private _isActive?: boolean;
 
@@ -17,7 +17,7 @@ export class CategoryEntity extends BaseEntity {
     super(props);
     if (props) {
       this._name = props.name;
-      this._movementTypeId = props.movementTypeId;
+      this._movementType = props.movementType;
       this._userId = props.userId;
       this._isActive = props.isActive;
     }
@@ -35,12 +35,12 @@ export class CategoryEntity extends BaseEntity {
     return this._userId;
   }
 
-  get movementTypeId(): string {
-    return this._movementTypeId;
+  get movementType(): string {
+    return this._movementType;
   }
 
-  set movementTypeId(value: string) {
-    this._movementTypeId = value;
+  set movementType(value: string) {
+    this._movementType = value;
   }
 
   get isActive(): boolean | undefined {

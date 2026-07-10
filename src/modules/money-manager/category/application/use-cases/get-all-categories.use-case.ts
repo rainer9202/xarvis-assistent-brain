@@ -1,12 +1,12 @@
 import { Inject, Injectable } from '@nestjs/common';
-import { DomainException } from '@shared/exceptions/domain.exception';
+import { DomainException } from '@domain/exceptions/domain.exception';
 import { CATEGORY_REPOSITORY } from '../../domain/ports/category.repository.port';
 import type { CategoryRepositoryPort } from '../../domain/ports/category.repository.port';
 
 export type GetAllCategoriesResponse = {
   id: string;
   name: string;
-  movementTypeId: string;
+  movementType: string;
   isActive: boolean;
   createdAt: Date;
 };
@@ -24,7 +24,7 @@ export class GetAllCategoriesUseCase {
       return entities.map((item) => ({
         id: item.id!,
         name: item.name,
-        movementTypeId: item.movementTypeId,
+        movementType: item.movementType,
         isActive: item.isActive!,
         createdAt: item.createdAt!,
       }));

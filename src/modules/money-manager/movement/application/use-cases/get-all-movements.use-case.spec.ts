@@ -27,7 +27,7 @@ describe('GetAllMovementsUseCase', () => {
       note: 'Weekly groceries',
       accountId: 'acc-1',
       categoryId: 'cat-1',
-      movementTypeId: 'mt-1',
+      movementType: 'Gasto',
       userId: 'user-1',
       createdAt,
     });
@@ -44,7 +44,7 @@ describe('GetAllMovementsUseCase', () => {
         note: 'Weekly groceries',
         accountId: 'acc-1',
         categoryId: 'cat-1',
-        movementTypeId: 'mt-1',
+        movementType: 'Gasto',
         createdAt,
       },
     ]);
@@ -60,7 +60,7 @@ describe('GetAllMovementsUseCase', () => {
       accountId: 'acc-1',
       toAccountId: 'acc-2',
       categoryId: 'cat-1',
-      movementTypeId: 'mt-transfer',
+      movementType: 'Transferencia',
       userId: 'user-1',
       createdAt,
     });

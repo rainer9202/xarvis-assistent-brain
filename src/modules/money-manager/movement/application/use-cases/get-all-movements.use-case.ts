@@ -1,5 +1,5 @@
 import { Inject, Injectable } from '@nestjs/common';
-import { DomainException } from '@shared/exceptions/domain.exception';
+import { DomainException } from '@domain/exceptions/domain.exception';
 import { MOVEMENT_REPOSITORY } from '../../domain/ports/movement.repository.port';
 import type { MovementRepositoryPort } from '../../domain/ports/movement.repository.port';
 
@@ -11,7 +11,7 @@ export type GetAllMovementsResponse = {
   accountId: string;
   toAccountId?: string;
   categoryId: string;
-  movementTypeId: string;
+  movementType: string;
   createdAt: Date;
 };
 
@@ -33,7 +33,7 @@ export class GetAllMovementsUseCase {
         accountId: item.accountId,
         toAccountId: item.toAccountId,
         categoryId: item.categoryId,
-        movementTypeId: item.movementTypeId,
+        movementType: item.movementType,
         createdAt: item.createdAt!,
       }));
     } catch (error) {

@@ -8,8 +8,8 @@ describe('Movement (e2e)', () => {
   let prisma: PrismaService;
   let token: string;
   let userId: string;
-  let expenseTypeId: string;
-  let transferTypeId: string;
+  const expenseType = 'Gasto';
+  const transferType = 'Transferencia';
   let categoryId: string;
   let accountA: string;
   let accountB: string;
@@ -19,19 +19,10 @@ describe('Movement (e2e)', () => {
     ({ app, prisma } = await createTestApp());
     ({ token, userId } = await createAuthenticatedUser(app));
 
-    expenseTypeId = (
-      await prisma.movementType.findFirstOrThrow({ where: { name: 'expense' } })
-    ).id;
-    transferTypeId = (
-      await prisma.movementType.findFirstOrThrow({
-        where: { name: 'transfer' },
-      })
-    ).id;
-
     const category = await prisma.category.create({
       data: {
         name: `MovementSpec-${Date.now()}`,
-        movementTypeId: expenseTypeId,
+        movementType: expenseType,
         userId,
       },
     });
@@ -67,7 +58,7 @@ describe('Movement (e2e)', () => {
         date: new Date().toISOString(),
         accountId: accountA,
         categoryId,
-        movementTypeId: expenseTypeId,
+        movementType: expenseType,
       })
       .expect(201);
     movementIds.push(res.body.data.id);
@@ -91,7 +82,7 @@ describe('Movement (e2e)', () => {
         accountId: accountA,
         toAccountId: accountB,
         categoryId,
-        movementTypeId: transferTypeId,
+        movementType: transferType,
       })
       .expect(201);
     movementIds.push(res.body.data.id);
@@ -122,7 +113,7 @@ describe('Movement (e2e)', () => {
         date: new Date().toISOString(),
         accountId: accountA,
         categoryId,
-        movementTypeId: transferTypeId,
+        movementType: transferType,
       })
       .expect(400);
   });
@@ -137,7 +128,7 @@ describe('Movement (e2e)', () => {
         accountId: accountA,
         toAccountId: accountB,
         categoryId,
-        movementTypeId: expenseTypeId,
+        movementType: expenseType,
       })
       .expect(400);
   });
@@ -152,7 +143,7 @@ describe('Movement (e2e)', () => {
         accountId: accountA,
         toAccountId: accountA,
         categoryId,
-        movementTypeId: transferTypeId,
+        movementType: transferType,
       })
       .expect(400);
   });
@@ -166,7 +157,7 @@ describe('Movement (e2e)', () => {
         date: new Date().toISOString(),
         accountId: accountA,
         categoryId,
-        movementTypeId: expenseTypeId,
+        movementType: expenseType,
       })
       .expect(201);
     movementIds.push(createRes.body.data.id);
@@ -174,7 +165,7 @@ describe('Movement (e2e)', () => {
     await request(app.getHttpServer())
       .patch(`/movements/${createRes.body.data.id}`)
       .set('Authorization', `Bearer ${token}`)
-      .send({ movementTypeId: transferTypeId })
+      .send({ movementType: transferType })
       .expect(400);
   });
 
@@ -187,7 +178,21 @@ describe('Movement (e2e)', () => {
         date: new Date().toISOString(),
         accountId: accountA,
         categoryId,
-        movementTypeId: expenseTypeId,
+        movementType: expenseType,
+      })
+      .expect(400);
+  });
+
+  it('rejects an invalid movementType', async () => {
+    await request(app.getHttpServer())
+      .post('/movements')
+      .set('Authorization', `Bearer ${token}`)
+      .send({
+        amountCents: 500,
+        date: new Date().toISOString(),
+        accountId: accountA,
+        categoryId,
+        movementType: 'NotARealType',
       })
       .expect(400);
   });
@@ -201,7 +206,7 @@ describe('Movement (e2e)', () => {
         date: new Date().toISOString(),
         accountId: accountA,
         categoryId,
-        movementTypeId: expenseTypeId,
+        movementType: expenseType,
       })
       .expect(201);
 
@@ -232,7 +237,7 @@ describe('Movement (e2e)', () => {
         date: new Date().toISOString(),
         accountId: accountA,
         categoryId,
-        movementTypeId: expenseTypeId,
+        movementType: expenseType,
       })
       .expect(404);
 
@@ -244,7 +249,7 @@ describe('Movement (e2e)', () => {
     const otherCategoryRes = await request(app.getHttpServer())
       .post('/categories')
       .set('Authorization', `Bearer ${otherToken}`)
-      .send({ name: `OtherCat-${Date.now()}`, movementTypeId: expenseTypeId })
+      .send({ name: `OtherCat-${Date.now()}`, movementType: expenseType })
       .expect(201);
 
     await request(app.getHttpServer())
@@ -256,7 +261,7 @@ describe('Movement (e2e)', () => {
         accountId: otherAccountRes.body.data.id,
         toAccountId: accountA,
         categoryId: otherCategoryRes.body.data.id,
-        movementTypeId: transferTypeId,
+        movementType: transferType,
       })
       .expect(404);
 

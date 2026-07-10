@@ -2,14 +2,14 @@ import { Inject, Injectable } from '@nestjs/common';
 import {
   DomainException,
   NotFoundException,
-} from '@shared/exceptions/domain.exception';
+} from '@domain/exceptions/domain.exception';
 import { CATEGORY_REPOSITORY } from '../../domain/ports/category.repository.port';
 import type { CategoryRepositoryPort } from '../../domain/ports/category.repository.port';
 
 export type GetCategoryByIdResponse = {
   id: string;
   name: string;
-  movementTypeId: string;
+  movementType: string;
   isActive: boolean;
 };
 
@@ -28,7 +28,7 @@ export class GetCategoryByIdUseCase {
       return {
         id: category.id!,
         name: category.name,
-        movementTypeId: category.movementTypeId,
+        movementType: category.movementType,
         isActive: category.isActive!,
       };
     } catch (error) {

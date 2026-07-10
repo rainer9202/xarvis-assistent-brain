@@ -1,12 +1,11 @@
 import {
   NotFoundException,
   ValidationException,
-} from '@shared/exceptions/domain.exception';
+} from '@domain/exceptions/domain.exception';
 import { MovementEntity } from '../../domain/entities/movement.entity';
 import type { MovementRepositoryPort } from '../../domain/ports/movement.repository.port';
 import type { GetAccountByIdUseCase } from '@modules/money-manager/account/application/use-cases/get-account-by-id.use-case';
 import type { GetCategoryByIdUseCase } from '@modules/money-manager/category/application/use-cases/get-category-by-id.use-case';
-import type { GetMovementTypeByIdUseCase } from '@modules/money-manager/movement-type/application/use-cases/get-movement-type-by-id.use-case';
 import {
   UpdateMovementCommand,
   UpdateMovementUseCase,
@@ -20,8 +19,6 @@ describe('UpdateMovementUseCase', () => {
   let getAccountById: GetAccountByIdUseCase;
   let getCategoryByIdExecute: jest.Mock;
   let getCategoryById: GetCategoryByIdUseCase;
-  let getMovementTypeByIdExecute: jest.Mock;
-  let getMovementTypeById: GetMovementTypeByIdUseCase;
   let useCase: UpdateMovementUseCase;
 
   const date = new Date('2024-01-01T00:00:00Z');
@@ -34,7 +31,7 @@ describe('UpdateMovementUseCase', () => {
       note: 'Weekly groceries',
       accountId: 'acc-1',
       categoryId: 'cat-1',
-      movementTypeId: 'mt-1',
+      movementType: 'Gasto',
       userId: 'user-1',
     });
 
@@ -56,15 +53,10 @@ describe('UpdateMovementUseCase', () => {
     getCategoryById = {
       execute: getCategoryByIdExecute,
     } as unknown as GetCategoryByIdUseCase;
-    getMovementTypeByIdExecute = jest.fn();
-    getMovementTypeById = {
-      execute: getMovementTypeByIdExecute,
-    } as unknown as GetMovementTypeByIdUseCase;
     useCase = new UpdateMovementUseCase(
       repository,
       getAccountById,
       getCategoryById,
-      getMovementTypeById,
     );
   });
 
@@ -81,14 +73,13 @@ describe('UpdateMovementUseCase', () => {
     expect(findById).toHaveBeenCalledWith('mov-1', 'user-1');
     expect(getAccountByIdExecute).not.toHaveBeenCalled();
     expect(getCategoryByIdExecute).not.toHaveBeenCalled();
-    expect(getMovementTypeByIdExecute).not.toHaveBeenCalled();
     expect(update).toHaveBeenCalledWith(
       expect.objectContaining({
         amountCents: 2000,
         note: 'Weekly groceries',
         accountId: 'acc-1',
         categoryId: 'cat-1',
-        movementTypeId: 'mt-1',
+        movementType: 'Gasto',
       }),
     );
     expect(result).toEqual({ id: 'mov-1' });
@@ -146,11 +137,8 @@ describe('UpdateMovementUseCase', () => {
     expect(update).not.toHaveBeenCalled();
   });
 
-  it('re-validates the movement type when movementTypeId is provided, propagating NotFoundException', async () => {
+  it('throws ValidationException when movementType is invalid', async () => {
     findById.mockResolvedValue(existing());
-    getMovementTypeByIdExecute.mockRejectedValue(
-      new NotFoundException('Movement type "missing" not found'),
-    );
 
     await expect(
       useCase.execute(
@@ -162,14 +150,14 @@ describe('UpdateMovementUseCase', () => {
           undefined,
           undefined,
           undefined,
-          'missing',
+          'Invalid',
         ),
       ),
-    ).rejects.toThrow(NotFoundException);
+    ).rejects.toThrow(ValidationException);
     expect(update).not.toHaveBeenCalled();
   });
 
-  it('applies accountId, categoryId, and movementTypeId after successful re-validation', async () => {
+  it('applies accountId, categoryId, and movementType after successful re-validation', async () => {
     findById.mockResolvedValue(existing());
     getAccountByIdExecute.mockResolvedValue({
       id: 'acc-2',
@@ -180,13 +168,8 @@ describe('UpdateMovementUseCase', () => {
     getCategoryByIdExecute.mockResolvedValue({
       id: 'cat-2',
       name: 'Rent',
-      movementTypeId: 'mt-2',
+      movementType: 'Ingreso',
       isActive: true,
-    });
-    getMovementTypeByIdExecute.mockResolvedValue({
-      id: 'mt-2',
-      name: 'income',
-      isDefault: true,
     });
     update.mockImplementation((entity: MovementEntity) =>
       Promise.resolve(entity),
@@ -201,18 +184,17 @@ describe('UpdateMovementUseCase', () => {
         undefined,
         'acc-2',
         'cat-2',
-        'mt-2',
+        'Ingreso',
       ),
     );
 
     expect(getAccountByIdExecute).toHaveBeenCalledWith('acc-2', 'user-1');
     expect(getCategoryByIdExecute).toHaveBeenCalledWith('cat-2', 'user-1');
-    expect(getMovementTypeByIdExecute).toHaveBeenCalledWith('mt-2');
     expect(update).toHaveBeenCalledWith(
       expect.objectContaining({
         accountId: 'acc-2',
         categoryId: 'cat-2',
-        movementTypeId: 'mt-2',
+        movementType: 'Ingreso',
       }),
     );
     expect(result).toEqual({ id: 'mov-1' });
@@ -227,7 +209,7 @@ describe('UpdateMovementUseCase', () => {
         accountId: 'acc-1',
         toAccountId: 'acc-2',
         categoryId: 'cat-1',
-        movementTypeId: 'mt-transfer',
+        movementType: 'Transferencia',
         userId: 'user-1',
       });
 
@@ -240,11 +222,6 @@ describe('UpdateMovementUseCase', () => {
           isActive: true,
         }),
       );
-      getMovementTypeByIdExecute.mockResolvedValue({
-        id: 'mt-transfer',
-        name: 'transfer',
-        isDefault: true,
-      });
       update.mockImplementation((entity: MovementEntity) =>
         Promise.resolve(entity),
       );
@@ -262,7 +239,7 @@ describe('UpdateMovementUseCase', () => {
           undefined,
           undefined,
           undefined,
-          'mt-transfer',
+          'Transferencia',
           'acc-2',
         ),
       );
@@ -286,7 +263,7 @@ describe('UpdateMovementUseCase', () => {
             undefined,
             undefined,
             undefined,
-            'mt-transfer',
+            'Transferencia',
           ),
         ),
       ).rejects.toThrow(ValidationException);
@@ -349,11 +326,6 @@ describe('UpdateMovementUseCase', () => {
 
     it('throws ValidationException when providing a toAccountId for a non-transfer movement', async () => {
       findById.mockResolvedValue(existing());
-      getMovementTypeByIdExecute.mockResolvedValue({
-        id: 'mt-1',
-        name: 'expense',
-        isDefault: true,
-      });
 
       await expect(
         useCase.execute(

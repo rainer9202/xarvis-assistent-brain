@@ -38,7 +38,7 @@ export class PrismaMovementRepository implements MovementRepositoryPort {
         accountId: entity.accountId,
         toAccountId: entity.toAccountId ?? null,
         categoryId: entity.categoryId,
-        movementTypeId: entity.movementTypeId,
+        movementType: entity.movementType,
         userId: entity.userId,
       },
     });
@@ -56,7 +56,7 @@ export class PrismaMovementRepository implements MovementRepositoryPort {
         accountId: entity.accountId,
         toAccountId: entity.toAccountId ?? null,
         categoryId: entity.categoryId,
-        movementTypeId: entity.movementTypeId,
+        movementType: entity.movementType,
       },
     });
 
@@ -84,7 +84,7 @@ export class PrismaMovementRepository implements MovementRepositoryPort {
       accountId: record.accountId,
       toAccountId: record.toAccountId ?? undefined,
       categoryId: record.categoryId,
-      movementTypeId: record.movementTypeId,
+      movementType: record.movementType,
       userId: record.userId,
       createdAt: record.createdAt,
       updatedAt: record.updatedAt,

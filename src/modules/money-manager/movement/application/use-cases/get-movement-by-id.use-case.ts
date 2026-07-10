@@ -2,7 +2,7 @@ import { Inject, Injectable } from '@nestjs/common';
 import {
   DomainException,
   NotFoundException,
-} from '@shared/exceptions/domain.exception';
+} from '@domain/exceptions/domain.exception';
 import { MOVEMENT_REPOSITORY } from '../../domain/ports/movement.repository.port';
 import type { MovementRepositoryPort } from '../../domain/ports/movement.repository.port';
 
@@ -14,7 +14,7 @@ export type GetMovementByIdResponse = {
   accountId: string;
   toAccountId?: string;
   categoryId: string;
-  movementTypeId: string;
+  movementType: string;
   createdAt: Date;
 };
 
@@ -38,7 +38,7 @@ export class GetMovementByIdUseCase {
         accountId: movement.accountId,
         toAccountId: movement.toAccountId,
         categoryId: movement.categoryId,
-        movementTypeId: movement.movementTypeId,
+        movementType: movement.movementType,
         createdAt: movement.createdAt!,
       };
     } catch (error) {

@@ -77,7 +77,7 @@ describe('MovementController', () => {
           note: 'Weekly groceries',
           accountId: 'acc-1',
           categoryId: 'cat-1',
-          movementTypeId: 'mt-1',
+          movementType: 'Gasto',
           createdAt: new Date('2024-01-01T00:00:00Z'),
         },
       ];
@@ -102,7 +102,7 @@ describe('MovementController', () => {
         note: 'Weekly groceries',
         accountId: 'acc-1',
         categoryId: 'cat-1',
-        movementTypeId: 'mt-1',
+        movementType: 'Gasto',
         createdAt: new Date('2024-01-01T00:00:00Z'),
       };
       getByIdExecute.mockResolvedValue(data);
@@ -125,7 +125,7 @@ describe('MovementController', () => {
         note: 'Weekly groceries',
         accountId: 'acc-1',
         categoryId: 'cat-1',
-        movementTypeId: 'mt-1',
+        movementType: 'Gasto',
       };
       let receivedCommand: CreateMovementCommand | undefined;
       createExecute.mockImplementation((command: CreateMovementCommand) => {
@@ -141,7 +141,7 @@ describe('MovementController', () => {
           note: 'Weekly groceries',
           accountId: 'acc-1',
           categoryId: 'cat-1',
-          movementTypeId: 'mt-1',
+          movementType: 'Gasto',
           userId: user.id,
         }),
       );
@@ -159,7 +159,7 @@ describe('MovementController', () => {
         date: '2024-01-01T00:00:00.000Z',
         accountId: 'acc-1',
         categoryId: 'cat-1',
-        movementTypeId: 'mt-transfer',
+        movementType: 'Transferencia',
         toAccountId: 'acc-2',
       };
       let receivedCommand: CreateMovementCommand | undefined;

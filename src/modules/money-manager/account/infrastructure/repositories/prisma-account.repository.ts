@@ -15,8 +15,8 @@ type Decimal = Prisma.Decimal;
 // The only MovementType name that flips balance sign for regular (non-transfer)
 // movements; income adds. Transfer movements are handled separately below —
 // they move money between two accounts and are never counted as income/expense.
-const EXPENSE_TYPE_NAME = 'expense';
-const TRANSFER_TYPE_NAME = 'transfer';
+const EXPENSE_TYPE_NAME = 'Gasto';
+const TRANSFER_TYPE_NAME = 'Transferencia';
 
 @Injectable()
 export class PrismaAccountRepository implements AccountRepositoryPort {
@@ -83,52 +83,45 @@ export class PrismaAccountRepository implements AccountRepositoryPort {
     });
     if (!account) return null;
 
-    const { typeNameById, transferTypeId } = await this.loadTransferContext();
     let balanceCents = 0;
 
     const nonTransferSums = await this.prisma.movement.groupBy({
-      by: ['movementTypeId'],
+      by: ['movementType'],
       where: {
         accountId: id,
-        ...(transferTypeId ? { movementTypeId: { not: transferTypeId } } : {}),
+        movementType: { not: TRANSFER_TYPE_NAME },
       },
       _sum: { amount: true },
     });
     for (const sum of nonTransferSums) {
       const cents = sum._sum.amount ? this.amountToCents(sum._sum.amount) : 0;
-      const sign =
-        typeNameById.get(sum.movementTypeId) === EXPENSE_TYPE_NAME ? -1 : 1;
+      const sign = sum.movementType === EXPENSE_TYPE_NAME ? -1 : 1;
       balanceCents += sign * cents;
     }
 
-    if (transferTypeId) {
-      const [transfersOut, transfersIn] = await Promise.all([
-        this.prisma.movement.aggregate({
-          where: { accountId: id, movementTypeId: transferTypeId },
-          _sum: { amount: true },
-        }),
-        this.prisma.movement.aggregate({
-          where: { toAccountId: id, movementTypeId: transferTypeId },
-          _sum: { amount: true },
-        }),
-      ]);
-      if (transfersOut._sum.amount)
-        balanceCents -= this.amountToCents(transfersOut._sum.amount);
-      if (transfersIn._sum.amount)
-        balanceCents += this.amountToCents(transfersIn._sum.amount);
-    }
+    const [transfersOut, transfersIn] = await Promise.all([
+      this.prisma.movement.aggregate({
+        where: { accountId: id, movementType: TRANSFER_TYPE_NAME },
+        _sum: { amount: true },
+      }),
+      this.prisma.movement.aggregate({
+        where: { toAccountId: id, movementType: TRANSFER_TYPE_NAME },
+        _sum: { amount: true },
+      }),
+    ]);
+    if (transfersOut._sum.amount)
+      balanceCents -= this.amountToCents(transfersOut._sum.amount);
+    if (transfersIn._sum.amount)
+      balanceCents += this.amountToCents(transfersIn._sum.amount);
 
     return { account: this.toEntity(account), balanceCents };
   }
 
   async findAllWithBalance(userId: string): Promise<AccountBalance[]> {
-    const [accounts, { typeNameById, transferTypeId }] = await Promise.all([
-      this.prisma.account.findMany({
-        where: { userId },
-        orderBy: { createdAt: 'asc' },
-      }),
-      this.loadTransferContext(),
-    ]);
+    const accounts = await this.prisma.account.findMany({
+      where: { userId },
+      orderBy: { createdAt: 'asc' },
+    });
     const accountIds = accounts.map((account) => account.id);
 
     const balanceByAccountId = new Map<string, number>();
@@ -140,68 +133,50 @@ export class PrismaAccountRepository implements AccountRepositoryPort {
     };
 
     const nonTransferSums = await this.prisma.movement.groupBy({
-      by: ['accountId', 'movementTypeId'],
+      by: ['accountId', 'movementType'],
       where: {
         accountId: { in: accountIds },
-        ...(transferTypeId ? { movementTypeId: { not: transferTypeId } } : {}),
+        movementType: { not: TRANSFER_TYPE_NAME },
       },
       _sum: { amount: true },
     });
     for (const sum of nonTransferSums) {
       const cents = sum._sum.amount ? this.amountToCents(sum._sum.amount) : 0;
-      const sign =
-        typeNameById.get(sum.movementTypeId) === EXPENSE_TYPE_NAME ? -1 : 1;
+      const sign = sum.movementType === EXPENSE_TYPE_NAME ? -1 : 1;
       addToBalance(sum.accountId, sign * cents);
     }
 
-    if (transferTypeId) {
-      const [transfersOut, transfersIn] = await Promise.all([
-        this.prisma.movement.groupBy({
-          by: ['accountId'],
-          where: {
-            movementTypeId: transferTypeId,
-            accountId: { in: accountIds },
-          },
-          _sum: { amount: true },
-        }),
-        this.prisma.movement.groupBy({
-          by: ['toAccountId'],
-          where: {
-            movementTypeId: transferTypeId,
-            toAccountId: { in: accountIds },
-          },
-          _sum: { amount: true },
-        }),
-      ]);
-      for (const sum of transfersOut) {
-        const cents = sum._sum.amount ? this.amountToCents(sum._sum.amount) : 0;
-        addToBalance(sum.accountId, -cents);
-      }
-      for (const sum of transfersIn) {
-        const cents = sum._sum.amount ? this.amountToCents(sum._sum.amount) : 0;
-        addToBalance(sum.toAccountId!, cents);
-      }
+    const [transfersOut, transfersIn] = await Promise.all([
+      this.prisma.movement.groupBy({
+        by: ['accountId'],
+        where: {
+          movementType: TRANSFER_TYPE_NAME,
+          accountId: { in: accountIds },
+        },
+        _sum: { amount: true },
+      }),
+      this.prisma.movement.groupBy({
+        by: ['toAccountId'],
+        where: {
+          movementType: TRANSFER_TYPE_NAME,
+          toAccountId: { in: accountIds },
+        },
+        _sum: { amount: true },
+      }),
+    ]);
+    for (const sum of transfersOut) {
+      const cents = sum._sum.amount ? this.amountToCents(sum._sum.amount) : 0;
+      addToBalance(sum.accountId, -cents);
+    }
+    for (const sum of transfersIn) {
+      const cents = sum._sum.amount ? this.amountToCents(sum._sum.amount) : 0;
+      addToBalance(sum.toAccountId!, cents);
     }
 
     return accounts.map((record) => ({
       account: this.toEntity(record),
       balanceCents: balanceByAccountId.get(record.id) ?? 0,
     }));
-  }
-
-  private async loadTransferContext(): Promise<{
-    typeNameById: Map<string, string>;
-    transferTypeId?: string;
-  }> {
-    const movementTypes = await this.prisma.movementType.findMany();
-    const typeNameById = new Map(
-      movementTypes.map((type) => [type.id, type.name]),
-    );
-    const transferTypeId = movementTypes.find(
-      (type) => type.name === TRANSFER_TYPE_NAME,
-    )?.id;
-
-    return { typeNameById, transferTypeId };
   }
 
   private amountToCents(amount: Decimal): number {
