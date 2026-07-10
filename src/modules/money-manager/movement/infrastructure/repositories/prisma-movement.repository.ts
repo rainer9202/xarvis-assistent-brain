@@ -1,7 +1,10 @@
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from '@config/database/prisma.service';
 import { MovementEntity } from '../../domain/entities/movement.entity';
-import type { MovementRepositoryPort } from '../../domain/ports/movement.repository.port';
+import type {
+  MovementFilters,
+  MovementRepositoryPort,
+} from '../../domain/ports/movement.repository.port';
 import { MovementModel } from '@config/database/generated/prisma/models.js';
 import type { Prisma } from '@config/database/generated/prisma/client.js';
 
@@ -13,15 +16,33 @@ type Decimal = Prisma.Decimal;
 export class PrismaMovementRepository implements MovementRepositoryPort {
   constructor(private readonly prisma: PrismaService) {}
 
-  async findAll(userId: string, accountId?: string): Promise<MovementEntity[]> {
+  async findAll(
+    userId: string,
+    filters?: MovementFilters,
+  ): Promise<MovementEntity[]> {
+    const monthRange = filters?.month
+      ? this.monthToDateRange(filters.month)
+      : undefined;
+
     const records = await this.prisma.movement.findMany({
       where: {
         userId,
         // Matches both directions so a transfer INTO this account shows up
         // in its history too, not just movements originating from it —
         // mirrors the same OR pattern countMovementsByAccountId() uses.
-        ...(accountId
-          ? { OR: [{ accountId }, { toAccountId: accountId }] }
+        ...(filters?.accountId
+          ? {
+              OR: [
+                { accountId: filters.accountId },
+                { toAccountId: filters.accountId },
+              ],
+            }
+          : {}),
+        ...(filters?.movementType
+          ? { movementType: filters.movementType }
+          : {}),
+        ...(monthRange
+          ? { date: { gte: monthRange.start, lt: monthRange.end } }
           : {}),
       },
       orderBy: { date: 'desc' },
@@ -73,6 +94,15 @@ export class PrismaMovementRepository implements MovementRepositoryPort {
 
   async delete(entity: MovementEntity): Promise<void> {
     await this.prisma.movement.delete({ where: { id: entity.id! } });
+  }
+
+  // GetMovementsQueryDto already validates the YYYY-MM shape, so this only
+  // ever runs on a well-formed string.
+  private monthToDateRange(month: string): { start: Date; end: Date } {
+    const [year, monthNumber] = month.split('-').map(Number);
+    const start = new Date(Date.UTC(year, monthNumber - 1, 1));
+    const end = new Date(Date.UTC(year, monthNumber, 1));
+    return { start, end };
   }
 
   private centsToDecimalInput(cents: number): string {

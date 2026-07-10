@@ -155,6 +155,77 @@ describe('Movement (e2e)', () => {
     expect(idsForB).not.toContain(expenseRes.body.data.id);
   });
 
+  it('filters GET /movements by movementType and by month', async () => {
+    const oldExpenseRes = await request(app.getHttpServer())
+      .post('/movements')
+      .set('Authorization', `Bearer ${token}`)
+      .send({
+        amountCents: 700,
+        date: '2020-03-15T00:00:00.000Z',
+        accountId: accountA,
+        categoryId,
+        movementType: expenseType,
+      })
+      .expect(201);
+    movementIds.push(oldExpenseRes.body.data.id);
+
+    const oldTransferRes = await request(app.getHttpServer())
+      .post('/movements')
+      .set('Authorization', `Bearer ${token}`)
+      .send({
+        amountCents: 400,
+        date: '2020-03-20T00:00:00.000Z',
+        accountId: accountA,
+        toAccountId: accountB,
+        categoryId,
+        movementType: transferType,
+      })
+      .expect(201);
+    movementIds.push(oldTransferRes.body.data.id);
+
+    const byMonth = await request(app.getHttpServer())
+      .get('/movements')
+      .query({ month: '2020-03' })
+      .set('Authorization', `Bearer ${token}`)
+      .expect(200);
+    const idsByMonth = byMonth.body.data.map((m: { id: string }) => m.id);
+    expect(idsByMonth).toEqual(
+      expect.arrayContaining([
+        oldExpenseRes.body.data.id,
+        oldTransferRes.body.data.id,
+      ]),
+    );
+
+    const byMonthAndType = await request(app.getHttpServer())
+      .get('/movements')
+      .query({ month: '2020-03', movementType: transferType })
+      .set('Authorization', `Bearer ${token}`)
+      .expect(200);
+    const idsByMonthAndType = byMonthAndType.body.data.map(
+      (m: { id: string }) => m.id,
+    );
+    expect(idsByMonthAndType).toEqual([oldTransferRes.body.data.id]);
+
+    await request(app.getHttpServer())
+      .get('/movements')
+      .query({ month: '2019-01' })
+      .set('Authorization', `Bearer ${token}`)
+      .expect(200)
+      .expect((res) => {
+        const ids = res.body.data.map((m: { id: string }) => m.id);
+        expect(ids).not.toContain(oldExpenseRes.body.data.id);
+        expect(ids).not.toContain(oldTransferRes.body.data.id);
+      });
+  });
+
+  it('🔍 rejects a malformed month query param', async () => {
+    await request(app.getHttpServer())
+      .get('/movements')
+      .query({ month: '2020-3' })
+      .set('Authorization', `Bearer ${token}`)
+      .expect(400);
+  });
+
   it('🔍 rejects a transfer without toAccountId', async () => {
     await request(app.getHttpServer())
       .post('/movements')

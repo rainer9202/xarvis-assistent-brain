@@ -85,19 +85,30 @@ describe('MovementController', () => {
 
       const result = await controller.findAll({}, user);
 
-      expect(getAllExecute).toHaveBeenCalledWith(user.id, undefined);
+      expect(getAllExecute).toHaveBeenCalledWith(user.id, {
+        accountId: undefined,
+        movementType: undefined,
+        month: undefined,
+      });
       expect(result).toEqual({
         message: 'Get all movements successfully',
         data,
       });
     });
 
-    it('passes accountId through to GetAllMovementsUseCase when provided', async () => {
+    it('passes query filters through to GetAllMovementsUseCase when provided', async () => {
       getAllExecute.mockResolvedValue([]);
 
-      await controller.findAll({ accountId: 'acc-1' }, user);
+      await controller.findAll(
+        { accountId: 'acc-1', movementType: 'Gasto', month: '2026-07' },
+        user,
+      );
 
-      expect(getAllExecute).toHaveBeenCalledWith(user.id, 'acc-1');
+      expect(getAllExecute).toHaveBeenCalledWith(user.id, {
+        accountId: 'acc-1',
+        movementType: 'Gasto',
+        month: '2026-07',
+      });
     });
   });
 

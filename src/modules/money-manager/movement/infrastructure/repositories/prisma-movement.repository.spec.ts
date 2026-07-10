@@ -74,6 +74,71 @@ describe('PrismaMovementRepository', () => {
       expect(result[0].note).toBe('Weekly groceries');
       expect(result[0].toAccountId).toBeUndefined();
     });
+
+    it('filters by accountId matching either direction', async () => {
+      prisma.movement.findMany.mockResolvedValue([]);
+
+      await repository.findAll('user-1', { accountId: 'acc-1' });
+
+      expect(prisma.movement.findMany).toHaveBeenCalledWith({
+        where: {
+          userId: 'user-1',
+          OR: [{ accountId: 'acc-1' }, { toAccountId: 'acc-1' }],
+        },
+        orderBy: { date: 'desc' },
+      });
+    });
+
+    it('filters by movementType', async () => {
+      prisma.movement.findMany.mockResolvedValue([]);
+
+      await repository.findAll('user-1', { movementType: 'Gasto' });
+
+      expect(prisma.movement.findMany).toHaveBeenCalledWith({
+        where: { userId: 'user-1', movementType: 'Gasto' },
+        orderBy: { date: 'desc' },
+      });
+    });
+
+    it('filters by month, converting YYYY-MM to a UTC date range', async () => {
+      prisma.movement.findMany.mockResolvedValue([]);
+
+      await repository.findAll('user-1', { month: '2026-07' });
+
+      expect(prisma.movement.findMany).toHaveBeenCalledWith({
+        where: {
+          userId: 'user-1',
+          date: {
+            gte: new Date(Date.UTC(2026, 6, 1)),
+            lt: new Date(Date.UTC(2026, 7, 1)),
+          },
+        },
+        orderBy: { date: 'desc' },
+      });
+    });
+
+    it('combines accountId, movementType, and month filters together', async () => {
+      prisma.movement.findMany.mockResolvedValue([]);
+
+      await repository.findAll('user-1', {
+        accountId: 'acc-1',
+        movementType: 'Transferencia',
+        month: '2026-01',
+      });
+
+      expect(prisma.movement.findMany).toHaveBeenCalledWith({
+        where: {
+          userId: 'user-1',
+          OR: [{ accountId: 'acc-1' }, { toAccountId: 'acc-1' }],
+          movementType: 'Transferencia',
+          date: {
+            gte: new Date(Date.UTC(2026, 0, 1)),
+            lt: new Date(Date.UTC(2026, 1, 1)),
+          },
+        },
+        orderBy: { date: 'desc' },
+      });
+    });
   });
 
   describe('findById', () => {

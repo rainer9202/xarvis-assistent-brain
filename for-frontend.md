@@ -256,13 +256,22 @@ Errors:
 | PATCH | `/movements/:id` |
 | DELETE | `/movements/:id` |
 
-**`GET /movements` accepts one optional query param: `accountId`** (e.g.
-`GET /movements?accountId=<uuid>`). When present, it returns only movements where that account is
-either the source (`accountId`) or the destination of a transfer (`toAccountId`) — so a transfer
-into the account shows up in its history too, not just movements originating from it. Without the
-param, it returns the caller's **entire** movement history in one array, same as before. There is
-still no date-range filter, no other field filter, and no pagination — treat those as a gap to
-raise with the backend team if you need them.
+**`GET /movements` accepts three optional, combinable query params:**
+
+| Param | Type | Constraints |
+|---|---|---|
+| `accountId` | string (UUID) | matches this movement's `accountId` **or** `toAccountId` — so a transfer into the account shows up in its history too, not just movements originating from it |
+| `movementType` | string | must be exactly one of `"Gasto" \| "Ingreso" \| "Transferencia"` |
+| `month` | string | `YYYY-MM` (e.g. `2026-07`), calendar month boundaries computed in **UTC** |
+
+Example: `GET /movements?accountId=<uuid>&movementType=Gasto&month=2026-07`. All three can be
+combined (AND'd together); omit whichever you don't need. With no params at all, it returns the
+caller's **entire** movement history in one array, same as before. There is still no arbitrary
+date-range filter (only whole-month) and no pagination — treat those as a gap to raise with the
+backend team if you need them.
+
+Error: `400` if `month` isn't `YYYY-MM` (class-validator shape) or `movementType` isn't one of the
+three valid values.
 
 This is the intended way to build "load this account's movements": resolve the target account's
 `id` (e.g. the principal account, see §5.2) and pass it as `accountId` — don't fetch everything and

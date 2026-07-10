@@ -1,7 +1,10 @@
 import { Inject, Injectable } from '@nestjs/common';
 import { DomainException } from '@domain/exceptions/domain.exception';
 import { MOVEMENT_REPOSITORY } from '../../domain/ports/movement.repository.port';
-import type { MovementRepositoryPort } from '../../domain/ports/movement.repository.port';
+import type {
+  MovementFilters,
+  MovementRepositoryPort,
+} from '../../domain/ports/movement.repository.port';
 
 export type GetAllMovementsResponse = {
   id: string;
@@ -24,10 +27,10 @@ export class GetAllMovementsUseCase {
 
   async execute(
     userId: string,
-    accountId?: string,
+    filters?: MovementFilters,
   ): Promise<GetAllMovementsResponse[]> {
     try {
-      const entities = await this.repository.findAll(userId, accountId);
+      const entities = await this.repository.findAll(userId, filters);
       return entities.map((item) => ({
         id: item.id!,
         amountCents: item.amountCents,

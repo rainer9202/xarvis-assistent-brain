@@ -1,5 +1,6 @@
 import { ApiPropertyOptional } from '@nestjs/swagger';
-import { IsOptional, IsUUID } from 'class-validator';
+import { IsIn, IsOptional, IsUUID, Matches } from 'class-validator';
+import { MOVEMENT_TYPES } from '@domain/enums/movement-type.enum';
 
 export class GetMovementsQueryDto {
   @ApiPropertyOptional({
@@ -10,4 +11,19 @@ export class GetMovementsQueryDto {
   @IsOptional()
   @IsUUID()
   accountId?: string;
+
+  @ApiPropertyOptional({ example: 'Gasto', enum: MOVEMENT_TYPES })
+  @IsOptional()
+  @IsIn(MOVEMENT_TYPES)
+  movementType?: string;
+
+  @ApiPropertyOptional({
+    example: '2026-07',
+    description: 'Calendar month (YYYY-MM) to filter by, in UTC',
+  })
+  @IsOptional()
+  @Matches(/^\d{4}-(0[1-9]|1[0-2])$/, {
+    message: 'month must be in YYYY-MM format',
+  })
+  month?: string;
 }
