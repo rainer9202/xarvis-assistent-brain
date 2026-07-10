@@ -4,8 +4,8 @@ import { Test } from '@nestjs/testing';
 import request from 'supertest';
 import { PrismaService } from '@config/database/prisma.service';
 import { getTrustedProxies } from '@config/env/get-trusted-proxies';
-import { DomainExceptionFilter } from '@shared/exceptions/http-exception.filter';
-import { ResponseInterceptor } from '@shared/interceptors/response.interceptor';
+import { DomainExceptionFilter } from '@infra/exceptions/http-exception.filter';
+import { ResponseInterceptor } from '@infra/interceptors/response.interceptor';
 import { AppModule } from '../../src/app.module';
 
 export async function createTestApp(): Promise<{

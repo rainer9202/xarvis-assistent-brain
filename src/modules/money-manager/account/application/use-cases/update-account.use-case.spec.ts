@@ -1,7 +1,7 @@
 import {
   NotFoundException,
   ValidationException,
-} from '@shared/exceptions/domain.exception';
+} from '@domain/exceptions/domain.exception';
 import { AccountEntity } from '../../domain/entities/account.entity';
 import type { AccountRepositoryPort } from '../../domain/ports/account.repository.port';
 import {

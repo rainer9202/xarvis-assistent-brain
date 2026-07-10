@@ -18,9 +18,10 @@
     "^.+\\.mjs$": "@swc/jest"
   },
   "moduleNameMapper": {
-    "^@config/(.*)$": "<rootDir>/../src/config/$1",
+    "^@domain/(.*)$": "<rootDir>/../src/domain/$1",
+    "^@infra/(.*)$": "<rootDir>/../src/infrastructure/$1",
+    "^@config/(.*)$": "<rootDir>/../src/infrastructure/config/$1",
     "^@modules/(.*)$": "<rootDir>/../src/modules/$1",
-    "^@shared/(.*)$": "<rootDir>/../src/shared/$1",
     "^(\\.{1,2}/.*)\\.js$": "$1"
   }
 }

@@ -3,10 +3,10 @@ import { Request } from 'express';
 
 // Exported so callers that need the param type for `@CurrentUser()` (e.g.
 // controllers doing `@CurrentUser() user: AuthenticatedRequest['user']`) can
-// import it from here now that `src/shared/guards/auth.guard.ts` (the
-// Better-Auth-era source of this type) is gone. `AuthenticatedRequest` is
-// kept as the exported name so those existing usages don't need to change,
-// only their import path.
+// import it from here now that the old Better-Auth-era guard (which used to
+// be the source of this type) is gone. `AuthenticatedRequest` is kept as the
+// exported name so those existing usages don't need to change, only their
+// import path.
 export interface RequestWithUser extends Request {
   user?: { id: string; email: string; name: string };
 }

@@ -2,7 +2,7 @@ import { Inject, Injectable } from '@nestjs/common';
 import {
   DomainException,
   NotFoundException,
-} from '@shared/exceptions/domain.exception';
+} from '@domain/exceptions/domain.exception';
 import { ACCOUNT_REPOSITORY } from '../../domain/ports/account.repository.port';
 import type { AccountRepositoryPort } from '../../domain/ports/account.repository.port';
 

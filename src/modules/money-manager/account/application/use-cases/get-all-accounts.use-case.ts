@@ -1,5 +1,5 @@
 import { Inject, Injectable } from '@nestjs/common';
-import { DomainException } from '@shared/exceptions/domain.exception';
+import { DomainException } from '@domain/exceptions/domain.exception';
 import { ACCOUNT_REPOSITORY } from '../../domain/ports/account.repository.port';
 import type { AccountRepositoryPort } from '../../domain/ports/account.repository.port';
 

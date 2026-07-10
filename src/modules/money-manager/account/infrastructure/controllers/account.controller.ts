@@ -31,8 +31,8 @@ import { GetAllAccountsUseCase } from '../../application/use-cases/get-all-accou
 import { GetAccountByIdUseCase } from '../../application/use-cases/get-account-by-id.use-case';
 import { CreateAccountDto } from '../dto/create-account.dto';
 import { UpdateAccountDto } from '../dto/update-account.dto';
-import { CurrentUser } from '@shared/decorators/current-user.decorator';
-import type { AuthenticatedRequest } from '@shared/decorators/current-user.decorator';
+import { CurrentUser } from '@infra/decorators/current-user.decorator';
+import type { AuthenticatedRequest } from '@infra/decorators/current-user.decorator';
 
 const domainName = 'accounts';
 

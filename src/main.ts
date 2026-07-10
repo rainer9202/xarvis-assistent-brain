@@ -6,8 +6,8 @@ import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import { AppModule } from './app.module';
 import { validateEnv } from '@config/env/validate-env';
 import { getTrustedProxies } from '@config/env/get-trusted-proxies';
-import { DomainExceptionFilter } from '@shared/exceptions/http-exception.filter';
-import { ResponseInterceptor } from '@shared/interceptors/response.interceptor';
+import { DomainExceptionFilter } from '@infra/exceptions/http-exception.filter';
+import { ResponseInterceptor } from '@infra/interceptors/response.interceptor';
 
 async function bootstrap() {
   // Fail fast on missing/invalid env vars before Nest starts booting — see
@@ -23,11 +23,16 @@ async function bootstrap() {
   // data ownership" section for the full rationale.
   app.set('trust proxy', getTrustedProxies());
 
+  const corsOrigins = (process.env.CORS_ORIGINS ?? '')
+    .split(',')
+    .map((origin) => origin.trim())
+    .filter(Boolean);
+
+  // CORS_ORIGINS=* reflects the request origin (rather than a literal "*",
+  // which credentials:true browsers reject anyway) — dev-only escape hatch,
+  // must be a real whitelist before any non-local deployment.
   app.enableCors({
-    origin: (process.env.CORS_ORIGINS ?? '')
-      .split(',')
-      .map((origin) => origin.trim())
-      .filter(Boolean),
+    origin: corsOrigins.includes('*') ? true : corsOrigins,
     credentials: true,
   });
 

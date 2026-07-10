@@ -26,7 +26,7 @@ npx prisma generate
 
 Run a single test file:
 ```bash
-pnpm test --testPathPatterns=movement-type
+pnpm test --testPathPatterns=category
 ```
 
 ### Docker (local)
@@ -62,7 +62,7 @@ Production only containerizes the Node.js app — the `runtime` stage in `Docker
 Hexagonal architecture with one NestJS module per feature. Each module is fully self-contained. Feature modules are grouped under a business-domain folder (`src/modules/<domain>/<feature>/`), since this project hosts multiple business domains over time — not a single one.
 
 Current domains:
-- `money-manager` — `movement-type`, `account`, `category`, `movement`, `report` (the personal-finance ledger).
+- `money-manager` — `account`, `category`, `movement`, `report` (the personal-finance ledger).
 - `identity` — `auth` (user sign-up/sign-in).
 
 ### Module structure
@@ -82,29 +82,33 @@ src/modules/<domain>/<feature>/
 └── <feature>.module.ts
 ```
 
-Cross-module imports (see "Cross-module dependencies" below) use the full path, e.g. `@modules/money-manager/movement-type/application/use-cases/get-movement-type-by-id.use-case`.
+Cross-module imports (see "Cross-module dependencies" below) use the full path, e.g. `@modules/money-manager/account/application/use-cases/get-account-by-id.use-case`.
 
 A feature with no persistence of its own (e.g. `report`, which only aggregates another feature's exported use case) skips `domain/` entirely — no entity or port to define — and keeps just `application/use-cases/` + `infrastructure/controllers/`. This is intentional, not a shortcut.
 
 **Dependency rule (enforced):** `domain` → nothing. `application` → `domain` only. `infrastructure` → `application` + `domain`. Flag any import that violates this direction.
 
-### Shared
+### Domain
 
-- `src/shared/domain/base.entity.ts` — `BaseEntity` abstract class with `id`, `createdAt`, `updatedAt` getters/setters; all domain entities extend this
-- `src/shared/exceptions/domain.exception.ts` — `DomainException` base + `NotFoundException`, `ValidationException`, `ConflictException`
-- `src/shared/exceptions/http-exception.filter.ts` — maps domain exceptions to HTTP status codes; registered globally in `main.ts`
-- `src/shared/interceptors/response.interceptor.ts` — wraps all successful responses as `{ statusCode, ...body }`; registered globally in `main.ts`
-- `src/shared/decorators/current-user.decorator.ts` — `@CurrentUser()`, reads the authenticated user the `JwtAuthGuard` attached to the request
-- `src/shared/guards/jwt-auth.guard.ts` — `JwtAuthGuard`, registered globally via `APP_GUARD` in `app.module.ts`
+- `src/domain/base.entity.ts` — `BaseEntity` abstract class with `id`, `createdAt`, `updatedAt` getters/setters; all domain entities extend this
+- `src/domain/exceptions/domain.exception.ts` — `DomainException` base + `NotFoundException`, `ValidationException`, `ConflictException`
+- `src/domain/enums/movement-type.enum.ts` — `MOVEMENT_TYPES` compile-time enum (see "Domain enums and constants")
+
+### Infrastructure
+
+- `src/infrastructure/exceptions/http-exception.filter.ts` — maps domain exceptions to HTTP status codes; registered globally in `main.ts`
+- `src/infrastructure/interceptors/response.interceptor.ts` — wraps all successful responses as `{ statusCode, ...body }`; registered globally in `main.ts`
+- `src/infrastructure/decorators/current-user.decorator.ts` — `@CurrentUser()`, reads the authenticated user the `JwtAuthGuard` attached to the request
+- `src/infrastructure/guards/jwt-auth.guard.ts` — `JwtAuthGuard`, registered globally via `APP_GUARD` in `app.module.ts`
 
 ### Database
 
 - **Prisma 7** with `@prisma/adapter-pg` (driver adapter required — not the legacy URL-only mode)
-- Prisma client is generated to `src/config/database/generated/prisma/` (not `node_modules`)
+- Prisma client is generated to `src/infrastructure/config/database/generated/prisma/` (not `node_modules`)
 - Import from `generated/prisma/client.js` (`.js` extension required by `moduleResolution: nodenext`)
 - `PrismaModule` is `@Global()`, so `PrismaService` is available everywhere without importing `PrismaModule` per module
 - `PrismaService` creates the adapter inside the constructor (not at module level) so `DATABASE_URL` is available from `dotenv`
-- `prisma/seed.ts` seeds the 3 default `MovementType` records (`expense`, `income`, `transfer`); run with `tsx`
+- `prisma/seed.ts` is currently a no-op (logs and exits) — `MovementType` used to be the only seeded table and is now a compile-time enum (see "Domain enums and constants"); run with `tsx`
 
 ### Dependency injection for ports
 
@@ -112,15 +116,15 @@ Repository ports use a Symbol token, not the interface directly:
 
 ```ts
 // port file exports both:
-export interface MovementTypeRepositoryPort { ... }
-export const MOVEMENT_TYPE_REPOSITORY = Symbol('MovementTypeRepositoryPort');
+export interface AccountRepositoryPort { ... }
+export const ACCOUNT_REPOSITORY = Symbol('AccountRepositoryPort');
 
 // use case imports the interface as `import type` (required by isolatedModules):
-import { MOVEMENT_TYPE_REPOSITORY } from '...port';
-import type { MovementTypeRepositoryPort } from '...port';
+import { ACCOUNT_REPOSITORY } from '...port';
+import type { AccountRepositoryPort } from '...port';
 
 // module wires the implementation:
-{ provide: MOVEMENT_TYPE_REPOSITORY, useClass: PrismaMovementTypeRepository }
+{ provide: ACCOUNT_REPOSITORY, useClass: PrismaAccountRepository }
 ```
 
 ### Entity pattern
@@ -133,9 +137,9 @@ export type BaseEntityProps = { id?: string; createdAt?: Date; updatedAt?: Date 
 export abstract class BaseEntity { /* id, createdAt, updatedAt getters/setters */ }
 
 // feature entity
-export type MovementTypeProps = BaseEntityProps & { name: string; isDefault?: boolean };
-export class MovementTypeEntity extends BaseEntity {
-  constructor(props?: MovementTypeProps) {
+export type AccountProps = BaseEntityProps & { name: string; type: string; userId: string; isActive?: boolean };
+export class AccountEntity extends BaseEntity {
+  constructor(props?: AccountProps) {
     super(props); // handles id, createdAt, updatedAt
     // only domain-specific fields here
   }
@@ -154,7 +158,7 @@ All HTTP responses follow this envelope (applied by `ResponseInterceptor`):
 
 Controllers return `{ message, data }` and the interceptor injects `statusCode`.
 
-Each use case defines its own response type (e.g. `CreateMovementTypeResponse`) instead of reusing the entity plain type, so the response shape is explicit and decoupled from the domain.
+Each use case defines its own response type (e.g. `CreateAccountResponse`) instead of reusing the entity plain type, so the response shape is explicit and decoupled from the domain.
 
 **Create/Update/Delete return `{ id: string }` only** — never the full entity fields, even if the repository call returns more. `GetAll`/`GetById` use cases are unaffected and still return full mapped field sets.
 
@@ -174,17 +178,17 @@ Before deleting, the use case must check every place elsewhere in the schema tha
 
 ### Cross-module dependencies
 
-A module exports **only use cases** in its `exports` array — never a repository Symbol token. When one feature needs to read/validate data owned by another feature (e.g. `Category` validating `movementTypeId`, `Movement` validating `accountId`/`categoryId`/`movementTypeId`), the consuming module imports the owning feature's `Module` and injects one of its exported use cases via normal Nest DI (no `@Inject` needed for a concrete class token). The owning module adds a `GetXById`-style use case (throws `NotFoundException` when missing, returns mapped fields) purely to serve this purpose if one doesn't already exist.
+A module exports **only use cases** in its `exports` array — never a repository Symbol token. When one feature needs to read/validate data owned by another feature (e.g. `Movement` validating `accountId`/`categoryId`), the consuming module imports the owning feature's `Module` and injects one of its exported use cases via normal Nest DI (no `@Inject` needed for a concrete class token). The owning module adds a `GetXById`-style use case (throws `NotFoundException` when missing, returns mapped fields) purely to serve this purpose if one doesn't already exist. `movementType` is not a cross-module case: it's a plain string column validated against the shared `MOVEMENT_TYPES` enum (`src/domain/enums/movement-type.enum.ts`), the same `@IsIn`-at-the-DTO-plus-symmetric-use-case-revalidation pattern as `Account.type` — no other module's use case is involved.
 
 ### Authentication and data ownership
 
-Better-Auth was removed and fully replaced by hand-rolled JWT auth — no Passport, no `@nestjs/passport`, no strategy classes. Auth is built from two direct dependencies: `@nestjs/jwt` (the official thin Nest wrapper around `jsonwebtoken` — signing/verification only) for tokens, and `argon2` for password hashing. The `identity/auth` module (`src/modules/identity/auth/`) follows the same hexagonal layering as every `money-manager` feature and exposes two public endpoints: `POST /auth/sign-up` (creates the user, hashes the password, returns `{ id, accessToken }`) and `POST /auth/sign-in` (verifies credentials, returns the same shape). A global `JwtAuthGuard` (`src/shared/guards/jwt-auth.guard.ts`, registered via `APP_GUARD` in `app.module.ts`) protects every Nest-routed endpoint by default; a route opts out with the `@Public()` decorator (`src/shared/decorators/public.decorator.ts`), which the guard checks first via `Reflector.getAllAndOverride`. On a valid token the guard sets `request.user` to match the `RequestWithUser`/`AuthenticatedRequest` shape in `src/shared/decorators/current-user.decorator.ts`. `JwtModule` is registered `global: true` in `app.module.ts` so `JwtService` is injectable everywhere without every module re-importing it. Both `signOptions` and `verifyOptions` pin `algorithm`/`algorithms` to `['HS256']` explicitly — don't rely on jsonwebtoken's own default never changing. Required env vars: `JWT_SECRET` (required) and `JWT_EXPIRES_IN` (optional, defaults to `'2h'` in the `JwtModule.registerAsync` factory, not in `EnvironmentVariables`). `JWT_EXPIRES_IN`, when set, is validated at boot in `EnvironmentVariables` (`src/config/env/environment-variables.ts`) with a `@Matches` regex accepting a plain integer-seconds string or an `ms`-style duration (`"2h"`, `"10m"`, `"7d"`, etc.) — a malformed value now fails fast at boot instead of throwing inside `jwtService.signAsync()` on the first real sign-up/sign-in.
+Better-Auth was removed and fully replaced by hand-rolled JWT auth — no Passport, no `@nestjs/passport`, no strategy classes. Auth is built from two direct dependencies: `@nestjs/jwt` (the official thin Nest wrapper around `jsonwebtoken` — signing/verification only) for tokens, and `argon2` for password hashing. The `identity/auth` module (`src/modules/identity/auth/`) follows the same hexagonal layering as every `money-manager` feature and exposes two public endpoints: `POST /auth/sign-up` (creates the user, hashes the password, returns `{ id, accessToken }`) and `POST /auth/sign-in` (verifies credentials, returns the same shape). A global `JwtAuthGuard` (`src/infrastructure/guards/jwt-auth.guard.ts`, registered via `APP_GUARD` in `app.module.ts`) protects every Nest-routed endpoint by default; a route opts out with the `@Public()` decorator (`src/infrastructure/decorators/public.decorator.ts`), which the guard checks first via `Reflector.getAllAndOverride`. On a valid token the guard sets `request.user` to match the `RequestWithUser`/`AuthenticatedRequest` shape in `src/infrastructure/decorators/current-user.decorator.ts`. `JwtModule` is registered `global: true` in `app.module.ts` so `JwtService` is injectable everywhere without every module re-importing it. Both `signOptions` and `verifyOptions` pin `algorithm`/`algorithms` to `['HS256']` explicitly — don't rely on jsonwebtoken's own default never changing. Required env vars: `JWT_SECRET` (required) and `JWT_EXPIRES_IN` (optional, defaults to `'2h'` in the `JwtModule.registerAsync` factory, not in `EnvironmentVariables`). `JWT_EXPIRES_IN`, when set, is validated at boot in `EnvironmentVariables` (`src/infrastructure/config/env/environment-variables.ts`) with a `@Matches` regex accepting a plain integer-seconds string or an `ms`-style duration (`"2h"`, `"10m"`, `"7d"`, etc.) — a malformed value now fails fast at boot instead of throwing inside `jwtService.signAsync()` on the first real sign-up/sign-in.
 
 `argon2.verify()` throws a raw `TypeError` (not a boolean `false`) when the stored hash is empty or not a valid PHC-formatted string, instead of returning a clean mismatch — `SignInUseCase` wraps the call in try/catch and maps any throw to the same `UnauthorizedException` used for a normal wrong-password case, so a malformed/empty hash never surfaces as a 500 or leaks which part of the credential was invalid.
 
 `SignUpUseCase` first checks `findByEmail` for a friendly `ConflictException` on the common case, but that check alone is a TOCTOU race — two concurrent sign-ups for the same email can both pass it. `PrismaUserRepository.create()` closes the race by catching the Prisma unique-constraint violation (error code `P2002`) from the losing `create()` call and throwing `ConflictException` itself, so the use case doesn't need to know about Prisma error codes at all. The check is duck-typed (`'code' in error && error.code === 'P2002'`), not `error instanceof Prisma.PrismaClientKnownRequestError` — a real *value* import of the generated Prisma client (as opposed to every other repository's `import type`) makes ts-jest try to transform `client.ts`'s genuine ESM (`import.meta.url`), which fails to parse under ts-jest's CommonJS transform (the same ESM constraint documented above for why e2e specs need `@swc/jest` instead of `ts-jest`).
 
-`POST /auth/sign-up` and `POST /auth/sign-in` are rate-limited via `@nestjs/throttler` (5 requests/60s per IP — a real brute-force deterrent, not sized to fit the e2e suite's own call count), scoped to `AuthModule` only — `ThrottlerModule.forRoot(...)` is imported inside `auth.module.ts` (not registered globally in `app.module.ts`), and `@UseGuards(ThrottlerGuard)` is applied directly on `AuthController`, so no other route in the app is affected. This rate limit is only as strong as `main.ts`'s `trust proxy` config: `@nestjs/throttler`'s default `ThrottlerGuard.getTracker` keys the bucket off `req.ip`, which Express only resolves correctly through `X-Forwarded-For` when `app.set('trust proxy', ...)` names the exact hops in front of it. `getTrustedProxies()` (`src/config/env/get-trusted-proxies.ts`) sources this from `TRUSTED_PROXIES` (comma-separated IPs/CIDRs, same split/trim/filter parsing as `CORS_ORIGINS`), defaulting to the standard RFC1918 private ranges (`10.0.0.0/8,172.16.0.0/12,192.168.0.0/16`) for the current single-container Dokploy setup where the reverse proxy sits on the same private Docker network — without it, either every client collapses into one shared bucket (one abusive client locks out everyone) or, naively enabled without restricting to known hops, `X-Forwarded-For` becomes spoofable and the limit is trivially evaded. `ThrottlerModule`'s storage stays at its default (in-memory), which only works correctly for a single replica — the counters aren't shared across processes, so revisit (e.g. a Redis-backed `ThrottlerStorage`) only if this app is ever scaled to multiple replicas.
+`POST /auth/sign-up` and `POST /auth/sign-in` are rate-limited via `@nestjs/throttler` (5 requests/60s per IP — a real brute-force deterrent, not sized to fit the e2e suite's own call count), scoped to `AuthModule` only — `ThrottlerModule.forRoot(...)` is imported inside `auth.module.ts` (not registered globally in `app.module.ts`), and `@UseGuards(ThrottlerGuard)` is applied directly on `AuthController`, so no other route in the app is affected. This rate limit is only as strong as `main.ts`'s `trust proxy` config: `@nestjs/throttler`'s default `ThrottlerGuard.getTracker` keys the bucket off `req.ip`, which Express only resolves correctly through `X-Forwarded-For` when `app.set('trust proxy', ...)` names the exact hops in front of it. `getTrustedProxies()` (`src/infrastructure/config/env/get-trusted-proxies.ts`) sources this from `TRUSTED_PROXIES` (comma-separated IPs/CIDRs, same split/trim/filter parsing as `CORS_ORIGINS`), defaulting to the standard RFC1918 private ranges (`10.0.0.0/8,172.16.0.0/12,192.168.0.0/16`) for the current single-container Dokploy setup where the reverse proxy sits on the same private Docker network — without it, either every client collapses into one shared bucket (one abusive client locks out everyone) or, naively enabled without restricting to known hops, `X-Forwarded-For` becomes spoofable and the limit is trivially evaded. `ThrottlerModule`'s storage stays at its default (in-memory), which only works correctly for a single replica — the counters aren't shared across processes, so revisit (e.g. a Redis-backed `ThrottlerStorage`) only if this app is ever scaled to multiple replicas.
 
 `SignUpUseCase` and `SignInUseCase` both need the identical JWT-payload-building + `{ id, accessToken }` response-shaping step once a user is authenticated — that's extracted into `buildAuthResponse()` (`src/modules/identity/auth/application/shared/build-auth-response.ts`) instead of duplicated per use case.
 
@@ -192,11 +196,11 @@ Better-Auth was removed and fully replaced by hand-rolled JWT auth — no Passpo
 
 A deleted or deactivated user's still-unexpired JWT continues to authenticate successfully — `JwtAuthGuard` only verifies the token's signature/expiry, it never re-checks the database. This is an accepted stateless-JWT tradeoff (no revocation list), not a bug.
 
-`Account`, `Category`, and `Movement` are owned by a `User` (`userId` FK, `onDelete: Cascade`). `MovementType` stays global/shared (seeded defaults + user-created custom types are all visible to everyone) — it is a shared taxonomy, not personal data, so it does **not** get a `userId` column.
+`Account`, `Category`, and `Movement` are owned by a `User` (`userId` FK, `onDelete: Cascade`). `MovementType` is not a database entity at all — it is a compile-time enum (`MOVEMENT_TYPES` in `src/domain/enums/movement-type.enum.ts`, `['Gasto', 'Ingreso', 'Transferencia']`), so `Category.movementType` and `Movement.movementType` are plain `String` columns validated against that enum, not a `userId`-scoped or global FK relationship.
 
-For every ownership-scoped entity: `GetAllUseCase.execute(userId)`, `GetByIdUseCase.execute(id, userId)`, and the repository's `findById`/`findAllWithBalance`-style methods filter by `WHERE id = ? AND userId = ?` (via `findFirst`, not `findUnique`, since `id` alone is no longer sufficient to scope the row) — a lookup for another user's row returns `null` → `NotFoundException`, the same as a truly missing id. Never leak existence via a 403; a wrong-owner id and a nonexistent id must be indistinguishable to the caller. `Create`/`Update`/`Delete` commands carry `userId` as a required constructor param, sourced from `@CurrentUser()` (`src/shared/decorators/current-user.decorator.ts`) in the controller — never trust a `userId` from the request body/DTO.
+For every ownership-scoped entity: `GetAllUseCase.execute(userId)`, `GetByIdUseCase.execute(id, userId)`, and the repository's `findById`/`findAllWithBalance`-style methods filter by `WHERE id = ? AND userId = ?` (via `findFirst`, not `findUnique`, since `id` alone is no longer sufficient to scope the row) — a lookup for another user's row returns `null` → `NotFoundException`, the same as a truly missing id. Never leak existence via a 403; a wrong-owner id and a nonexistent id must be indistinguishable to the caller. `Create`/`Update`/`Delete` commands carry `userId` as a required constructor param, sourced from `@CurrentUser()` (`src/infrastructure/decorators/current-user.decorator.ts`) in the controller — never trust a `userId` from the request body/DTO.
 
-Cross-module ownership checks matter just as much as same-module ones: `Movement`'s use cases call `GetAccountByIdUseCase.execute(accountId, userId)` and `GetCategoryByIdUseCase.execute(categoryId, userId)` (and `toAccountId` too, for transfers) so a user can't reference another user's account/category in their own movement. `GetMovementTypeByIdUseCase.execute(movementTypeId)` stays unscoped since that entity is global.
+Cross-module ownership checks matter just as much as same-module ones: `Movement`'s use cases call `GetAccountByIdUseCase.execute(accountId, userId)` and `GetCategoryByIdUseCase.execute(categoryId, userId)` (and `toAccountId` too, for transfers) so a user can't reference another user's account/category in their own movement. `movementType` needs no such lookup — it is validated in-process against the compile-time `MOVEMENT_TYPES` enum, not fetched from another module or scoped by `userId`.
 
 ### Monetary amounts
 

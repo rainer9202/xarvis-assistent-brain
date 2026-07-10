@@ -1,4 +1,4 @@
-import { ValidationException } from '@shared/exceptions/domain.exception';
+import { ValidationException } from '@domain/exceptions/domain.exception';
 import { AccountEntity } from '../../domain/entities/account.entity';
 import type { AccountRepositoryPort } from '../../domain/ports/account.repository.port';
 import {

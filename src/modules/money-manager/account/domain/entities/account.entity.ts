@@ -1,4 +1,4 @@
-import { BaseEntity, BaseEntityProps } from '@shared/domain/base.entity';
+import { BaseEntity, BaseEntityProps } from '@domain/base.entity';
 
 export type AccountProps = BaseEntityProps & {
   name: string;

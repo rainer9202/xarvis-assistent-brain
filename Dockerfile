@@ -44,7 +44,7 @@ COPY --from=build /app/dist ./dist
 # Prisma may emit non-.ts assets (query engine binaries) into the generated
 # output dir; the compiler only copies .ts -> .js, so copy the generated
 # folder over dist explicitly to make sure those assets ship too.
-COPY --from=build /app/src/config/database/generated/prisma ./dist/config/database/generated/prisma
+COPY --from=build /app/src/infrastructure/config/database/generated/prisma ./dist/infrastructure/config/database/generated/prisma
 COPY package.json ./
 
 USER app

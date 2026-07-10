@@ -6,8 +6,8 @@ import {
 } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
 import { JwtService } from '@nestjs/jwt';
-import { RequestWithUser } from '@shared/decorators/current-user.decorator';
-import { IS_PUBLIC_KEY } from '@shared/decorators/public.decorator';
+import { RequestWithUser } from '@infra/decorators/current-user.decorator';
+import { IS_PUBLIC_KEY } from '@infra/decorators/public.decorator';
 
 interface JwtPayload {
   sub: string;

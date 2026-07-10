@@ -10,7 +10,7 @@ import {
   DomainException,
   NotFoundException,
   ValidationException,
-} from './domain.exception';
+} from '@domain/exceptions/domain.exception';
 
 @Catch(DomainException)
 export class DomainExceptionFilter implements ExceptionFilter {

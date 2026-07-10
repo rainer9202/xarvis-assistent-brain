@@ -87,9 +87,10 @@
       "^.+\\.(t|j)s$": "ts-jest"
     },
     "moduleNameMapper": {
-      "^@config/(.*)$": "<rootDir>/config/$1",
-      "^@modules/(.*)$": "<rootDir>/modules/$1",
-      "^@shared/(.*)$": "<rootDir>/shared/$1"
+      "^@domain/(.*)$": "<rootDir>/domain/$1",
+      "^@infra/(.*)$": "<rootDir>/infrastructure/$1",
+      "^@config/(.*)$": "<rootDir>/infrastructure/config/$1",
+      "^@modules/(.*)$": "<rootDir>/modules/$1"
     },
     "collectCoverageFrom": [
       "**/*.(t|j)s"

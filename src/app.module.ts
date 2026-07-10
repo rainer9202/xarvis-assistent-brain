@@ -3,13 +3,12 @@ import { APP_GUARD } from '@nestjs/core';
 import { JwtModule } from '@nestjs/jwt';
 import type { JwtSignOptions } from '@nestjs/jwt';
 import { PrismaModule } from '@config/database/prisma.module';
-import { MovementTypeModule } from '@modules/money-manager/movement-type/movement-type.module';
 import { AccountModule } from '@modules/money-manager/account/account.module';
 import { CategoryModule } from '@modules/money-manager/category/category.module';
 import { MovementModule } from '@modules/money-manager/movement/movement.module';
 import { ReportModule } from '@modules/money-manager/report/report.module';
 import { AuthModule } from '@modules/identity/auth/auth.module';
-import { JwtAuthGuard } from '@shared/guards/jwt-auth.guard';
+import { JwtAuthGuard } from '@infra/guards/jwt-auth.guard';
 import { normalizeJwtExpiry } from '@config/env/normalize-jwt-expiry';
 import { HealthModule } from './health/health.module';
 
@@ -38,7 +37,7 @@ import { HealthModule } from './health/health.module';
           // normalizeJwtExpiry() guards against jsonwebtoken/ms silently
           // treating a bare-digit string (e.g. "3600") as MILLISECONDS
           // instead of the seconds our own env validation message promises
-          // — see src/config/env/normalize-jwt-expiry.ts.
+          // — see src/infrastructure/config/env/normalize-jwt-expiry.ts.
           expiresIn: normalizeJwtExpiry(
             process.env.JWT_EXPIRES_IN ?? '2h',
           ) as unknown as JwtSignOptions['expiresIn'],
@@ -49,7 +48,6 @@ import { HealthModule } from './health/health.module';
       }),
     }),
     PrismaModule,
-    MovementTypeModule,
     AccountModule,
     CategoryModule,
     MovementModule,

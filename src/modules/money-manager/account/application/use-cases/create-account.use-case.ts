@@ -2,7 +2,7 @@ import { Inject, Injectable } from '@nestjs/common';
 import {
   DomainException,
   ValidationException,
-} from '@shared/exceptions/domain.exception';
+} from '@domain/exceptions/domain.exception';
 import { AccountEntity } from '../../domain/entities/account.entity';
 import { ACCOUNT_TYPES } from '../../domain/enums/account-type.enum';
 import { ACCOUNT_REPOSITORY } from '../../domain/ports/account.repository.port';

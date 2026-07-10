@@ -1,4 +1,4 @@
-import { NotFoundException } from '@shared/exceptions/domain.exception';
+import { NotFoundException } from '@domain/exceptions/domain.exception';
 import { AccountEntity } from '../../domain/entities/account.entity';
 import type { AccountRepositoryPort } from '../../domain/ports/account.repository.port';
 import { GetAccountByIdUseCase } from './get-account-by-id.use-case';

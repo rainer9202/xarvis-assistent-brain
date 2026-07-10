@@ -5,7 +5,7 @@ import {
   ServiceUnavailableException,
 } from '@nestjs/common';
 import { PrismaService } from '@config/database/prisma.service';
-import { Public } from '@shared/decorators/public.decorator';
+import { Public } from '@infra/decorators/public.decorator';
 
 const HEALTH_CHECK_TIMEOUT_MS = 3000;
 

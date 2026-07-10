@@ -1,5 +1,5 @@
 import { Injectable } from '@nestjs/common';
-import { DomainException } from '@shared/exceptions/domain.exception';
+import { DomainException } from '@domain/exceptions/domain.exception';
 import { GetAllAccountsUseCase } from '@modules/money-manager/account/application/use-cases/get-all-accounts.use-case';
 
 export type GetBalanceReportResponse = {
