@@ -108,7 +108,7 @@ A feature with no persistence of its own (e.g. `report`, which only aggregates a
 - Import from `generated/prisma/client.js` (`.js` extension required by `moduleResolution: nodenext`)
 - `PrismaModule` is `@Global()`, so `PrismaService` is available everywhere without importing `PrismaModule` per module
 - `PrismaService` creates the adapter inside the constructor (not at module level) so `DATABASE_URL` is available from `dotenv`
-- `prisma/seed.ts` is currently a no-op (logs and exits) — `MovementType` used to be the only seeded table and is now a compile-time enum (see "Domain enums and constants"); run with `tsx`
+- `prisma/seed.ts` upserts one default user (`rainer@gmail.com`, password hashed with `argon2`) and 15 categories for them (8 `Gasto`, 4 `Ingreso`, 3 `Transferencia`) — idempotent via `upsert` on email and on `(name, movementType, userId)`, safe to re-run against a DB where the user already signed up normally; run with `tsx`
 
 ### Dependency injection for ports
 
