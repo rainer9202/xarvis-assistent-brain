@@ -11,6 +11,7 @@ describe('Movement (e2e)', () => {
   const expenseType = 'MT01';
   const transferType = 'MT03';
   let categoryId: string;
+  let categoryId2: string;
   let accountA: string;
   let accountB: string;
   const movementIds: string[] = [];
@@ -19,14 +20,24 @@ describe('Movement (e2e)', () => {
     ({ app, prisma } = await createTestApp());
     ({ token, userId } = await createAuthenticatedUser(app));
 
-    const category = await prisma.category.create({
-      data: {
-        name: `MovementSpec-${Date.now()}`,
-        movementType: expenseType,
-        userId,
-      },
-    });
+    const [category, category2] = await Promise.all([
+      prisma.category.create({
+        data: {
+          name: `MovementSpec-${Date.now()}`,
+          movementType: expenseType,
+          userId,
+        },
+      }),
+      prisma.category.create({
+        data: {
+          name: `MovementSpec2-${Date.now()}`,
+          movementType: expenseType,
+          userId,
+        },
+      }),
+    ]);
     categoryId = category.id;
+    categoryId2 = category2.id;
 
     const [a, b] = await Promise.all([
       prisma.account.create({
@@ -42,7 +53,9 @@ describe('Movement (e2e)', () => {
 
   afterAll(async () => {
     await prisma.movement.deleteMany({ where: { id: { in: movementIds } } });
-    await prisma.category.delete({ where: { id: categoryId } });
+    await prisma.category.deleteMany({
+      where: { id: { in: [categoryId, categoryId2] } },
+    });
     await prisma.account.deleteMany({
       where: { id: { in: [accountA, accountB] } },
     });
@@ -153,6 +166,53 @@ describe('Movement (e2e)', () => {
     const idsForB = filteredByB.body.data.map((m: { id: string }) => m.id);
     expect(idsForB).toEqual(expect.arrayContaining([transferRes.body.data.id]));
     expect(idsForB).not.toContain(expenseRes.body.data.id);
+  });
+
+  it('filters GET /movements by categoryId, single and multiple', async () => {
+    const cat1Res = await request(app.getHttpServer())
+      .post('/movements')
+      .set('Authorization', `Bearer ${token}`)
+      .send({
+        amountCents: 900,
+        date: new Date().toISOString(),
+        accountId: accountA,
+        categoryId,
+        movementType: expenseType,
+      })
+      .expect(201);
+    movementIds.push(cat1Res.body.data.id);
+
+    const cat2Res = await request(app.getHttpServer())
+      .post('/movements')
+      .set('Authorization', `Bearer ${token}`)
+      .send({
+        amountCents: 600,
+        date: new Date().toISOString(),
+        accountId: accountA,
+        categoryId: categoryId2,
+        movementType: expenseType,
+      })
+      .expect(201);
+    movementIds.push(cat2Res.body.data.id);
+
+    const singleRes = await request(app.getHttpServer())
+      .get('/movements')
+      .query({ categoryId })
+      .set('Authorization', `Bearer ${token}`)
+      .expect(200);
+    const singleIds = singleRes.body.data.map((m: { id: string }) => m.id);
+    expect(singleIds).toContain(cat1Res.body.data.id);
+    expect(singleIds).not.toContain(cat2Res.body.data.id);
+
+    const multiRes = await request(app.getHttpServer())
+      .get('/movements')
+      .query({ categoryId: [categoryId, categoryId2] })
+      .set('Authorization', `Bearer ${token}`)
+      .expect(200);
+    const multiIds = multiRes.body.data.map((m: { id: string }) => m.id);
+    expect(multiIds).toEqual(
+      expect.arrayContaining([cat1Res.body.data.id, cat2Res.body.data.id]),
+    );
   });
 
   it('filters GET /movements by movementType and by month', async () => {

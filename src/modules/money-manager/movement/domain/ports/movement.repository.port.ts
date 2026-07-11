@@ -2,6 +2,7 @@ import { MovementEntity } from '../entities/movement.entity';
 
 export type MovementFilters = {
   accountId?: string;
+  categoryId?: string[];
   movementType?: string;
   // Calendar month in YYYY-MM format, UTC.
   month?: string;

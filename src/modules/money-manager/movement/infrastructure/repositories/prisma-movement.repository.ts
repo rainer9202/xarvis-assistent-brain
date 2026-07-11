@@ -38,6 +38,9 @@ export class PrismaMovementRepository implements MovementRepositoryPort {
               ],
             }
           : {}),
+        ...(filters?.categoryId?.length
+          ? { categoryId: { in: filters.categoryId } }
+          : {}),
         ...(filters?.movementType
           ? { movementType: filters.movementType }
           : {}),

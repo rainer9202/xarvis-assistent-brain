@@ -89,6 +89,44 @@ describe('PrismaMovementRepository', () => {
       });
     });
 
+    it('filters by a single categoryId', async () => {
+      prisma.movement.findMany.mockResolvedValue([]);
+
+      await repository.findAll('user-1', { categoryId: ['cat-1'] });
+
+      expect(prisma.movement.findMany).toHaveBeenCalledWith({
+        where: { userId: 'user-1', categoryId: { in: ['cat-1'] } },
+        orderBy: { date: 'desc' },
+      });
+    });
+
+    it('filters by multiple categoryIds', async () => {
+      prisma.movement.findMany.mockResolvedValue([]);
+
+      await repository.findAll('user-1', {
+        categoryId: ['cat-1', 'cat-2'],
+      });
+
+      expect(prisma.movement.findMany).toHaveBeenCalledWith({
+        where: {
+          userId: 'user-1',
+          categoryId: { in: ['cat-1', 'cat-2'] },
+        },
+        orderBy: { date: 'desc' },
+      });
+    });
+
+    it('ignores an empty categoryId array', async () => {
+      prisma.movement.findMany.mockResolvedValue([]);
+
+      await repository.findAll('user-1', { categoryId: [] });
+
+      expect(prisma.movement.findMany).toHaveBeenCalledWith({
+        where: { userId: 'user-1' },
+        orderBy: { date: 'desc' },
+      });
+    });
+
     it('filters by movementType', async () => {
       prisma.movement.findMany.mockResolvedValue([]);
 

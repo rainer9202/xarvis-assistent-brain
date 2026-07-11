@@ -287,22 +287,24 @@ Errors:
 | PATCH | `/movements/:id` |
 | DELETE | `/movements/:id` |
 
-**`GET /movements` accepts three optional, combinable query params:**
+**`GET /movements` accepts four optional, combinable query params:**
 
 | Param | Type | Constraints |
 |---|---|---|
 | `accountId` | string (UUID) | matches this movement's `accountId` **or** `toAccountId` — so a transfer into the account shows up in its history too, not just movements originating from it |
+| `categoryId` | string (UUID) or array of UUIDs | matches ANY of the given category ids (OR). Send once for a single category (`?categoryId=<uuid>`) or repeat the param for multiple (`?categoryId=<uuid1>&categoryId=<uuid2>`) |
 | `movementType` | string | must be exactly one of `"MT01" \| "MT02" \| "MT03"` (see §5.0) |
 | `month` | string | `YYYY-MM` (e.g. `2026-07`), calendar month boundaries computed in **UTC** |
 
-Example: `GET /movements?accountId=<uuid>&movementType=MT01&month=2026-07`. All three can be
-combined (AND'd together); omit whichever you don't need. With no params at all, it returns the
-caller's **entire** movement history in one array, same as before. There is still no arbitrary
-date-range filter (only whole-month) and no pagination — treat those as a gap to raise with the
-backend team if you need them.
+Example: `GET /movements?accountId=<uuid>&categoryId=<uuid>&movementType=MT01&month=2026-07`. All
+four can be combined (AND'd together, except `categoryId` which is OR'd internally when you pass
+more than one); omit whichever you don't need. With no params at all, it returns the caller's
+**entire** movement history in one array, same as before. There is still no arbitrary date-range
+filter (only whole-month) and no pagination — treat those as a gap to raise with the backend team
+if you need them.
 
-Error: `400` if `month` isn't `YYYY-MM` (class-validator shape) or `movementType` isn't one of the
-three valid codes.
+Error: `400` if `month` isn't `YYYY-MM`, `movementType` isn't one of the three valid codes, or any
+`categoryId` value isn't a valid UUID (class-validator shape).
 
 This is the intended way to build "load this account's movements": resolve the target account's
 `id` (e.g. the principal account, see §5.2) and pass it as `accountId` — don't fetch everything and

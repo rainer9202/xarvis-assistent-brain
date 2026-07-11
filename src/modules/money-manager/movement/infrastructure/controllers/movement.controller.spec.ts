@@ -87,6 +87,7 @@ describe('MovementController', () => {
 
       expect(getAllExecute).toHaveBeenCalledWith(user.id, {
         accountId: undefined,
+        categoryId: undefined,
         movementType: undefined,
         month: undefined,
       });
@@ -100,12 +101,18 @@ describe('MovementController', () => {
       getAllExecute.mockResolvedValue([]);
 
       await controller.findAll(
-        { accountId: 'acc-1', movementType: 'MT01', month: '2026-07' },
+        {
+          accountId: 'acc-1',
+          categoryId: ['cat-1', 'cat-2'],
+          movementType: 'MT01',
+          month: '2026-07',
+        },
         user,
       );
 
       expect(getAllExecute).toHaveBeenCalledWith(user.id, {
         accountId: 'acc-1',
+        categoryId: ['cat-1', 'cat-2'],
         movementType: 'MT01',
         month: '2026-07',
       });

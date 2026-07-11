@@ -59,6 +59,7 @@ export class MovementController {
       message: `Get all ${domainName} successfully`,
       data: await this.getAll.execute(user.id, {
         accountId: query.accountId,
+        categoryId: query.categoryId,
         movementType: query.movementType,
         month: query.month,
       }),
