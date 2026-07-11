@@ -32,7 +32,7 @@ import { GetAllCategoriesUseCase } from '../../application/use-cases/get-all-cat
 import { CreateCategoryDto } from '../dto/create-category.dto';
 import { UpdateCategoryDto } from '../dto/update-category.dto';
 import { CurrentUser } from '@infra/decorators/current-user.decorator';
-import type { AuthenticatedRequest } from '@infra/decorators/current-user.decorator';
+import type { AuthenticatedUser } from '@infra/decorators/current-user.decorator';
 
 const domainName = 'categories';
 
@@ -48,7 +48,7 @@ export class CategoryController {
 
   @Get()
   @ApiOkResponse({ description: 'List of categories' })
-  async findAll(@CurrentUser() user: AuthenticatedRequest['user']) {
+  async findAll(@CurrentUser() user: AuthenticatedUser) {
     return {
       message: `Get all ${domainName} successfully`,
       data: await this.getAll.execute(user.id),
@@ -62,7 +62,7 @@ export class CategoryController {
   })
   async createOne(
     @Body() dto: CreateCategoryDto,
-    @CurrentUser() user: AuthenticatedRequest['user'],
+    @CurrentUser() user: AuthenticatedUser,
   ) {
     return {
       message: `The ${domainName} was created successfully`,
@@ -78,7 +78,7 @@ export class CategoryController {
   async updateOne(
     @Param('id') id: string,
     @Body() dto: UpdateCategoryDto,
-    @CurrentUser() user: AuthenticatedRequest['user'],
+    @CurrentUser() user: AuthenticatedUser,
   ) {
     return {
       message: `The ${domainName} was updated successfully`,
@@ -99,7 +99,7 @@ export class CategoryController {
   @ApiNotFoundResponse({ description: 'Category not found' })
   async deleteOne(
     @Param('id') id: string,
-    @CurrentUser() user: AuthenticatedRequest['user'],
+    @CurrentUser() user: AuthenticatedUser,
   ) {
     return {
       message: `The ${domainName} was deleted successfully`,

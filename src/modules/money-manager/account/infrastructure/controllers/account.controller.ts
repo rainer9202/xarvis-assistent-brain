@@ -32,7 +32,7 @@ import { GetAccountByIdUseCase } from '../../application/use-cases/get-account-b
 import { CreateAccountDto } from '../dto/create-account.dto';
 import { UpdateAccountDto } from '../dto/update-account.dto';
 import { CurrentUser } from '@infra/decorators/current-user.decorator';
-import type { AuthenticatedRequest } from '@infra/decorators/current-user.decorator';
+import type { AuthenticatedUser } from '@infra/decorators/current-user.decorator';
 
 const domainName = 'accounts';
 
@@ -49,7 +49,7 @@ export class AccountController {
 
   @Get()
   @ApiOkResponse({ description: 'List of accounts with computed balance' })
-  async findAll(@CurrentUser() user: AuthenticatedRequest['user']) {
+  async findAll(@CurrentUser() user: AuthenticatedUser) {
     return {
       message: `Get all ${domainName} successfully`,
       data: await this.getAll.execute(user.id),
@@ -61,7 +61,7 @@ export class AccountController {
   @ApiNotFoundResponse({ description: 'Account not found' })
   async findOne(
     @Param('id') id: string,
-    @CurrentUser() user: AuthenticatedRequest['user'],
+    @CurrentUser() user: AuthenticatedUser,
   ) {
     return {
       message: `The account was found successfully`,
@@ -73,7 +73,7 @@ export class AccountController {
   @ApiCreatedResponse({ description: 'Account created' })
   async createOne(
     @Body() dto: CreateAccountDto,
-    @CurrentUser() user: AuthenticatedRequest['user'],
+    @CurrentUser() user: AuthenticatedUser,
   ) {
     return {
       message: `The ${domainName} was created successfully`,
@@ -89,7 +89,7 @@ export class AccountController {
   async updateOne(
     @Param('id') id: string,
     @Body() dto: UpdateAccountDto,
-    @CurrentUser() user: AuthenticatedRequest['user'],
+    @CurrentUser() user: AuthenticatedUser,
   ) {
     return {
       message: `The ${domainName} was updated successfully`,
@@ -111,7 +111,7 @@ export class AccountController {
   @ApiNotFoundResponse({ description: 'Account not found' })
   async deleteOne(
     @Param('id') id: string,
-    @CurrentUser() user: AuthenticatedRequest['user'],
+    @CurrentUser() user: AuthenticatedUser,
   ) {
     return {
       message: `The ${domainName} was deleted successfully`,

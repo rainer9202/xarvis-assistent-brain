@@ -34,7 +34,7 @@ import { CreateMovementDto } from '../dto/create-movement.dto';
 import { UpdateMovementDto } from '../dto/update-movement.dto';
 import { GetMovementsQueryDto } from '../dto/get-movements-query.dto';
 import { CurrentUser } from '@infra/decorators/current-user.decorator';
-import type { AuthenticatedRequest } from '@infra/decorators/current-user.decorator';
+import type { AuthenticatedUser } from '@infra/decorators/current-user.decorator';
 
 const domainName = 'movements';
 
@@ -53,7 +53,7 @@ export class MovementController {
   @ApiOkResponse({ description: 'List of movements' })
   async findAll(
     @Query() query: GetMovementsQueryDto,
-    @CurrentUser() user: AuthenticatedRequest['user'],
+    @CurrentUser() user: AuthenticatedUser,
   ) {
     return {
       message: `Get all ${domainName} successfully`,
@@ -71,7 +71,7 @@ export class MovementController {
   @ApiNotFoundResponse({ description: 'Movement not found' })
   async findOne(
     @Param('id') id: string,
-    @CurrentUser() user: AuthenticatedRequest['user'],
+    @CurrentUser() user: AuthenticatedUser,
   ) {
     return {
       message: `The movement was found successfully`,
@@ -86,7 +86,7 @@ export class MovementController {
   })
   async createOne(
     @Body() dto: CreateMovementDto,
-    @CurrentUser() user: AuthenticatedRequest['user'],
+    @CurrentUser() user: AuthenticatedUser,
   ) {
     return {
       message: `The ${domainName} was created successfully`,
@@ -113,7 +113,7 @@ export class MovementController {
   async updateOne(
     @Param('id') id: string,
     @Body() dto: UpdateMovementDto,
-    @CurrentUser() user: AuthenticatedRequest['user'],
+    @CurrentUser() user: AuthenticatedUser,
   ) {
     return {
       message: `The ${domainName} was updated successfully`,
@@ -138,7 +138,7 @@ export class MovementController {
   @ApiNotFoundResponse({ description: 'Movement not found' })
   async deleteOne(
     @Param('id') id: string,
-    @CurrentUser() user: AuthenticatedRequest['user'],
+    @CurrentUser() user: AuthenticatedUser,
   ) {
     return {
       message: `The ${domainName} was deleted successfully`,

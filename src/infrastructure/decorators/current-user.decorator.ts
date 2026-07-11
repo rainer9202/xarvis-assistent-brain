@@ -1,20 +1,35 @@
-import { createParamDecorator, ExecutionContext } from '@nestjs/common';
+import {
+  createParamDecorator,
+  ExecutionContext,
+  InternalServerErrorException,
+} from '@nestjs/common';
 import { Request } from 'express';
 
-// Exported so callers that need the param type for `@CurrentUser()` (e.g.
-// controllers doing `@CurrentUser() user: AuthenticatedRequest['user']`) can
-// import it from here now that the old Better-Auth-era guard (which used to
-// be the source of this type) is gone. `AuthenticatedRequest` is kept as the
-// exported name so those existing usages don't need to change, only their
-// import path.
+export interface AuthenticatedUser {
+  id: string;
+  email: string;
+  name: string;
+}
+
+// `user` stays optional here since Express itself has no concept of our
+// auth guard — this type describes the request BEFORE JwtAuthGuard runs.
 export interface RequestWithUser extends Request {
-  user?: { id: string; email: string; name: string };
+  user?: AuthenticatedUser;
 }
 export type AuthenticatedRequest = RequestWithUser;
 
 export const CurrentUser = createParamDecorator(
-  (_data: unknown, ctx: ExecutionContext) => {
+  (_data: unknown, ctx: ExecutionContext): AuthenticatedUser => {
     const request = ctx.switchToHttp().getRequest<RequestWithUser>();
+    if (!request.user) {
+      // JwtAuthGuard (registered globally via APP_GUARD) always populates
+      // this before any non-@Public() handler runs, or throws
+      // UnauthorizedException first — the only way to land here is
+      // @CurrentUser() mistakenly used on a @Public() route.
+      throw new InternalServerErrorException(
+        '@CurrentUser() used on a route not protected by JwtAuthGuard',
+      );
+    }
     return request.user;
   },
 );

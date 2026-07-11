@@ -6,7 +6,8 @@ Single source of truth for coding standards, architecture, and commands in this 
 
 ```bash
 pnpm start:dev          # dev server with watch
-pnpm build              # compile TypeScript via nest build
+pnpm build              # tsc --noEmit type-check, then compile via nest build (swc)
+pnpm typecheck          # tsc --noEmit only, no output — fast standalone type-check
 pnpm lint               # ESLint with auto-fix
 pnpm test               # unit tests (jest)
 pnpm test:watch         # unit tests in watch mode
@@ -16,6 +17,8 @@ pnpm test:e2e           # end-to-end tests
 pnpm db:migrate         # run Prisma migrations (prisma migrate dev)
 pnpm db:seed            # seed default data (tsx prisma/seed.ts)
 ```
+
+`nest build`'s own compile step uses `@swc/core` (`swcrc: true`/`nest-cli.json`'s `builder: swc`), which transpiles but does **not** type-check — a real `tsc` type error can silently pass `nest build` alone. `pnpm build` now runs `pnpm typecheck` (`tsc --noEmit -p tsconfig.build.json`) first specifically to close that gap; don't drop the `pnpm typecheck &&` prefix even though it makes `pnpm build` slower.
 
 `pnpm test:e2e` boots the real `AppModule` (real Prisma, no mocks) against Postgres, so the `db` service from `docker-compose.yml` must be up on `localhost:5432` first (`docker compose up -d db`, then `npx prisma migrate deploy` and `pnpm db:seed` once). It never reads the project's own `.env` — `test/setup-env.ts` (wired via Jest's `setupFiles`) hardcodes the local docker-compose `DATABASE_URL` (plus a throwaway `JWT_SECRET`/`JWT_EXPIRES_IN`) unless the environment already sets them, specifically so e2e runs can never accidentally hit whatever remote database `.env` happens to point at. e2e specs use `@swc/jest` (not `ts-jest`, which the unit test config uses) with `transformIgnorePatterns: []` (transforms all of `node_modules`) because Prisma 7's generated client ships real ESM — plain `tsc`-based transforms and any node_modules allowlist regex turn into permanent whack-a-mole as new transitive ESM deps show up. Every e2e spec must call `createAuthenticatedUser(app)` from `test/utils/test-app.ts` (signs up a throwaway user via the real `POST /auth/sign-up` route and returns a Bearer access token) and send it as an `Authorization: Bearer <token>` header on every request — the global `JwtAuthGuard` rejects unauthenticated requests with 401.
 

@@ -25,10 +25,16 @@ export class ResponseInterceptor<T> implements NestInterceptor<
     const response = context.switchToHttp().getResponse<Response>();
 
     return next.handle().pipe(
-      map((body) => ({
-        statusCode: response.statusCode,
-        ...(body as object),
-      })),
+      // Every controller returns { message, data } by convention (see
+      // AGENTS.md's "Response shape") — asserted here since `body: T` is
+      // generic and spreading it as `object` erases that shape from TS.
+      map(
+        (body) =>
+          ({
+            statusCode: response.statusCode,
+            ...(body as object),
+          }) as ApiResponse<T>,
+      ),
     );
   }
 }
