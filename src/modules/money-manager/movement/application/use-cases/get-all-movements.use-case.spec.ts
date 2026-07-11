@@ -1,9 +1,11 @@
 import { MovementEntity } from '../../domain/entities/movement.entity';
 import type { MovementRepositoryPort } from '../../domain/ports/movement.repository.port';
+import type { GetAllCategoriesUseCase } from '@modules/money-manager/category/application/use-cases/get-all-categories.use-case';
 import { GetAllMovementsUseCase } from './get-all-movements.use-case';
 
 describe('GetAllMovementsUseCase', () => {
   let repository: jest.Mocked<MovementRepositoryPort>;
+  let getAllCategories: jest.Mocked<GetAllCategoriesUseCase>;
   let useCase: GetAllMovementsUseCase;
 
   beforeEach(() => {
@@ -14,7 +16,19 @@ describe('GetAllMovementsUseCase', () => {
       update: jest.fn(),
       delete: jest.fn(),
     };
-    useCase = new GetAllMovementsUseCase(repository);
+    getAllCategories = {
+      execute: jest.fn().mockResolvedValue([
+        {
+          id: 'cat-1',
+          name: 'Groceries',
+          movementType: 'MT01',
+          movementTypeLabel: 'Gasto',
+          isActive: true,
+          createdAt: new Date('2024-01-01T00:00:00Z'),
+        },
+      ]),
+    } as unknown as jest.Mocked<GetAllCategoriesUseCase>;
+    useCase = new GetAllMovementsUseCase(repository, getAllCategories);
   });
 
   it('maps repository entities to the response shape', async () => {
@@ -44,6 +58,7 @@ describe('GetAllMovementsUseCase', () => {
         note: 'Weekly groceries',
         accountId: 'acc-1',
         categoryId: 'cat-1',
+        categoryLabel: 'Groceries',
         movementType: 'MT01',
         movementTypeLabel: 'Gasto',
         createdAt,
@@ -69,6 +84,27 @@ describe('GetAllMovementsUseCase', () => {
     const result = await useCase.execute('user-1');
 
     expect(result[0].movementTypeLabel).toBe('MT99');
+  });
+
+  it('falls back categoryLabel to the raw id when no category matches', async () => {
+    const createdAt = new Date('2024-01-01T00:00:00Z');
+    const date = new Date('2024-01-02T00:00:00Z');
+    const entity = new MovementEntity({
+      id: 'mov-1',
+      amountCents: 1500,
+      date,
+      accountId: 'acc-1',
+      categoryId: 'cat-unknown',
+      movementType: 'MT01',
+      userId: 'user-1',
+      createdAt,
+    });
+    repository.findAll.mockResolvedValue([entity]);
+
+    const result = await useCase.execute('user-1');
+
+    expect(result[0].categoryLabel).toBe('cat-unknown');
+    expect(getAllCategories.execute).toHaveBeenCalledWith('user-1');
   });
 
   it('includes toAccountId for a transfer movement', async () => {

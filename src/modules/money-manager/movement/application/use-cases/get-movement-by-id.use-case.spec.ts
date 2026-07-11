@@ -1,11 +1,13 @@
 import { NotFoundException } from '@domain/exceptions/domain.exception';
 import { MovementEntity } from '../../domain/entities/movement.entity';
 import type { MovementRepositoryPort } from '../../domain/ports/movement.repository.port';
+import type { GetCategoryByIdUseCase } from '@modules/money-manager/category/application/use-cases/get-category-by-id.use-case';
 import { GetMovementByIdUseCase } from './get-movement-by-id.use-case';
 
 describe('GetMovementByIdUseCase', () => {
   let findById: jest.Mock;
   let repository: MovementRepositoryPort;
+  let getCategoryById: jest.Mocked<GetCategoryByIdUseCase>;
   let useCase: GetMovementByIdUseCase;
 
   beforeEach(() => {
@@ -17,7 +19,16 @@ describe('GetMovementByIdUseCase', () => {
       update: jest.fn(),
       delete: jest.fn(),
     };
-    useCase = new GetMovementByIdUseCase(repository);
+    getCategoryById = {
+      execute: jest.fn().mockResolvedValue({
+        id: 'cat-1',
+        name: 'Groceries',
+        movementType: 'MT01',
+        movementTypeLabel: 'Gasto',
+        isActive: true,
+      }),
+    } as unknown as jest.Mocked<GetCategoryByIdUseCase>;
+    useCase = new GetMovementByIdUseCase(repository, getCategoryById);
   });
 
   it('returns the mapped movement when found', async () => {
@@ -39,6 +50,7 @@ describe('GetMovementByIdUseCase', () => {
     const result = await useCase.execute('mv-1', 'user-1');
 
     expect(findById).toHaveBeenCalledWith('mv-1', 'user-1');
+    expect(getCategoryById.execute).toHaveBeenCalledWith('cat-1', 'user-1');
     expect(result).toEqual({
       id: 'mv-1',
       amountCents: 15000,
@@ -47,6 +59,7 @@ describe('GetMovementByIdUseCase', () => {
       accountId: 'acc-1',
       toAccountId: undefined,
       categoryId: 'cat-1',
+      categoryLabel: 'Groceries',
       movementType: 'MT01',
       movementTypeLabel: 'Gasto',
       createdAt: new Date('2024-01-01T00:00:00Z'),

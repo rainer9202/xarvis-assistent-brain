@@ -340,11 +340,17 @@ rather than paginating — there is no pagination support yet.
   "accountId": "uuid",
   "toAccountId": null,
   "categoryId": "uuid",
+  "categoryLabel": "Groceries",
   "movementType": "MT01",
   "movementTypeLabel": "Gasto",
   "createdAt": "2026-07-09T00:00:00.000Z"
 }
 ```
+
+`categoryLabel` is the category's current `name` (see §5.3), resolved server-side on every read — same
+"render the label, don't build your own id→name mapping" guidance as `movementTypeLabel`, except
+here it's a real per-user `Category` name rather than a static code table, so it can be renamed via
+`PATCH /categories/:id` at any time.
 
 `note` and `toAccountId` are omitted/`undefined` when not set (do not assume they are always
 present keys). There is no `updatedAt` in the movement response shape.

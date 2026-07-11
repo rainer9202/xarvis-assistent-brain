@@ -347,6 +347,45 @@ describe('Movement (e2e)', () => {
       .expect(400);
   });
 
+  it('returns categoryLabel on both GET /movements and GET /movements/:id', async () => {
+    const res = await request(app.getHttpServer())
+      .post('/movements')
+      .set('Authorization', `Bearer ${token}`)
+      .send({
+        amountCents: 800,
+        date: new Date().toISOString(),
+        accountId: accountA,
+        categoryId,
+        movementType: expenseType,
+      })
+      .expect(201);
+    movementIds.push(res.body.data.id);
+
+    const category = await prisma.category.findUniqueOrThrow({
+      where: { id: categoryId },
+    });
+
+    await request(app.getHttpServer())
+      .get(`/movements/${res.body.data.id}`)
+      .set('Authorization', `Bearer ${token}`)
+      .expect(200)
+      .expect((getRes) => {
+        expect(getRes.body.data.categoryLabel).toBe(category.name);
+      });
+
+    await request(app.getHttpServer())
+      .get('/movements')
+      .query({ historic: true })
+      .set('Authorization', `Bearer ${token}`)
+      .expect(200)
+      .expect((listRes) => {
+        const found = listRes.body.data.find(
+          (m: { id: string }) => m.id === res.body.data.id,
+        );
+        expect(found.categoryLabel).toBe(category.name);
+      });
+  });
+
   it('🔍 rejects a transfer without toAccountId', async () => {
     await request(app.getHttpServer())
       .post('/movements')

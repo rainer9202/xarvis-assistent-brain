@@ -21,6 +21,6 @@ import { PrismaCategoryRepository } from './infrastructure/repositories/prisma-c
     DeleteCategoryUseCase,
     GetCategoryByIdUseCase,
   ],
-  exports: [GetCategoryByIdUseCase],
+  exports: [GetCategoryByIdUseCase, GetAllCategoriesUseCase],
 })
 export class CategoryModule {}
