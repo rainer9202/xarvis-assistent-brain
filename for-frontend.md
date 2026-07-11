@@ -126,6 +126,64 @@ Account's `type`/`typeLabel`, see §5.2).
 | `MT02` | Ingreso |
 | `MT03` | Transferencia |
 
+### 5.1 Groups (owned by the caller)
+
+**Standalone for now — not yet linked to Categories.** The eventual model is one Group having many
+Categories, but that relation doesn't exist in the API yet (no `groupId` on Category, no nested
+routes). This section only covers the Group CRUD itself; treat any grouping UI as unsupported
+until this doc says otherwise.
+
+| Method | Path |
+|---|---|
+| GET | `/groups` |
+| POST | `/groups` |
+| PATCH | `/groups/:id` |
+| DELETE | `/groups/:id` |
+
+**There is no `GET /groups/:id` route** (same pattern as Categories) — fetch the full list via
+`GET /groups` and find it client-side.
+
+**GET /groups** → `data`: array of
+
+```json
+{
+  "id": "uuid",
+  "name": "Fixed Expenses",
+  "isActive": true,
+  "createdAt": "2026-07-09T00:00:00.000Z"
+}
+```
+
+**POST /groups**
+
+| Field | Type | Constraints |
+|---|---|---|
+| `name` | string | required, non-empty, max 50 chars |
+
+Response `201`, `data`: `{ "id": "uuid" }`.
+
+Error: `409` — the name already exists **for this user**: `"Group \"<name>\" already exists"`
+(uniqueness is per-user, same spirit as Category's uniqueness — two different users can each have
+a "Fixed Expenses" group without conflicting).
+
+**PATCH /groups/:id**
+
+| Field | Type | Constraints |
+|---|---|---|
+| `name` | string, optional | non-empty, max 50 chars |
+| `isActive` | boolean, optional | manual toggle |
+
+Response `200`, `data`: `{ "id": "uuid" }`.
+
+Errors: `404` (group not found / not yours) and `409` (name collision, re-checked whenever `name`
+changes) as create.
+
+**DELETE /groups/:id** → `200`, `data`: `{ "id": "uuid" }`. No delete-guard — nothing references a
+Group yet, so delete always succeeds once ownership/existence is confirmed. This will very likely
+change once Category gets linked to Group.
+
+Error: `404` — not found / not yours.
+
 ### 5.2 Accounts (owned by the caller)
 
 | Method | Path |
@@ -234,6 +292,7 @@ via `GET /categories` and find it client-side.
 {
   "id": "uuid",
   "name": "Groceries",
+  "icon": "cart-outline",
   "movementType": "MT01",
   "movementTypeLabel": "Gasto",
   "isActive": true,
@@ -241,11 +300,17 @@ via `GET /categories` and find it client-side.
 }
 ```
 
+`icon` is an [Ionicons](https://ionic.io/ionicons) icon name (e.g. `"cart-outline"`,
+`"home-outline"`) — the frontend renders it directly with whatever Ionicons component/import it
+already uses; the backend only stores/validates a non-empty string, it does not know or care about
+the icon set beyond that.
+
 **POST /categories**
 
 | Field | Type | Constraints |
 |---|---|---|
 | `name` | string | required, non-empty, max 50 chars |
+| `icon` | string | required, non-empty, max 50 chars — an Ionicons icon name |
 | `movementType` | string | required, must be exactly one of `"MT01" \| "MT02" \| "MT03"` (see §5.0 code→label table) |
 
 Response `201`, `data`: `{ "id": "uuid" }`.
@@ -253,6 +318,7 @@ Response `201`, `data`: `{ "id": "uuid" }`.
 Errors:
 - `400` — invalid `movementType`: `"movementType must be one of the following values: MT01, MT02, MT03"`
   (class-validator shape, `message` is a string array)
+- `400` — missing/empty `icon`: standard class-validator shape
 - `409` — the `(name, movementType)` pair already exists **for this user**:
   `"Category \"<name>\" already exists for movement type \"<movementType>\""`
   (uniqueness is per-user — two different users can each have a "Groceries" category under the
@@ -263,6 +329,7 @@ Errors:
 | Field | Type | Constraints |
 |---|---|---|
 | `name` | string, optional | non-empty, max 50 chars |
+| `icon` | string, optional | non-empty, max 50 chars if present |
 | `movementType` | string, optional | one of `MT01 \| MT02 \| MT03` if present (enforced again in the use case, not just at the DTO layer) |
 | `isActive` | boolean, optional | manual toggle |
 
@@ -447,6 +514,8 @@ with directly.
 
 ## 6. Business rules a frontend must respect
 
+- **`Group` is standalone, not yet wired to `Category`.** Don't build a "group your categories"
+  UI expecting the backend to enforce or return the relationship — it isn't there yet (see §5.1).
 - **A user always has exactly one principal account once they have any account at all.** The
   first account ever created is auto-marked `isPrincipal: true`; every account after that starts
   `false`. It can't be un-principaled directly and it can't be deleted — the only way to change

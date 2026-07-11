@@ -5,6 +5,7 @@ import type { JwtSignOptions } from '@nestjs/jwt';
 import { PrismaModule } from '@config/database/prisma.module';
 import { AccountModule } from '@modules/money-manager/account/account.module';
 import { CategoryModule } from '@modules/money-manager/category/category.module';
+import { GroupModule } from '@modules/money-manager/group/group.module';
 import { MovementModule } from '@modules/money-manager/movement/movement.module';
 import { ReportModule } from '@modules/money-manager/report/report.module';
 import { AuthModule } from '@modules/identity/auth/auth.module';
@@ -50,6 +51,7 @@ import { HealthModule } from '@modules/_health/health.module';
     PrismaModule,
     AccountModule,
     CategoryModule,
+    GroupModule,
     MovementModule,
     ReportModule,
     AuthModule,
