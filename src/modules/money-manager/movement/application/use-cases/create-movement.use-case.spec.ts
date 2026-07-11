@@ -56,7 +56,7 @@ describe('CreateMovementUseCase', () => {
     getCategoryByIdExecute.mockResolvedValue({
       id: 'cat-1',
       name: 'Groceries',
-      movementType: 'Gasto',
+      movementType: 'MT01',
       isActive: true,
     });
     let savedEntity: MovementEntity | undefined;
@@ -83,7 +83,7 @@ describe('CreateMovementUseCase', () => {
         'Weekly groceries',
         'acc-1',
         'cat-1',
-        'Gasto',
+        'MT01',
         'user-1',
       ),
     );
@@ -114,6 +114,24 @@ describe('CreateMovementUseCase', () => {
     expect(getAccountByIdExecute).not.toHaveBeenCalled();
   });
 
+  it('rejects the old label as an invalid movement type code', async () => {
+    await expect(
+      useCase.execute(
+        new CreateMovementCommand(
+          1500,
+          date,
+          undefined,
+          'acc-1',
+          'cat-1',
+          'Gasto',
+          'user-1',
+        ),
+      ),
+    ).rejects.toThrow(ValidationException);
+    expect(save).not.toHaveBeenCalled();
+    expect(getAccountByIdExecute).not.toHaveBeenCalled();
+  });
+
   it('propagates NotFoundException when the account does not exist and does not save', async () => {
     getAccountByIdExecute.mockRejectedValue(
       new NotFoundException('Account "missing" not found'),
@@ -127,7 +145,7 @@ describe('CreateMovementUseCase', () => {
           undefined,
           'missing',
           'cat-1',
-          'Gasto',
+          'MT01',
           'user-1',
         ),
       ),
@@ -154,7 +172,7 @@ describe('CreateMovementUseCase', () => {
           undefined,
           'acc-1',
           'missing',
-          'Gasto',
+          'MT01',
           'user-1',
         ),
       ),
@@ -175,7 +193,7 @@ describe('CreateMovementUseCase', () => {
       getCategoryByIdExecute.mockResolvedValue({
         id: 'cat-1',
         name: 'Transfers',
-        movementType: 'Transferencia',
+        movementType: 'MT03',
         isActive: true,
       });
       save.mockImplementation((entity: MovementEntity) =>
@@ -221,7 +239,7 @@ describe('CreateMovementUseCase', () => {
           'Transfer to savings',
           'acc-1',
           'cat-1',
-          'Transferencia',
+          'MT03',
           'user-1',
           'acc-2',
         ),
@@ -240,7 +258,7 @@ describe('CreateMovementUseCase', () => {
             undefined,
             'acc-1',
             'cat-1',
-            'Transferencia',
+            'MT03',
             'user-1',
           ),
         ),
@@ -257,7 +275,7 @@ describe('CreateMovementUseCase', () => {
             undefined,
             'acc-1',
             'cat-1',
-            'Transferencia',
+            'MT03',
             'user-1',
             'acc-1',
           ),
@@ -288,7 +306,7 @@ describe('CreateMovementUseCase', () => {
             undefined,
             'acc-1',
             'cat-1',
-            'Transferencia',
+            'MT03',
             'user-1',
             'missing',
           ),
@@ -306,7 +324,7 @@ describe('CreateMovementUseCase', () => {
             undefined,
             'acc-1',
             'cat-1',
-            'Gasto',
+            'MT01',
             'user-1',
             'acc-2',
           ),

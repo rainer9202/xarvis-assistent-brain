@@ -47,12 +47,12 @@ describe('CreateCategoryUseCase', () => {
     });
 
     const result = await useCase.execute(
-      new CreateCategoryCommand('Groceries', 'Gasto', 'user-1'),
+      new CreateCategoryCommand('Groceries', 'MT01', 'user-1'),
     );
 
     expect(findByNameAndMovementType).toHaveBeenCalledWith(
       'Groceries',
-      'Gasto',
+      'MT01',
       'user-1',
     );
     expect(save).toHaveBeenCalledWith(expect.any(CategoryEntity));
@@ -69,21 +69,28 @@ describe('CreateCategoryUseCase', () => {
     expect(save).not.toHaveBeenCalled();
   });
 
+  it('rejects the old label as an invalid movement type code', async () => {
+    await expect(
+      useCase.execute(
+        new CreateCategoryCommand('Groceries', 'Gasto', 'user-1'),
+      ),
+    ).rejects.toThrow(ValidationException);
+    expect(save).not.toHaveBeenCalled();
+  });
+
   it('throws ConflictException when a category with the same name already exists under the movement type', async () => {
     findByNameAndMovementType.mockResolvedValue(
       new CategoryEntity({
         id: 'cat-1',
         name: 'Groceries',
-        movementType: 'Gasto',
+        movementType: 'MT01',
         userId: 'user-1',
         isActive: true,
       }),
     );
 
     await expect(
-      useCase.execute(
-        new CreateCategoryCommand('Groceries', 'Gasto', 'user-1'),
-      ),
+      useCase.execute(new CreateCategoryCommand('Groceries', 'MT01', 'user-1')),
     ).rejects.toThrow(ConflictException);
     expect(save).not.toHaveBeenCalled();
   });

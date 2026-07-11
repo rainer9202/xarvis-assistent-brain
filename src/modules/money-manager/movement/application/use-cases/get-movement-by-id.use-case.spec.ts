@@ -30,7 +30,7 @@ describe('GetMovementByIdUseCase', () => {
         accountId: 'acc-1',
         toAccountId: undefined,
         categoryId: 'cat-1',
-        movementType: 'Gasto',
+        movementType: 'MT01',
         userId: 'user-1',
         createdAt: new Date('2024-01-01T00:00:00Z'),
       }),
@@ -47,9 +47,29 @@ describe('GetMovementByIdUseCase', () => {
       accountId: 'acc-1',
       toAccountId: undefined,
       categoryId: 'cat-1',
-      movementType: 'Gasto',
+      movementType: 'MT01',
+      movementTypeLabel: 'Gasto',
       createdAt: new Date('2024-01-01T00:00:00Z'),
     });
+  });
+
+  it('falls back movementTypeLabel to the raw code when no label matches', async () => {
+    findById.mockResolvedValue(
+      new MovementEntity({
+        id: 'mv-1',
+        amountCents: 15000,
+        date: new Date('2024-01-01T00:00:00Z'),
+        accountId: 'acc-1',
+        categoryId: 'cat-1',
+        movementType: 'MT99',
+        userId: 'user-1',
+        createdAt: new Date('2024-01-01T00:00:00Z'),
+      }),
+    );
+
+    const result = await useCase.execute('mv-1', 'user-1');
+
+    expect(result.movementTypeLabel).toBe('MT99');
   });
 
   it('throws NotFoundException when the movement does not exist', async () => {

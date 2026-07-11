@@ -29,7 +29,7 @@ describe('PrismaCategoryRepository', () => {
   const record = {
     id: 'cat-1',
     name: 'Groceries',
-    movementType: 'Gasto',
+    movementType: 'MT01',
     userId: 'user-1',
     isActive: true,
     createdAt: new Date('2024-01-01T00:00:00Z'),
@@ -86,7 +86,7 @@ describe('PrismaCategoryRepository', () => {
         where: { id: 'cat-1', userId: 'user-1' },
       });
       expect(result).toBeInstanceOf(CategoryEntity);
-      expect(result?.movementType).toBe('Gasto');
+      expect(result?.movementType).toBe('MT01');
     });
 
     it('returns null when not found', async () => {
@@ -104,7 +104,7 @@ describe('PrismaCategoryRepository', () => {
 
       const result = await repository.findByNameAndMovementType(
         'Groceries',
-        'Gasto',
+        'MT01',
         'user-1',
       );
 
@@ -112,7 +112,7 @@ describe('PrismaCategoryRepository', () => {
         where: {
           name_movementType_userId: {
             name: 'Groceries',
-            movementType: 'Gasto',
+            movementType: 'MT01',
             userId: 'user-1',
           },
         },
@@ -125,7 +125,7 @@ describe('PrismaCategoryRepository', () => {
 
       const result = await repository.findByNameAndMovementType(
         'missing',
-        'Gasto',
+        'MT01',
         'user-1',
       );
 
@@ -137,7 +137,7 @@ describe('PrismaCategoryRepository', () => {
     it('creates a record from the entity and returns the mapped entity', async () => {
       const entity = new CategoryEntity({
         name: 'Groceries',
-        movementType: 'Gasto',
+        movementType: 'MT01',
         userId: 'user-1',
         isActive: true,
       });
@@ -149,7 +149,7 @@ describe('PrismaCategoryRepository', () => {
         data: {
           id: undefined,
           name: 'Groceries',
-          movementType: 'Gasto',
+          movementType: 'MT01',
           userId: 'user-1',
           isActive: true,
         },
@@ -164,7 +164,7 @@ describe('PrismaCategoryRepository', () => {
       const entity = new CategoryEntity({
         id: 'cat-1',
         name: 'Supermarket',
-        movementType: 'Gasto',
+        movementType: 'MT01',
         userId: 'user-1',
         isActive: false,
       });
@@ -178,7 +178,7 @@ describe('PrismaCategoryRepository', () => {
 
       expect(prisma.category.update).toHaveBeenCalledWith({
         where: { id: 'cat-1' },
-        data: { name: 'Supermarket', movementType: 'Gasto', isActive: false },
+        data: { name: 'Supermarket', movementType: 'MT01', isActive: false },
       });
       expect(result.name).toBe('Supermarket');
       expect(result.isActive).toBe(false);
@@ -190,7 +190,7 @@ describe('PrismaCategoryRepository', () => {
       const entity = new CategoryEntity({
         id: 'cat-1',
         name: 'Groceries',
-        movementType: 'Gasto',
+        movementType: 'MT01',
         userId: 'user-1',
         isActive: true,
       });

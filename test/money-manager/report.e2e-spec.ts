@@ -8,7 +8,7 @@ describe('Report (e2e)', () => {
   let prisma: PrismaService;
   let token: string;
   let userId: string;
-  const expenseType = 'Gasto';
+  const expenseType = 'MT01';
   let categoryId: string;
   const accountIds: string[] = [];
 

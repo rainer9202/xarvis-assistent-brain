@@ -1,6 +1,6 @@
 import { ApiPropertyOptional } from '@nestjs/swagger';
 import { IsIn, IsOptional, IsUUID, Matches } from 'class-validator';
-import { MOVEMENT_TYPES } from '@domain/enums/movement-type.enum';
+import { MOVEMENT_TYPE_CODES } from '@domain/enums/movement-type.enum';
 
 export class GetMovementsQueryDto {
   @ApiPropertyOptional({
@@ -12,9 +12,9 @@ export class GetMovementsQueryDto {
   @IsUUID()
   accountId?: string;
 
-  @ApiPropertyOptional({ example: 'Gasto', enum: MOVEMENT_TYPES })
+  @ApiPropertyOptional({ example: 'MT01', enum: MOVEMENT_TYPE_CODES })
   @IsOptional()
-  @IsIn(MOVEMENT_TYPES)
+  @IsIn(MOVEMENT_TYPE_CODES)
   movementType?: string;
 
   @ApiPropertyOptional({

@@ -108,7 +108,7 @@ A feature with no persistence of its own (e.g. `report`, which only aggregates a
 - Import from `generated/prisma/client.js` (`.js` extension required by `moduleResolution: nodenext`)
 - `PrismaModule` is `@Global()`, so `PrismaService` is available everywhere without importing `PrismaModule` per module
 - `PrismaService` creates the adapter inside the constructor (not at module level) so `DATABASE_URL` is available from `dotenv`
-- `prisma/seed.ts` upserts one default user (`rainer@gmail.com`, password hashed with `argon2`) and 15 categories for them (8 `Gasto`, 4 `Ingreso`, 3 `Transferencia`) — idempotent via `upsert` on email and on `(name, movementType, userId)`, safe to re-run against a DB where the user already signed up normally; run with `tsx`
+- `prisma/seed.ts` upserts one default user (`rainer@gmail.com`, password hashed with `argon2`) and 15 categories for them (8 `MT01`/Gasto, 4 `MT02`/Ingreso, 3 `MT03`/Transferencia) — idempotent via `upsert` on email and on `(name, movementType, userId)`, safe to re-run against a DB where the user already signed up normally; run with `tsx`
 
 ### Dependency injection for ports
 
@@ -164,7 +164,25 @@ Each use case defines its own response type (e.g. `CreateAccountResponse`) inste
 
 ### Domain enums and constants
 
-Allowed-values lists (e.g. `ACCOUNT_TYPES`) live in `domain/enums/<name>.enum.ts`, never inline inside a use-case or a DTO. If both a DTO (`class-validator`'s `@IsIn`) and a use case need the same list, both import it from that single file — never duplicate the literal array.
+Allowed-values lists (e.g. `ACCOUNT_TYPES`, `MOVEMENT_TYPES`) live in `domain/enums/<name>.enum.ts`, never inline inside a use-case or a DTO. If both a DTO (`class-validator`'s `@IsIn`) and a use case need the same list, both import it from that single file — never duplicate the literal array.
+
+**Code+label pattern**: for any enum where the display text might need to change independently of the stored/validated value, the enum is `[{ code, label }]` (`as const`), not a plain string-literal array. `ACCOUNT_TYPES` (`src/modules/money-manager/account/domain/enums/account-type.enum.ts`) and `MOVEMENT_TYPES` (`src/domain/enums/movement-type.enum.ts`) are the two canonical examples:
+
+```ts
+export const MOVEMENT_TYPES = [
+  { code: 'MT01', label: 'Gasto' },
+  { code: 'MT02', label: 'Ingreso' },
+  { code: 'MT03', label: 'Transferencia' },
+] as const;
+
+export type MovementTypeCode = (typeof MOVEMENT_TYPES)[number]['code'];
+export const MOVEMENT_TYPE_CODES = MOVEMENT_TYPES.map((t) => t.code);
+export function getMovementTypeLabel(code: string): string | undefined {
+  return MOVEMENT_TYPES.find((t) => t.code === code)?.label;
+}
+```
+
+The stored/validated value is always the stable `code` (`AT01`, `MT01`, etc.), never the label — `@IsIn()` and every use-case symmetric-validation check run against the `*_CODES` array, not `*_TYPES` itself. `GetAll`/`GetById` responses return both the code (under the original field name — `type`, `movementType`) and a sibling `<field>Label` computed via `get<X>Label(code) ?? code`, so the frontend never needs its own code→label mapping. `Create`/`Update`/`Delete` responses stay `{ id }`-only per convention — the label is never added there. Any business logic that discriminates on the value (e.g. `TRANSFER_TYPE_NAME` in `PrismaAccountRepository`/`CreateMovementUseCase`/`UpdateMovementUseCase`) compares against the **code**, never the label.
 
 ### Business-rule validation must be symmetric
 
@@ -178,7 +196,7 @@ Before deleting, the use case must check every place elsewhere in the schema tha
 
 ### Cross-module dependencies
 
-A module exports **only use cases** in its `exports` array — never a repository Symbol token. When one feature needs to read/validate data owned by another feature (e.g. `Movement` validating `accountId`/`categoryId`), the consuming module imports the owning feature's `Module` and injects one of its exported use cases via normal Nest DI (no `@Inject` needed for a concrete class token). The owning module adds a `GetXById`-style use case (throws `NotFoundException` when missing, returns mapped fields) purely to serve this purpose if one doesn't already exist. `movementType` is not a cross-module case: it's a plain string column validated against the shared `MOVEMENT_TYPES` enum (`src/domain/enums/movement-type.enum.ts`), the same `@IsIn`-at-the-DTO-plus-symmetric-use-case-revalidation pattern as `Account.type` — no other module's use case is involved.
+A module exports **only use cases** in its `exports` array — never a repository Symbol token. When one feature needs to read/validate data owned by another feature (e.g. `Movement` validating `accountId`/`categoryId`), the consuming module imports the owning feature's `Module` and injects one of its exported use cases via normal Nest DI (no `@Inject` needed for a concrete class token). The owning module adds a `GetXById`-style use case (throws `NotFoundException` when missing, returns mapped fields) purely to serve this purpose if one doesn't already exist. `movementType` is not a cross-module case: it's a plain string column storing a `MOVEMENT_TYPE_CODES` code, validated against the shared `MOVEMENT_TYPES` enum (`src/domain/enums/movement-type.enum.ts`, see "Domain enums and constants"), the same `@IsIn`-at-the-DTO-plus-symmetric-use-case-revalidation pattern as `Account.type` — no other module's use case is involved.
 
 ### Authentication and data ownership
 
@@ -196,11 +214,11 @@ Better-Auth was removed and fully replaced by hand-rolled JWT auth — no Passpo
 
 A deleted or deactivated user's still-unexpired JWT continues to authenticate successfully — `JwtAuthGuard` only verifies the token's signature/expiry, it never re-checks the database. This is an accepted stateless-JWT tradeoff (no revocation list), not a bug.
 
-`Account`, `Category`, and `Movement` are owned by a `User` (`userId` FK, `onDelete: Cascade`). `MovementType` is not a database entity at all — it is a compile-time enum (`MOVEMENT_TYPES` in `src/domain/enums/movement-type.enum.ts`, `['Gasto', 'Ingreso', 'Transferencia']`), so `Category.movementType` and `Movement.movementType` are plain `String` columns validated against that enum, not a `userId`-scoped or global FK relationship.
+`Account`, `Category`, and `Movement` are owned by a `User` (`userId` FK, `onDelete: Cascade`). `MovementType` is not a database entity at all — it is a compile-time enum (`MOVEMENT_TYPES` in `src/domain/enums/movement-type.enum.ts`, `[{code: 'MT01', label: 'Gasto'}, {code: 'MT02', label: 'Ingreso'}, {code: 'MT03', label: 'Transferencia'}]`), so `Category.movementType` and `Movement.movementType` are plain `String` columns storing the `code` (never the label), validated against `MOVEMENT_TYPE_CODES`, not a `userId`-scoped or global FK relationship.
 
 For every ownership-scoped entity: `GetAllUseCase.execute(userId)`, `GetByIdUseCase.execute(id, userId)`, and the repository's `findById`/`findAllWithBalance`-style methods filter by `WHERE id = ? AND userId = ?` (via `findFirst`, not `findUnique`, since `id` alone is no longer sufficient to scope the row) — a lookup for another user's row returns `null` → `NotFoundException`, the same as a truly missing id. Never leak existence via a 403; a wrong-owner id and a nonexistent id must be indistinguishable to the caller. `Create`/`Update`/`Delete` commands carry `userId` as a required constructor param, sourced from `@CurrentUser()` (`src/infrastructure/decorators/current-user.decorator.ts`) in the controller — never trust a `userId` from the request body/DTO.
 
-Cross-module ownership checks matter just as much as same-module ones: `Movement`'s use cases call `GetAccountByIdUseCase.execute(accountId, userId)` and `GetCategoryByIdUseCase.execute(categoryId, userId)` (and `toAccountId` too, for transfers) so a user can't reference another user's account/category in their own movement. `movementType` needs no such lookup — it is validated in-process against the compile-time `MOVEMENT_TYPES` enum, not fetched from another module or scoped by `userId`.
+Cross-module ownership checks matter just as much as same-module ones: `Movement`'s use cases call `GetAccountByIdUseCase.execute(accountId, userId)` and `GetCategoryByIdUseCase.execute(categoryId, userId)` (and `toAccountId` too, for transfers) so a user can't reference another user's account/category in their own movement. `movementType` needs no such lookup — it is validated in-process against the compile-time `MOVEMENT_TYPE_CODES`, not fetched from another module or scoped by `userId`.
 
 ### Monetary amounts
 

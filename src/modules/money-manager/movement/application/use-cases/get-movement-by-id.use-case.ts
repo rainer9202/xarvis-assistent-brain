@@ -3,6 +3,7 @@ import {
   DomainException,
   NotFoundException,
 } from '@domain/exceptions/domain.exception';
+import { getMovementTypeLabel } from '@domain/enums/movement-type.enum';
 import { MOVEMENT_REPOSITORY } from '../../domain/ports/movement.repository.port';
 import type { MovementRepositoryPort } from '../../domain/ports/movement.repository.port';
 
@@ -15,6 +16,7 @@ export type GetMovementByIdResponse = {
   toAccountId?: string;
   categoryId: string;
   movementType: string;
+  movementTypeLabel: string;
   createdAt: Date;
 };
 
@@ -39,6 +41,8 @@ export class GetMovementByIdUseCase {
         toAccountId: movement.toAccountId,
         categoryId: movement.categoryId,
         movementType: movement.movementType,
+        movementTypeLabel:
+          getMovementTypeLabel(movement.movementType) ?? movement.movementType,
         createdAt: movement.createdAt!,
       };
     } catch (error) {

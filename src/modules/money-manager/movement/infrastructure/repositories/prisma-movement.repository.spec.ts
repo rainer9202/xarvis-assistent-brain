@@ -32,7 +32,7 @@ describe('PrismaMovementRepository', () => {
     accountId: 'acc-1',
     toAccountId: null,
     categoryId: 'cat-1',
-    movementType: 'Gasto',
+    movementType: 'MT01',
     userId: 'user-1',
     createdAt: new Date('2024-01-01T00:00:00Z'),
     updatedAt: new Date('2024-01-02T00:00:00Z'),
@@ -92,10 +92,10 @@ describe('PrismaMovementRepository', () => {
     it('filters by movementType', async () => {
       prisma.movement.findMany.mockResolvedValue([]);
 
-      await repository.findAll('user-1', { movementType: 'Gasto' });
+      await repository.findAll('user-1', { movementType: 'MT01' });
 
       expect(prisma.movement.findMany).toHaveBeenCalledWith({
-        where: { userId: 'user-1', movementType: 'Gasto' },
+        where: { userId: 'user-1', movementType: 'MT01' },
         orderBy: { date: 'desc' },
       });
     });
@@ -122,7 +122,7 @@ describe('PrismaMovementRepository', () => {
 
       await repository.findAll('user-1', {
         accountId: 'acc-1',
-        movementType: 'Transferencia',
+        movementType: 'MT03',
         month: '2026-01',
       });
 
@@ -130,7 +130,7 @@ describe('PrismaMovementRepository', () => {
         where: {
           userId: 'user-1',
           OR: [{ accountId: 'acc-1' }, { toAccountId: 'acc-1' }],
-          movementType: 'Transferencia',
+          movementType: 'MT03',
           date: {
             gte: new Date(Date.UTC(2026, 0, 1)),
             lt: new Date(Date.UTC(2026, 1, 1)),
@@ -201,7 +201,7 @@ describe('PrismaMovementRepository', () => {
         note: 'Weekly groceries',
         accountId: 'acc-1',
         categoryId: 'cat-1',
-        movementType: 'Gasto',
+        movementType: 'MT01',
         userId: 'user-1',
       });
       prisma.movement.create.mockResolvedValue(record);
@@ -217,7 +217,7 @@ describe('PrismaMovementRepository', () => {
           accountId: 'acc-1',
           toAccountId: null,
           categoryId: 'cat-1',
-          movementType: 'Gasto',
+          movementType: 'MT01',
           userId: 'user-1',
         },
       });
@@ -232,7 +232,7 @@ describe('PrismaMovementRepository', () => {
         accountId: 'acc-1',
         toAccountId: 'acc-2',
         categoryId: 'cat-1',
-        movementType: 'Transferencia',
+        movementType: 'MT03',
         userId: 'user-1',
       });
       prisma.movement.create.mockResolvedValue({
@@ -251,7 +251,7 @@ describe('PrismaMovementRepository', () => {
           accountId: 'acc-1',
           toAccountId: 'acc-2',
           categoryId: 'cat-1',
-          movementType: 'Transferencia',
+          movementType: 'MT03',
           userId: 'user-1',
         },
       });
@@ -268,7 +268,7 @@ describe('PrismaMovementRepository', () => {
         note: 'Updated note',
         accountId: 'acc-2',
         categoryId: 'cat-2',
-        movementType: 'Ingreso',
+        movementType: 'MT02',
         userId: 'user-1',
       });
       prisma.movement.update.mockResolvedValue({
@@ -288,7 +288,7 @@ describe('PrismaMovementRepository', () => {
           accountId: 'acc-2',
           toAccountId: null,
           categoryId: 'cat-2',
-          movementType: 'Ingreso',
+          movementType: 'MT02',
         },
       });
       expect(result.amountCents).toBe(2000);
@@ -303,7 +303,7 @@ describe('PrismaMovementRepository', () => {
         accountId: 'acc-2',
         toAccountId: undefined,
         categoryId: 'cat-2',
-        movementType: 'Ingreso',
+        movementType: 'MT02',
         userId: 'user-1',
       });
       prisma.movement.update.mockResolvedValue({
@@ -322,7 +322,7 @@ describe('PrismaMovementRepository', () => {
           accountId: 'acc-2',
           toAccountId: null,
           categoryId: 'cat-2',
-          movementType: 'Ingreso',
+          movementType: 'MT02',
         },
       });
     });
@@ -335,7 +335,7 @@ describe('PrismaMovementRepository', () => {
         accountId: 'acc-2',
         toAccountId: 'acc-3',
         categoryId: 'cat-2',
-        movementType: 'Transferencia',
+        movementType: 'MT03',
         userId: 'user-1',
       });
       prisma.movement.update.mockResolvedValue({
@@ -354,7 +354,7 @@ describe('PrismaMovementRepository', () => {
           accountId: 'acc-2',
           toAccountId: 'acc-3',
           categoryId: 'cat-2',
-          movementType: 'Transferencia',
+          movementType: 'MT03',
         },
       });
       expect(result.toAccountId).toBe('acc-3');
@@ -369,7 +369,7 @@ describe('PrismaMovementRepository', () => {
         date,
         accountId: 'acc-1',
         categoryId: 'cat-1',
-        movementType: 'Gasto',
+        movementType: 'MT01',
         userId: 'user-1',
       });
       prisma.movement.delete.mockResolvedValue(record);

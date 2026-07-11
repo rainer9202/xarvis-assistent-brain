@@ -36,7 +36,7 @@ describe('DeleteCategoryUseCase', () => {
     const entity = new CategoryEntity({
       id: 'cat-1',
       name: 'Groceries',
-      movementType: 'Gasto',
+      movementType: 'MT01',
       userId: 'user-1',
       isActive: true,
     });
@@ -57,7 +57,7 @@ describe('DeleteCategoryUseCase', () => {
     const entity = new CategoryEntity({
       id: 'cat-1',
       name: 'Groceries',
-      movementType: 'Gasto',
+      movementType: 'MT01',
       userId: 'user-1',
       isActive: true,
     });

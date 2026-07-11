@@ -108,7 +108,7 @@ describe('Account (e2e)', () => {
     const categoryRes = await request(app.getHttpServer())
       .post('/categories')
       .set('Authorization', `Bearer ${token}`)
-      .send({ name: `Cat-${Date.now()}`, movementType: 'Gasto' })
+      .send({ name: `Cat-${Date.now()}`, movementType: 'MT01' })
       .expect(201);
     const categoryId = categoryRes.body.data.id;
 
@@ -120,7 +120,7 @@ describe('Account (e2e)', () => {
         date: new Date().toISOString(),
         accountId,
         categoryId,
-        movementType: 'Gasto',
+        movementType: 'MT01',
       })
       .expect(201);
 

@@ -77,7 +77,7 @@ describe('MovementController', () => {
           note: 'Weekly groceries',
           accountId: 'acc-1',
           categoryId: 'cat-1',
-          movementType: 'Gasto',
+          movementType: 'MT01',
           createdAt: new Date('2024-01-01T00:00:00Z'),
         },
       ];
@@ -100,13 +100,13 @@ describe('MovementController', () => {
       getAllExecute.mockResolvedValue([]);
 
       await controller.findAll(
-        { accountId: 'acc-1', movementType: 'Gasto', month: '2026-07' },
+        { accountId: 'acc-1', movementType: 'MT01', month: '2026-07' },
         user,
       );
 
       expect(getAllExecute).toHaveBeenCalledWith(user.id, {
         accountId: 'acc-1',
-        movementType: 'Gasto',
+        movementType: 'MT01',
         month: '2026-07',
       });
     });
@@ -121,7 +121,7 @@ describe('MovementController', () => {
         note: 'Weekly groceries',
         accountId: 'acc-1',
         categoryId: 'cat-1',
-        movementType: 'Gasto',
+        movementType: 'MT01',
         createdAt: new Date('2024-01-01T00:00:00Z'),
       };
       getByIdExecute.mockResolvedValue(data);
@@ -144,7 +144,7 @@ describe('MovementController', () => {
         note: 'Weekly groceries',
         accountId: 'acc-1',
         categoryId: 'cat-1',
-        movementType: 'Gasto',
+        movementType: 'MT01',
       };
       let receivedCommand: CreateMovementCommand | undefined;
       createExecute.mockImplementation((command: CreateMovementCommand) => {
@@ -160,7 +160,7 @@ describe('MovementController', () => {
           note: 'Weekly groceries',
           accountId: 'acc-1',
           categoryId: 'cat-1',
-          movementType: 'Gasto',
+          movementType: 'MT01',
           userId: user.id,
         }),
       );
@@ -178,7 +178,7 @@ describe('MovementController', () => {
         date: '2024-01-01T00:00:00.000Z',
         accountId: 'acc-1',
         categoryId: 'cat-1',
-        movementType: 'Transferencia',
+        movementType: 'MT03',
         toAccountId: 'acc-2',
       };
       let receivedCommand: CreateMovementCommand | undefined;

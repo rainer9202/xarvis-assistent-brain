@@ -101,17 +101,30 @@ float back to the API.
 ### 5.0 Movement types (closed enum, not a resource)
 
 `MovementType` is **not** an API resource anymore — there is no `/movement-types` route of any
-kind (no list, no create, no delete). It is a fixed, compile-time enum with exactly three values:
+kind (no list, no create, no delete). It is a fixed, compile-time enum with exactly three stable
+codes:
 
 ```
-"Gasto" | "Ingreso" | "Transferencia"
+"MT01" | "MT02" | "MT03"
 ```
 
 Anywhere a request body previously took a `movementTypeId` (UUID, looked up via `GET
 /movement-types`), it now takes a plain `movementType` string that must be exactly one of the
-three values above — validate/select against a hardcoded list client-side, no lookup call needed.
+three codes above — validate/select against a hardcoded list client-side, no lookup call needed.
 An invalid value is rejected with `400` (class-validator shape, e.g. `"movementType must be one of
-the following values: Gasto, Ingreso, Transferencia"`).
+the following values: MT01, MT02, MT03"`).
+
+`movementType` is a stable code — it never changes and is what you send back on create/update.
+Category and Movement read responses also return `movementTypeLabel`, the display text for that
+code, resolved server-side; render `movementTypeLabel` in the UI and don't build your own
+code→label mapping, since the label can be edited later independently of the code (same pattern as
+Account's `type`/`typeLabel`, see §5.2).
+
+| Code | Label |
+|---|---|
+| `MT01` | Gasto |
+| `MT02` | Ingreso |
+| `MT03` | Transferencia |
 
 ### 5.2 Accounts (owned by the caller)
 
@@ -218,7 +231,14 @@ via `GET /categories` and find it client-side.
 **GET /categories** → `data`: array of
 
 ```json
-{ "id": "uuid", "name": "Groceries", "movementType": "Gasto", "isActive": true, "createdAt": "2026-07-09T00:00:00.000Z" }
+{
+  "id": "uuid",
+  "name": "Groceries",
+  "movementType": "MT01",
+  "movementTypeLabel": "Gasto",
+  "isActive": true,
+  "createdAt": "2026-07-09T00:00:00.000Z"
+}
 ```
 
 **POST /categories**
@@ -226,12 +246,12 @@ via `GET /categories` and find it client-side.
 | Field | Type | Constraints |
 |---|---|---|
 | `name` | string | required, non-empty, max 50 chars |
-| `movementType` | string | required, must be exactly one of `"Gasto" \| "Ingreso" \| "Transferencia"` |
+| `movementType` | string | required, must be exactly one of `"MT01" \| "MT02" \| "MT03"` (see §5.0 code→label table) |
 
 Response `201`, `data`: `{ "id": "uuid" }`.
 
 Errors:
-- `400` — invalid `movementType`: `"movementType must be one of the following values: Gasto, Ingreso, Transferencia"`
+- `400` — invalid `movementType`: `"movementType must be one of the following values: MT01, MT02, MT03"`
   (class-validator shape, `message` is a string array)
 - `409` — the `(name, movementType)` pair already exists **for this user**:
   `"Category \"<name>\" already exists for movement type \"<movementType>\""`
@@ -243,7 +263,7 @@ Errors:
 | Field | Type | Constraints |
 |---|---|---|
 | `name` | string, optional | non-empty, max 50 chars |
-| `movementType` | string, optional | one of `Gasto \| Ingreso \| Transferencia` if present (enforced again in the use case, not just at the DTO layer) |
+| `movementType` | string, optional | one of `MT01 \| MT02 \| MT03` if present (enforced again in the use case, not just at the DTO layer) |
 | `isActive` | boolean, optional | manual toggle |
 
 Response `200`, `data`: `{ "id": "uuid" }`.
@@ -272,17 +292,17 @@ Errors:
 | Param | Type | Constraints |
 |---|---|---|
 | `accountId` | string (UUID) | matches this movement's `accountId` **or** `toAccountId` — so a transfer into the account shows up in its history too, not just movements originating from it |
-| `movementType` | string | must be exactly one of `"Gasto" \| "Ingreso" \| "Transferencia"` |
+| `movementType` | string | must be exactly one of `"MT01" \| "MT02" \| "MT03"` (see §5.0) |
 | `month` | string | `YYYY-MM` (e.g. `2026-07`), calendar month boundaries computed in **UTC** |
 
-Example: `GET /movements?accountId=<uuid>&movementType=Gasto&month=2026-07`. All three can be
+Example: `GET /movements?accountId=<uuid>&movementType=MT01&month=2026-07`. All three can be
 combined (AND'd together); omit whichever you don't need. With no params at all, it returns the
 caller's **entire** movement history in one array, same as before. There is still no arbitrary
 date-range filter (only whole-month) and no pagination — treat those as a gap to raise with the
 backend team if you need them.
 
 Error: `400` if `month` isn't `YYYY-MM` (class-validator shape) or `movementType` isn't one of the
-three valid values.
+three valid codes.
 
 This is the intended way to build "load this account's movements": resolve the target account's
 `id` (e.g. the principal account, see §5.2) and pass it as `accountId` — don't fetch everything and
@@ -299,7 +319,8 @@ filter client-side, the backend now does this for you.
   "accountId": "uuid",
   "toAccountId": null,
   "categoryId": "uuid",
-  "movementType": "Gasto",
+  "movementType": "MT01",
+  "movementTypeLabel": "Gasto",
   "createdAt": "2026-07-09T00:00:00.000Z"
 }
 ```
@@ -316,15 +337,16 @@ present keys). There is no `updatedAt` in the movement response shape.
 | `note` | string, optional | max 255 chars |
 | `accountId` | string (UUID) | required, must be your own account |
 | `categoryId` | string (UUID) | **required on every movement, including transfers** — there is no cross-check that the category's own `movementType` matches this movement's `movementType`; any of your own categories is accepted |
-| `movementType` | string | required, must be exactly one of `"Gasto" \| "Ingreso" \| "Transferencia"` |
+| `movementType` | string | required, must be exactly one of `"MT01" \| "MT02" \| "MT03"` (see §5.0) |
 | `toAccountId` | string (UUID), optional | see transfer rules below |
 
-Transfer rules (driven by the literal string `"Transferencia"` — no lookup call needed, just
-compare `movementType === "Transferencia"` client-side too if you want to mirror this logic in the
-UI):
-- If `movementType` is **not** `"Transferencia"`: `toAccountId` must be absent/omitted, else
+Transfer rules (driven by the stable code `"MT03"` — no lookup call needed, just compare
+`movementType === "MT03"` client-side too if you want to mirror this logic in the UI; do **not**
+compare against the label `"Transferencia"`, that's display-only and can change independently of
+the code):
+- If `movementType` is **not** `"MT03"`: `toAccountId` must be absent/omitted, else
   `400` — `"toAccountId is only allowed for transfer movements"`.
-- If `movementType` **is** `"Transferencia"`:
+- If `movementType` **is** `"MT03"`:
   - `toAccountId` is required, else `400` — `"Transfer movements require a toAccountId"`.
   - `toAccountId === accountId` → `400` — `"Cannot transfer to the same account"`.
   - `toAccountId` must also be your own account (same ownership check as `accountId`).
@@ -351,7 +373,7 @@ changes. When re-validating, the "effective" `toAccountId` is the one you send i
 present, otherwise the movement's existing `toAccountId` is reused. Practically: if you PATCH a
 transfer movement's `accountId` without resending `toAccountId`, the existing `toAccountId` is
 still validated against the new `accountId` (e.g. it will reject if the existing `toAccountId`
-now equals the new `accountId`). If you change `movementType` away from `"Transferencia"` without
+now equals the new `accountId`). If you change `movementType` away from `"MT03"` without
 clearing `toAccountId` server-side data, and the movement still has a stored `toAccountId`, the
 "not allowed for non-transfer" rule fires using that stored value.
 
@@ -419,15 +441,17 @@ with directly.
   API response for display; do not hardcode your own code→label mapping, since the label can
   change independently of the code (the code is what's validated and stored, the label is purely
   presentation text).
-- **`movementType` is also a closed enum**: `Gasto | Ingreso | Transferencia` (see §5.0). Build
-  the category/movement type picker as a fixed select too — no API call needed to populate it.
+- **`movementType` is also a closed enum of stable codes**: `MT01 | MT02 | MT03` (see §5.0 for the
+  code→label table). Build the category/movement type picker as a fixed select over the codes too
+  — no API call needed to populate it. Render `movementTypeLabel` from the Category/Movement API
+  responses for display; do not hardcode your own code→label mapping.
 - **A movement's `categoryId` is always required**, even for transfers. There's no
   category-vs-movement-type cross-validation, so the UI is free to let users pick any of their
   categories regardless of the movement's type, but should probably still filter the category
   picker by matching `movementType` for a sane UX (the backend won't do it for you).
 - **Transfers need `toAccountId`; everything else must omit it.** Drive the "is this a transfer"
-  form branch off `movementType === "Transferencia"` directly — it's a hardcoded string, not an id
-  you need to resolve via an API call.
+  form branch off `movementType === "MT03"` directly — it's a hardcoded code, not an id you need to
+  resolve via an API call. Compare against the code, not the `movementTypeLabel` display text.
 - **Delete guards exist for `Account` and `Category`** (blocked with `400` if referenced by
   existing movements, respectively) but **not** for `Movement` itself (movements are always
   deletable, nothing references them). Build delete-confirmation UX accordingly — a failed

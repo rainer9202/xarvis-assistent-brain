@@ -27,7 +27,7 @@ describe('GetCategoryByIdUseCase', () => {
       new CategoryEntity({
         id: 'cat-1',
         name: 'Groceries',
-        movementType: 'Gasto',
+        movementType: 'MT01',
         userId: 'user-1',
         isActive: true,
       }),
@@ -39,9 +39,26 @@ describe('GetCategoryByIdUseCase', () => {
     expect(result).toEqual({
       id: 'cat-1',
       name: 'Groceries',
-      movementType: 'Gasto',
+      movementType: 'MT01',
+      movementTypeLabel: 'Gasto',
       isActive: true,
     });
+  });
+
+  it('falls back movementTypeLabel to the raw code when no label matches', async () => {
+    findById.mockResolvedValue(
+      new CategoryEntity({
+        id: 'cat-1',
+        name: 'Groceries',
+        movementType: 'MT99',
+        userId: 'user-1',
+        isActive: true,
+      }),
+    );
+
+    const result = await useCase.execute('cat-1', 'user-1');
+
+    expect(result.movementTypeLabel).toBe('MT99');
   });
 
   it('throws NotFoundException when the category does not exist', async () => {

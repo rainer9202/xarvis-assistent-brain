@@ -316,19 +316,19 @@ describe('PrismaAccountRepository', () => {
 
     it('computes the type-aware signed balance in cents (income adds, expense subtracts)', async () => {
       prisma.account.findMany.mockResolvedValue([record]);
-      // The non-transfer groupBy always excludes 'Transferencia'; here it
+      // The non-transfer groupBy always excludes 'MT03'; here it
       // returns income and expense sums, then the transfer groupBy calls
       // (transfersOut, transfersIn) return empty.
       prisma.movement.groupBy
         .mockResolvedValueOnce([
           {
             accountId: 'acc-1',
-            movementType: 'Ingreso',
+            movementType: 'MT02',
             _sum: { amount: { toFixed: () => '150.00' } },
           },
           {
             accountId: 'acc-1',
-            movementType: 'Gasto',
+            movementType: 'MT01',
             _sum: { amount: { toFixed: () => '30.00' } },
           },
         ])
@@ -393,7 +393,7 @@ describe('PrismaAccountRepository', () => {
         by: ['accountId', 'movementType'],
         where: {
           accountId: { in: ['acc-1', 'acc-2'] },
-          movementType: { not: 'Transferencia' },
+          movementType: { not: 'MT03' },
         },
         _sum: { amount: true },
       });
@@ -413,7 +413,7 @@ describe('PrismaAccountRepository', () => {
       prisma.account.findFirst.mockResolvedValue(record);
       prisma.movement.groupBy.mockResolvedValue([
         {
-          movementType: 'Ingreso',
+          movementType: 'MT02',
           _sum: { amount: { toFixed: () => '150.00' } },
         },
       ]);
@@ -430,7 +430,7 @@ describe('PrismaAccountRepository', () => {
       });
       expect(prisma.movement.groupBy).toHaveBeenCalledWith({
         by: ['movementType'],
-        where: { accountId: 'acc-1', movementType: { not: 'Transferencia' } },
+        where: { accountId: 'acc-1', movementType: { not: 'MT03' } },
         _sum: { amount: true },
       });
       expect(result?.account).toBeInstanceOf(AccountEntity);

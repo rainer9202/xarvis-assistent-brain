@@ -2,7 +2,7 @@ import 'dotenv/config';
 import * as argon2 from 'argon2';
 import { PrismaPg } from '@prisma/adapter-pg';
 import { PrismaClient } from '../src/infrastructure/config/database/generated/prisma/client.js';
-import { MOVEMENT_TYPES } from '../src/domain/enums/movement-type.enum.js';
+import type { MovementTypeCode } from '../src/domain/enums/movement-type.enum.js';
 
 const adapter = new PrismaPg({ connectionString: process.env.DATABASE_URL });
 const prisma = new PrismaClient({ adapter });
@@ -15,25 +15,25 @@ const DEFAULT_USER = {
 
 type SeedCategory = {
   name: string;
-  movementType: (typeof MOVEMENT_TYPES)[number];
+  movementType: MovementTypeCode;
 };
 
 const DEFAULT_CATEGORIES: SeedCategory[] = [
-  { name: 'Supermercado', movementType: 'Gasto' },
-  { name: 'Transporte', movementType: 'Gasto' },
-  { name: 'Alquiler', movementType: 'Gasto' },
-  { name: 'Servicios', movementType: 'Gasto' },
-  { name: 'Salud', movementType: 'Gasto' },
-  { name: 'Entretenimiento', movementType: 'Gasto' },
-  { name: 'Restaurantes', movementType: 'Gasto' },
-  { name: 'Ropa', movementType: 'Gasto' },
-  { name: 'Sueldo', movementType: 'Ingreso' },
-  { name: 'Freelance', movementType: 'Ingreso' },
-  { name: 'Inversiones', movementType: 'Ingreso' },
-  { name: 'Regalos', movementType: 'Ingreso' },
-  { name: 'Ahorro', movementType: 'Transferencia' },
-  { name: 'Pago de tarjeta', movementType: 'Transferencia' },
-  { name: 'Entre cuentas', movementType: 'Transferencia' },
+  { name: 'Supermercado', movementType: 'MT01' },
+  { name: 'Transporte', movementType: 'MT01' },
+  { name: 'Alquiler', movementType: 'MT01' },
+  { name: 'Servicios', movementType: 'MT01' },
+  { name: 'Salud', movementType: 'MT01' },
+  { name: 'Entretenimiento', movementType: 'MT01' },
+  { name: 'Restaurantes', movementType: 'MT01' },
+  { name: 'Ropa', movementType: 'MT01' },
+  { name: 'Sueldo', movementType: 'MT02' },
+  { name: 'Freelance', movementType: 'MT02' },
+  { name: 'Inversiones', movementType: 'MT02' },
+  { name: 'Regalos', movementType: 'MT02' },
+  { name: 'Ahorro', movementType: 'MT03' },
+  { name: 'Pago de tarjeta', movementType: 'MT03' },
+  { name: 'Entre cuentas', movementType: 'MT03' },
 ];
 
 async function main() {

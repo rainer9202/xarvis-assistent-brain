@@ -37,7 +37,7 @@ describe('UpdateCategoryUseCase', () => {
     const existing = new CategoryEntity({
       id: 'cat-1',
       name: 'Groceries',
-      movementType: 'Gasto',
+      movementType: 'MT01',
       userId: 'user-1',
       isActive: true,
     });
@@ -53,13 +53,13 @@ describe('UpdateCategoryUseCase', () => {
     expect(findById).toHaveBeenCalledWith('cat-1', 'user-1');
     expect(findByNameAndMovementType).toHaveBeenCalledWith(
       'Supermarket',
-      'Gasto',
+      'MT01',
       'user-1',
     );
     expect(update).toHaveBeenCalledWith(
       expect.objectContaining({
         name: 'Supermarket',
-        movementType: 'Gasto',
+        movementType: 'MT01',
         isActive: true,
       }),
     );
@@ -81,7 +81,7 @@ describe('UpdateCategoryUseCase', () => {
     const existing = new CategoryEntity({
       id: 'cat-1',
       name: 'Groceries',
-      movementType: 'Gasto',
+      movementType: 'MT01',
       userId: 'user-1',
       isActive: true,
     });
@@ -95,11 +95,29 @@ describe('UpdateCategoryUseCase', () => {
     expect(update).not.toHaveBeenCalled();
   });
 
+  it('rejects the old label as an invalid movement type code', async () => {
+    const existing = new CategoryEntity({
+      id: 'cat-1',
+      name: 'Groceries',
+      movementType: 'MT01',
+      userId: 'user-1',
+      isActive: true,
+    });
+    findById.mockResolvedValue(existing);
+
+    await expect(
+      useCase.execute(
+        new UpdateCategoryCommand('cat-1', 'user-1', undefined, 'Gasto'),
+      ),
+    ).rejects.toThrow(ValidationException);
+    expect(update).not.toHaveBeenCalled();
+  });
+
   it('throws ConflictException when the new name/movementType collides with another category', async () => {
     const existing = new CategoryEntity({
       id: 'cat-1',
       name: 'Groceries',
-      movementType: 'Gasto',
+      movementType: 'MT01',
       userId: 'user-1',
       isActive: true,
     });
@@ -108,7 +126,7 @@ describe('UpdateCategoryUseCase', () => {
       new CategoryEntity({
         id: 'cat-2',
         name: 'Supermarket',
-        movementType: 'Gasto',
+        movementType: 'MT01',
         userId: 'user-1',
         isActive: true,
       }),
@@ -126,7 +144,7 @@ describe('UpdateCategoryUseCase', () => {
     const existing = new CategoryEntity({
       id: 'cat-1',
       name: 'Groceries',
-      movementType: 'Gasto',
+      movementType: 'MT01',
       userId: 'user-1',
       isActive: true,
     });
@@ -147,7 +165,7 @@ describe('UpdateCategoryUseCase', () => {
     const existing = new CategoryEntity({
       id: 'cat-1',
       name: 'Groceries',
-      movementType: 'Gasto',
+      movementType: 'MT01',
       userId: 'user-1',
       isActive: true,
     });

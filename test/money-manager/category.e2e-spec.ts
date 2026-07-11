@@ -8,7 +8,7 @@ describe('Category (e2e)', () => {
   let prisma: PrismaService;
   let token: string;
   let userId: string;
-  const movementType = 'Gasto';
+  const movementType = 'MT01';
   const createdIds: string[] = [];
 
   beforeAll(async () => {
@@ -40,6 +40,37 @@ describe('Category (e2e)', () => {
         movementType: 'NotARealType',
       })
       .expect(400);
+  });
+
+  it('rejects the old label as an invalid movementType code', async () => {
+    await request(app.getHttpServer())
+      .post('/categories')
+      .set('Authorization', `Bearer ${token}`)
+      .send({
+        name: `Ghost-${Date.now()}`,
+        movementType: 'Gasto',
+      })
+      .expect(400);
+  });
+
+  it('returns movementTypeLabel alongside the movementType code', async () => {
+    const res = await request(app.getHttpServer())
+      .post('/categories')
+      .set('Authorization', `Bearer ${token}`)
+      .send({ name: `Labeled-${Date.now()}`, movementType })
+      .expect(201);
+    createdIds.push(res.body.data.id);
+
+    const listRes = await request(app.getHttpServer())
+      .get('/categories')
+      .set('Authorization', `Bearer ${token}`)
+      .expect(200);
+
+    const created = listRes.body.data.find(
+      (c: { id: string }) => c.id === res.body.data.id,
+    );
+    expect(created.movementType).toBe('MT01');
+    expect(created.movementTypeLabel).toBe('Gasto');
   });
 
   it('rejects a duplicate name within the same movement type', async () => {

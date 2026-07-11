@@ -15,8 +15,8 @@ type Decimal = Prisma.Decimal;
 // The only MovementType name that flips balance sign for regular (non-transfer)
 // movements; income adds. Transfer movements are handled separately below —
 // they move money between two accounts and are never counted as income/expense.
-const EXPENSE_TYPE_NAME = 'Gasto';
-const TRANSFER_TYPE_NAME = 'Transferencia';
+const EXPENSE_TYPE_NAME = 'MT01';
+const TRANSFER_TYPE_NAME = 'MT03';
 
 @Injectable()
 export class PrismaAccountRepository implements AccountRepositoryPort {

@@ -24,7 +24,7 @@ describe('GetAllCategoriesUseCase', () => {
     const entity = new CategoryEntity({
       id: 'cat-1',
       name: 'Groceries',
-      movementType: 'Gasto',
+      movementType: 'MT01',
       userId: 'user-1',
       isActive: true,
       createdAt,
@@ -38,11 +38,27 @@ describe('GetAllCategoriesUseCase', () => {
       {
         id: 'cat-1',
         name: 'Groceries',
-        movementType: 'Gasto',
+        movementType: 'MT01',
+        movementTypeLabel: 'Gasto',
         isActive: true,
         createdAt,
       },
     ]);
+  });
+
+  it('falls back movementTypeLabel to the raw code when no label matches', async () => {
+    const entity = new CategoryEntity({
+      id: 'cat-1',
+      name: 'Groceries',
+      movementType: 'MT99',
+      userId: 'user-1',
+      isActive: true,
+    });
+    repository.findAll.mockResolvedValue([entity]);
+
+    const result = await useCase.execute('user-1');
+
+    expect(result[0].movementTypeLabel).toBe('MT99');
   });
 
   it('returns an empty array when there are no categories', async () => {

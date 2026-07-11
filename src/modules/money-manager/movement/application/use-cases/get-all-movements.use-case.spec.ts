@@ -27,7 +27,7 @@ describe('GetAllMovementsUseCase', () => {
       note: 'Weekly groceries',
       accountId: 'acc-1',
       categoryId: 'cat-1',
-      movementType: 'Gasto',
+      movementType: 'MT01',
       userId: 'user-1',
       createdAt,
     });
@@ -44,10 +44,31 @@ describe('GetAllMovementsUseCase', () => {
         note: 'Weekly groceries',
         accountId: 'acc-1',
         categoryId: 'cat-1',
-        movementType: 'Gasto',
+        movementType: 'MT01',
+        movementTypeLabel: 'Gasto',
         createdAt,
       },
     ]);
+  });
+
+  it('falls back movementTypeLabel to the raw code when no label matches', async () => {
+    const createdAt = new Date('2024-01-01T00:00:00Z');
+    const date = new Date('2024-01-02T00:00:00Z');
+    const entity = new MovementEntity({
+      id: 'mov-1',
+      amountCents: 1500,
+      date,
+      accountId: 'acc-1',
+      categoryId: 'cat-1',
+      movementType: 'MT99',
+      userId: 'user-1',
+      createdAt,
+    });
+    repository.findAll.mockResolvedValue([entity]);
+
+    const result = await useCase.execute('user-1');
+
+    expect(result[0].movementTypeLabel).toBe('MT99');
   });
 
   it('includes toAccountId for a transfer movement', async () => {
@@ -60,7 +81,7 @@ describe('GetAllMovementsUseCase', () => {
       accountId: 'acc-1',
       toAccountId: 'acc-2',
       categoryId: 'cat-1',
-      movementType: 'Transferencia',
+      movementType: 'MT03',
       userId: 'user-1',
       createdAt,
     });

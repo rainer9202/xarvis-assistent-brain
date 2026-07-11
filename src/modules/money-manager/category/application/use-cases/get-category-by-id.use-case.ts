@@ -3,6 +3,7 @@ import {
   DomainException,
   NotFoundException,
 } from '@domain/exceptions/domain.exception';
+import { getMovementTypeLabel } from '@domain/enums/movement-type.enum';
 import { CATEGORY_REPOSITORY } from '../../domain/ports/category.repository.port';
 import type { CategoryRepositoryPort } from '../../domain/ports/category.repository.port';
 
@@ -10,6 +11,7 @@ export type GetCategoryByIdResponse = {
   id: string;
   name: string;
   movementType: string;
+  movementTypeLabel: string;
   isActive: boolean;
 };
 
@@ -29,6 +31,8 @@ export class GetCategoryByIdUseCase {
         id: category.id!,
         name: category.name,
         movementType: category.movementType,
+        movementTypeLabel:
+          getMovementTypeLabel(category.movementType) ?? category.movementType,
         isActive: category.isActive!,
       };
     } catch (error) {

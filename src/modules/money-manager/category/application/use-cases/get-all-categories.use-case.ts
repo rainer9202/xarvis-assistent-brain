@@ -1,5 +1,6 @@
 import { Inject, Injectable } from '@nestjs/common';
 import { DomainException } from '@domain/exceptions/domain.exception';
+import { getMovementTypeLabel } from '@domain/enums/movement-type.enum';
 import { CATEGORY_REPOSITORY } from '../../domain/ports/category.repository.port';
 import type { CategoryRepositoryPort } from '../../domain/ports/category.repository.port';
 
@@ -7,6 +8,7 @@ export type GetAllCategoriesResponse = {
   id: string;
   name: string;
   movementType: string;
+  movementTypeLabel: string;
   isActive: boolean;
   createdAt: Date;
 };
@@ -25,6 +27,8 @@ export class GetAllCategoriesUseCase {
         id: item.id!,
         name: item.name,
         movementType: item.movementType,
+        movementTypeLabel:
+          getMovementTypeLabel(item.movementType) ?? item.movementType,
         isActive: item.isActive!,
         createdAt: item.createdAt!,
       }));

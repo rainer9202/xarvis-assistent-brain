@@ -8,8 +8,8 @@ describe('Movement (e2e)', () => {
   let prisma: PrismaService;
   let token: string;
   let userId: string;
-  const expenseType = 'Gasto';
-  const transferType = 'Transferencia';
+  const expenseType = 'MT01';
+  const transferType = 'MT03';
   let categoryId: string;
   let accountA: string;
   let accountB: string;
@@ -317,6 +317,44 @@ describe('Movement (e2e)', () => {
         movementType: 'NotARealType',
       })
       .expect(400);
+  });
+
+  it('rejects the old label as an invalid movementType code', async () => {
+    await request(app.getHttpServer())
+      .post('/movements')
+      .set('Authorization', `Bearer ${token}`)
+      .send({
+        amountCents: 500,
+        date: new Date().toISOString(),
+        accountId: accountA,
+        categoryId,
+        movementType: 'Gasto',
+      })
+      .expect(400);
+  });
+
+  it('returns movementTypeLabel alongside the movementType code', async () => {
+    const res = await request(app.getHttpServer())
+      .post('/movements')
+      .set('Authorization', `Bearer ${token}`)
+      .send({
+        amountCents: 500,
+        date: new Date().toISOString(),
+        accountId: accountA,
+        categoryId,
+        movementType: expenseType,
+      })
+      .expect(201);
+    movementIds.push(res.body.data.id);
+
+    await request(app.getHttpServer())
+      .get(`/movements/${res.body.data.id}`)
+      .set('Authorization', `Bearer ${token}`)
+      .expect(200)
+      .expect((getRes) => {
+        expect(getRes.body.data.movementType).toBe('MT01');
+        expect(getRes.body.data.movementTypeLabel).toBe('Gasto');
+      });
   });
 
   it('deletes a movement', async () => {

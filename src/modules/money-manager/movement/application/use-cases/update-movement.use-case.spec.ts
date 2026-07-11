@@ -31,7 +31,7 @@ describe('UpdateMovementUseCase', () => {
       note: 'Weekly groceries',
       accountId: 'acc-1',
       categoryId: 'cat-1',
-      movementType: 'Gasto',
+      movementType: 'MT01',
       userId: 'user-1',
     });
 
@@ -79,7 +79,7 @@ describe('UpdateMovementUseCase', () => {
         note: 'Weekly groceries',
         accountId: 'acc-1',
         categoryId: 'cat-1',
-        movementType: 'Gasto',
+        movementType: 'MT01',
       }),
     );
     expect(result).toEqual({ id: 'mov-1' });
@@ -157,6 +157,26 @@ describe('UpdateMovementUseCase', () => {
     expect(update).not.toHaveBeenCalled();
   });
 
+  it('rejects the old label as an invalid movement type code', async () => {
+    findById.mockResolvedValue(existing());
+
+    await expect(
+      useCase.execute(
+        new UpdateMovementCommand(
+          'mov-1',
+          'user-1',
+          undefined,
+          undefined,
+          undefined,
+          undefined,
+          undefined,
+          'Gasto',
+        ),
+      ),
+    ).rejects.toThrow(ValidationException);
+    expect(update).not.toHaveBeenCalled();
+  });
+
   it('applies accountId, categoryId, and movementType after successful re-validation', async () => {
     findById.mockResolvedValue(existing());
     getAccountByIdExecute.mockResolvedValue({
@@ -168,7 +188,7 @@ describe('UpdateMovementUseCase', () => {
     getCategoryByIdExecute.mockResolvedValue({
       id: 'cat-2',
       name: 'Rent',
-      movementType: 'Ingreso',
+      movementType: 'MT02',
       isActive: true,
     });
     update.mockImplementation((entity: MovementEntity) =>
@@ -184,7 +204,7 @@ describe('UpdateMovementUseCase', () => {
         undefined,
         'acc-2',
         'cat-2',
-        'Ingreso',
+        'MT02',
       ),
     );
 
@@ -194,7 +214,7 @@ describe('UpdateMovementUseCase', () => {
       expect.objectContaining({
         accountId: 'acc-2',
         categoryId: 'cat-2',
-        movementType: 'Ingreso',
+        movementType: 'MT02',
       }),
     );
     expect(result).toEqual({ id: 'mov-1' });
@@ -209,7 +229,7 @@ describe('UpdateMovementUseCase', () => {
         accountId: 'acc-1',
         toAccountId: 'acc-2',
         categoryId: 'cat-1',
-        movementType: 'Transferencia',
+        movementType: 'MT03',
         userId: 'user-1',
       });
 
@@ -239,7 +259,7 @@ describe('UpdateMovementUseCase', () => {
           undefined,
           undefined,
           undefined,
-          'Transferencia',
+          'MT03',
           'acc-2',
         ),
       );
@@ -263,7 +283,7 @@ describe('UpdateMovementUseCase', () => {
             undefined,
             undefined,
             undefined,
-            'Transferencia',
+            'MT03',
           ),
         ),
       ).rejects.toThrow(ValidationException);

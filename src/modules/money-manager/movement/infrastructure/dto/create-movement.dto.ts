@@ -9,7 +9,7 @@ import {
   MaxLength,
   Min,
 } from 'class-validator';
-import { MOVEMENT_TYPES } from '@domain/enums/movement-type.enum';
+import { MOVEMENT_TYPE_CODES } from '@domain/enums/movement-type.enum';
 
 export class CreateMovementDto {
   @ApiProperty({ example: 1500, minimum: 1 })
@@ -35,8 +35,8 @@ export class CreateMovementDto {
   @IsUUID()
   categoryId: string;
 
-  @ApiProperty({ example: 'Gasto', enum: MOVEMENT_TYPES })
-  @IsIn(MOVEMENT_TYPES)
+  @ApiProperty({ example: 'MT01', enum: MOVEMENT_TYPE_CODES })
+  @IsIn(MOVEMENT_TYPE_CODES)
   movementType: string;
 
   @ApiPropertyOptional({

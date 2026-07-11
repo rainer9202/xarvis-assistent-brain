@@ -1,5 +1,6 @@
 import { Inject, Injectable } from '@nestjs/common';
 import { DomainException } from '@domain/exceptions/domain.exception';
+import { getMovementTypeLabel } from '@domain/enums/movement-type.enum';
 import { MOVEMENT_REPOSITORY } from '../../domain/ports/movement.repository.port';
 import type {
   MovementFilters,
@@ -15,6 +16,7 @@ export type GetAllMovementsResponse = {
   toAccountId?: string;
   categoryId: string;
   movementType: string;
+  movementTypeLabel: string;
   createdAt: Date;
 };
 
@@ -40,6 +42,8 @@ export class GetAllMovementsUseCase {
         toAccountId: item.toAccountId,
         categoryId: item.categoryId,
         movementType: item.movementType,
+        movementTypeLabel:
+          getMovementTypeLabel(item.movementType) ?? item.movementType,
         createdAt: item.createdAt!,
       }));
     } catch (error) {

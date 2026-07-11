@@ -32,7 +32,7 @@ describe('DeleteMovementUseCase', () => {
       date: new Date('2024-01-01T00:00:00Z'),
       accountId: 'acc-1',
       categoryId: 'cat-1',
-      movementType: 'Gasto',
+      movementType: 'MT01',
       userId: 'user-1',
     });
     findById.mockResolvedValue(entity);

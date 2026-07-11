@@ -5,7 +5,8 @@ import {
   NotFoundException,
   ValidationException,
 } from '@domain/exceptions/domain.exception';
-import { MOVEMENT_TYPES } from '@domain/enums/movement-type.enum';
+import { MOVEMENT_TYPE_CODES } from '@domain/enums/movement-type.enum';
+import type { MovementTypeCode } from '@domain/enums/movement-type.enum';
 import { CATEGORY_REPOSITORY } from '../../domain/ports/category.repository.port';
 import type { CategoryRepositoryPort } from '../../domain/ports/category.repository.port';
 
@@ -46,12 +47,12 @@ export class UpdateCategoryUseCase {
 
       if (command.movementType !== undefined) {
         if (
-          !MOVEMENT_TYPES.includes(
-            command.movementType as (typeof MOVEMENT_TYPES)[number],
+          !MOVEMENT_TYPE_CODES.includes(
+            command.movementType as MovementTypeCode,
           )
         )
           throw new ValidationException(
-            `Movement type "${command.movementType}" is invalid. Must be one of: ${MOVEMENT_TYPES.join(', ')}`,
+            `Movement type "${command.movementType}" is invalid. Must be one of: ${MOVEMENT_TYPE_CODES.join(', ')}`,
           );
         category.movementType = command.movementType;
       }
