@@ -33,6 +33,14 @@ export class GetMovementsQueryDto {
   movementType?: string;
 
   @ApiPropertyOptional({
+    example: '3c1f2e2a-5b1b-4b3e-8b3a-2f6b1e5a9c1d',
+    description: 'Filter to movements assigned to this Group',
+  })
+  @IsOptional()
+  @IsUUID()
+  groupId?: string;
+
+  @ApiPropertyOptional({
     example: '2026-07',
     description: 'Calendar month (YYYY-MM) to filter by, in UTC',
   })

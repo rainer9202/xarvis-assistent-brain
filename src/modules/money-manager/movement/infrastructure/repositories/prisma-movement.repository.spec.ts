@@ -191,6 +191,17 @@ describe('PrismaMovementRepository', () => {
       });
     });
 
+    it('filters by groupId', async () => {
+      prisma.movement.findMany.mockResolvedValue([]);
+
+      await repository.findAll('user-1', { groupId: 'grp-1', historic: true });
+
+      expect(prisma.movement.findMany).toHaveBeenCalledWith({
+        where: { userId: 'user-1', groupId: 'grp-1' },
+        orderBy: { date: 'desc' },
+      });
+    });
+
     it('filters by month, converting YYYY-MM to a UTC date range', async () => {
       prisma.movement.findMany.mockResolvedValue([]);
 
@@ -309,6 +320,7 @@ describe('PrismaMovementRepository', () => {
           toAccountId: null,
           categoryId: 'cat-1',
           movementType: 'MT01',
+          groupId: null,
           userId: 'user-1',
         },
       });
@@ -343,6 +355,7 @@ describe('PrismaMovementRepository', () => {
           toAccountId: 'acc-2',
           categoryId: 'cat-1',
           movementType: 'MT03',
+          groupId: null,
           userId: 'user-1',
         },
       });
@@ -380,6 +393,7 @@ describe('PrismaMovementRepository', () => {
           toAccountId: null,
           categoryId: 'cat-2',
           movementType: 'MT02',
+          groupId: null,
         },
       });
       expect(result.amountCents).toBe(2000);
@@ -414,6 +428,7 @@ describe('PrismaMovementRepository', () => {
           toAccountId: null,
           categoryId: 'cat-2',
           movementType: 'MT02',
+          groupId: null,
         },
       });
     });
@@ -446,6 +461,7 @@ describe('PrismaMovementRepository', () => {
           toAccountId: 'acc-3',
           categoryId: 'cat-2',
           movementType: 'MT03',
+          groupId: null,
         },
       });
       expect(result.toAccountId).toBe('acc-3');

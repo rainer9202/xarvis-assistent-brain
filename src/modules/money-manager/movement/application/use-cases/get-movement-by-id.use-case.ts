@@ -5,6 +5,7 @@ import {
 } from '@domain/exceptions/domain.exception';
 import { getMovementTypeLabel } from '@domain/enums/movement-type.enum';
 import { GetCategoryByIdUseCase } from '@modules/money-manager/category/application/use-cases/get-category-by-id.use-case';
+import { GetGroupByIdUseCase } from '@modules/money-manager/group/application/use-cases/get-group-by-id.use-case';
 import { MOVEMENT_REPOSITORY } from '../../domain/ports/movement.repository.port';
 import type { MovementRepositoryPort } from '../../domain/ports/movement.repository.port';
 
@@ -19,6 +20,8 @@ export type GetMovementByIdResponse = {
   categoryLabel: string;
   movementType: string;
   movementTypeLabel: string;
+  groupId?: string;
+  groupLabel?: string;
   createdAt: Date;
 };
 
@@ -28,6 +31,7 @@ export class GetMovementByIdUseCase {
     @Inject(MOVEMENT_REPOSITORY)
     private readonly repository: MovementRepositoryPort,
     private readonly getCategoryById: GetCategoryByIdUseCase,
+    private readonly getGroupById: GetGroupByIdUseCase,
   ) {}
 
   async execute(id: string, userId: string): Promise<GetMovementByIdResponse> {
@@ -39,6 +43,9 @@ export class GetMovementByIdUseCase {
         movement.categoryId,
         userId,
       );
+      const group = movement.groupId
+        ? await this.getGroupById.execute(movement.groupId, userId)
+        : undefined;
 
       return {
         id: movement.id!,
@@ -52,6 +59,8 @@ export class GetMovementByIdUseCase {
         movementType: movement.movementType,
         movementTypeLabel:
           getMovementTypeLabel(movement.movementType) ?? movement.movementType,
+        groupId: movement.groupId,
+        groupLabel: group?.name,
         createdAt: movement.createdAt!,
       };
     } catch (error) {

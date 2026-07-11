@@ -4,6 +4,7 @@ export type MovementFilters = {
   accountId?: string;
   categoryId?: string[];
   movementType?: string;
+  groupId?: string;
   // Calendar month in YYYY-MM format, UTC.
   month?: string;
   // When true (and month is absent), skip the default last-3-months window

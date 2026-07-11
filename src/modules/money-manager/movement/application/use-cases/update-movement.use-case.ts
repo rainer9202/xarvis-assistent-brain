@@ -8,6 +8,7 @@ import { MOVEMENT_TYPE_CODES } from '@domain/enums/movement-type.enum';
 import type { MovementTypeCode } from '@domain/enums/movement-type.enum';
 import { GetAccountByIdUseCase } from '@modules/money-manager/account/application/use-cases/get-account-by-id.use-case';
 import { GetCategoryByIdUseCase } from '@modules/money-manager/category/application/use-cases/get-category-by-id.use-case';
+import { GetGroupByIdUseCase } from '@modules/money-manager/group/application/use-cases/get-group-by-id.use-case';
 import { MOVEMENT_REPOSITORY } from '../../domain/ports/movement.repository.port';
 import type { MovementRepositoryPort } from '../../domain/ports/movement.repository.port';
 
@@ -30,6 +31,7 @@ export class UpdateMovementCommand {
     public readonly categoryId?: string,
     public readonly movementType?: string,
     public readonly toAccountId?: string,
+    public readonly groupId?: string | null,
   ) {}
 }
 
@@ -40,6 +42,7 @@ export class UpdateMovementUseCase {
     private readonly repository: MovementRepositoryPort,
     private readonly getAccountById: GetAccountByIdUseCase,
     private readonly getCategoryById: GetCategoryByIdUseCase,
+    private readonly getGroupById: GetGroupByIdUseCase,
   ) {}
 
   async execute(
@@ -65,6 +68,11 @@ export class UpdateMovementUseCase {
       if (command.categoryId !== undefined) {
         await this.getCategoryById.execute(command.categoryId, command.userId);
         movement.categoryId = command.categoryId;
+      }
+      if (command.groupId !== undefined) {
+        if (command.groupId !== null)
+          await this.getGroupById.execute(command.groupId, command.userId);
+        movement.groupId = command.groupId ?? undefined;
       }
       if (command.movementType !== undefined) {
         if (

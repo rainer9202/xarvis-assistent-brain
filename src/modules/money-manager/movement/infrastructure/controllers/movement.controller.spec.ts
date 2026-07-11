@@ -89,6 +89,7 @@ describe('MovementController', () => {
         accountId: undefined,
         categoryId: undefined,
         movementType: undefined,
+        groupId: undefined,
         month: undefined,
         historic: undefined,
       });
@@ -106,6 +107,7 @@ describe('MovementController', () => {
           accountId: 'acc-1',
           categoryId: ['cat-1', 'cat-2'],
           movementType: 'MT01',
+          groupId: 'grp-1',
           month: '2026-07',
           historic: true,
         },
@@ -116,6 +118,7 @@ describe('MovementController', () => {
         accountId: 'acc-1',
         categoryId: ['cat-1', 'cat-2'],
         movementType: 'MT01',
+        groupId: 'grp-1',
         month: '2026-07',
         historic: true,
       });

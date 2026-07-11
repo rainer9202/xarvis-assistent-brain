@@ -6,6 +6,7 @@ import { MovementEntity } from '../../domain/entities/movement.entity';
 import type { MovementRepositoryPort } from '../../domain/ports/movement.repository.port';
 import type { GetAccountByIdUseCase } from '@modules/money-manager/account/application/use-cases/get-account-by-id.use-case';
 import type { GetCategoryByIdUseCase } from '@modules/money-manager/category/application/use-cases/get-category-by-id.use-case';
+import type { GetGroupByIdUseCase } from '@modules/money-manager/group/application/use-cases/get-group-by-id.use-case';
 import {
   CreateMovementCommand,
   CreateMovementUseCase,
@@ -18,6 +19,8 @@ describe('CreateMovementUseCase', () => {
   let getAccountById: GetAccountByIdUseCase;
   let getCategoryByIdExecute: jest.Mock;
   let getCategoryById: GetCategoryByIdUseCase;
+  let getGroupByIdExecute: jest.Mock;
+  let getGroupById: GetGroupByIdUseCase;
   let useCase: CreateMovementUseCase;
 
   const date = new Date('2024-01-01T00:00:00Z');
@@ -39,10 +42,15 @@ describe('CreateMovementUseCase', () => {
     getCategoryById = {
       execute: getCategoryByIdExecute,
     } as unknown as GetCategoryByIdUseCase;
+    getGroupByIdExecute = jest.fn();
+    getGroupById = {
+      execute: getGroupByIdExecute,
+    } as unknown as GetGroupByIdUseCase;
     useCase = new CreateMovementUseCase(
       repository,
       getAccountById,
       getCategoryById,
+      getGroupById,
     );
   });
 
@@ -90,10 +98,68 @@ describe('CreateMovementUseCase', () => {
 
     expect(getAccountByIdExecute).toHaveBeenCalledWith('acc-1', 'user-1');
     expect(getCategoryByIdExecute).toHaveBeenCalledWith('cat-1', 'user-1');
+    expect(getGroupByIdExecute).not.toHaveBeenCalled();
     expect(save).toHaveBeenCalledWith(expect.any(MovementEntity));
     expect(savedEntity?.amountCents).toBe(1500);
     expect(savedEntity?.note).toBe('Weekly groceries');
     expect(result).toEqual({ id: 'mov-1' });
+  });
+
+  it('validates groupId ownership when provided, and sets it on the entity', async () => {
+    getAccountByIdExecute.mockResolvedValue({ id: 'acc-1', isActive: true });
+    getCategoryByIdExecute.mockResolvedValue({ id: 'cat-1', isActive: true });
+    getGroupByIdExecute.mockResolvedValue({
+      id: 'grp-1',
+      name: 'Fixed Expenses',
+      isActive: true,
+    });
+    let savedEntity: MovementEntity | undefined;
+    save.mockImplementation((entity: MovementEntity) => {
+      savedEntity = entity;
+      return Promise.resolve(entity);
+    });
+
+    await useCase.execute(
+      new CreateMovementCommand(
+        1500,
+        date,
+        undefined,
+        'acc-1',
+        'cat-1',
+        'MT01',
+        'user-1',
+        undefined,
+        'grp-1',
+      ),
+    );
+
+    expect(getGroupByIdExecute).toHaveBeenCalledWith('grp-1', 'user-1');
+    expect(savedEntity?.groupId).toBe('grp-1');
+  });
+
+  it('rejects a groupId that does not exist or belong to the user', async () => {
+    getAccountByIdExecute.mockResolvedValue({ id: 'acc-1', isActive: true });
+    getCategoryByIdExecute.mockResolvedValue({ id: 'cat-1', isActive: true });
+    getGroupByIdExecute.mockRejectedValue(
+      new NotFoundException('Group "grp-missing" not found'),
+    );
+
+    await expect(
+      useCase.execute(
+        new CreateMovementCommand(
+          1500,
+          date,
+          undefined,
+          'acc-1',
+          'cat-1',
+          'MT01',
+          'user-1',
+          undefined,
+          'grp-missing',
+        ),
+      ),
+    ).rejects.toThrow(NotFoundException);
+    expect(save).not.toHaveBeenCalled();
   });
 
   it('throws ValidationException when the movement type is invalid', async () => {

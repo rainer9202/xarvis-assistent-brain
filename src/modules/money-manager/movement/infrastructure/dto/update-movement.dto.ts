@@ -51,4 +51,16 @@ export class UpdateMovementDto {
   @IsOptional()
   @IsUUID()
   toAccountId?: string;
+
+  @ApiPropertyOptional({
+    example: '3c1f2e2a-5b1b-4b3e-8b3a-2f6b1e5a9c1d',
+    nullable: true,
+    description:
+      'Set to a Group id to assign it, or explicit null to remove this ' +
+      'movement from its current group. Omit the field entirely to leave ' +
+      'it unchanged.',
+  })
+  @IsOptional()
+  @IsUUID()
+  groupId?: string | null;
 }

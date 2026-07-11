@@ -52,6 +52,7 @@ export class PrismaMovementRepository implements MovementRepositoryPort {
         ...(filters?.movementType
           ? { movementType: filters.movementType }
           : {}),
+        ...(filters?.groupId ? { groupId: filters.groupId } : {}),
         ...(monthRange
           ? { date: { gte: monthRange.start, lt: monthRange.end } }
           : {}),
@@ -80,6 +81,7 @@ export class PrismaMovementRepository implements MovementRepositoryPort {
         toAccountId: entity.toAccountId ?? null,
         categoryId: entity.categoryId,
         movementType: entity.movementType,
+        groupId: entity.groupId ?? null,
         userId: entity.userId,
       },
     });
@@ -98,6 +100,7 @@ export class PrismaMovementRepository implements MovementRepositoryPort {
         toAccountId: entity.toAccountId ?? null,
         categoryId: entity.categoryId,
         movementType: entity.movementType,
+        groupId: entity.groupId ?? null,
       },
     });
 
@@ -143,6 +146,7 @@ export class PrismaMovementRepository implements MovementRepositoryPort {
       toAccountId: record.toAccountId ?? undefined,
       categoryId: record.categoryId,
       movementType: record.movementType,
+      groupId: record.groupId ?? undefined,
       userId: record.userId,
       createdAt: record.createdAt,
       updatedAt: record.updatedAt,

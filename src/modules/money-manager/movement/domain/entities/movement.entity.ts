@@ -8,6 +8,7 @@ export type MovementProps = BaseEntityProps & {
   toAccountId?: string;
   categoryId: string;
   movementType: string;
+  groupId?: string;
   userId: string;
 };
 
@@ -19,6 +20,7 @@ export class MovementEntity extends BaseEntity {
   private _toAccountId?: string;
   private _categoryId: string = '';
   private _movementType: string = '';
+  private _groupId?: string;
   private _userId: string = '';
 
   constructor(props?: MovementProps) {
@@ -31,6 +33,7 @@ export class MovementEntity extends BaseEntity {
       this._toAccountId = props.toAccountId;
       this._categoryId = props.categoryId;
       this._movementType = props.movementType;
+      this._groupId = props.groupId;
       this._userId = props.userId;
     }
   }
@@ -89,6 +92,14 @@ export class MovementEntity extends BaseEntity {
 
   set movementType(value: string) {
     this._movementType = value;
+  }
+
+  get groupId(): string | undefined {
+    return this._groupId;
+  }
+
+  set groupId(value: string | undefined) {
+    this._groupId = value;
   }
 
   get userId(): string {

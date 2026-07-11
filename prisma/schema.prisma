@@ -33,7 +33,8 @@ model Group {
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
 
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user      User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  movements Movement[]
 
   @@unique([name, userId])
   @@index([userId])
@@ -85,6 +86,7 @@ model Movement {
   toAccountId  String?  @map("to_account_id")
   categoryId   String   @map("category_id")
   movementType String   @map("movement_type")
+  groupId      String?  @map("group_id")
   userId       String   @map("user_id")
   createdAt    DateTime @default(now()) @map("created_at")
   updatedAt    DateTime @updatedAt @map("updated_at")
@@ -92,11 +94,13 @@ model Movement {
   account   Account  @relation("MovementSourceAccount", fields: [accountId], references: [id], onDelete: Restrict, onUpdate: Cascade)
   toAccount Account? @relation("MovementDestinationAccount", fields: [toAccountId], references: [id], onDelete: Restrict, onUpdate: Cascade)
   category  Category @relation(fields: [categoryId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  group     Group?   @relation(fields: [groupId], references: [id], onDelete: SetNull, onUpdate: Cascade)
   user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([accountId])
   @@index([toAccountId])
   @@index([categoryId])
+  @@index([groupId])
   @@index([date])
   @@index([userId])
   @@map("movements")

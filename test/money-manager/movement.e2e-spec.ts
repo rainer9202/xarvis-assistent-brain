@@ -14,6 +14,7 @@ describe('Movement (e2e)', () => {
   let categoryId2: string;
   let accountA: string;
   let accountB: string;
+  let groupId: string;
   const movementIds: string[] = [];
 
   beforeAll(async () => {
@@ -51,6 +52,11 @@ describe('Movement (e2e)', () => {
     ]);
     accountA = a.id;
     accountB = b.id;
+
+    const group = await prisma.group.create({
+      data: { name: `MovementSpecGroup-${Date.now()}`, userId },
+    });
+    groupId = group.id;
   });
 
   afterAll(async () => {
@@ -61,6 +67,7 @@ describe('Movement (e2e)', () => {
     await prisma.account.deleteMany({
       where: { id: { in: [accountA, accountB] } },
     });
+    await prisma.group.delete({ where: { id: groupId } });
     await app.close();
   });
 
@@ -215,6 +222,90 @@ describe('Movement (e2e)', () => {
     expect(multiIds).toEqual(
       expect.arrayContaining([cat1Res.body.data.id, cat2Res.body.data.id]),
     );
+  });
+
+  it('creates a movement with a groupId and resolves groupLabel on GET', async () => {
+    const res = await request(app.getHttpServer())
+      .post('/movements')
+      .set('Authorization', `Bearer ${token}`)
+      .send({
+        amountCents: 450,
+        date: new Date().toISOString(),
+        accountId: accountA,
+        categoryId,
+        movementType: expenseType,
+        groupId,
+      })
+      .expect(201);
+    movementIds.push(res.body.data.id);
+
+    const group = await prisma.group.findUniqueOrThrow({
+      where: { id: groupId },
+    });
+
+    await request(app.getHttpServer())
+      .get(`/movements/${res.body.data.id}`)
+      .set('Authorization', `Bearer ${token}`)
+      .expect(200)
+      .expect((getRes) => {
+        expect(getRes.body.data.groupId).toBe(groupId);
+        expect(getRes.body.data.groupLabel).toBe(group.name);
+      });
+
+    await request(app.getHttpServer())
+      .get('/movements')
+      .query({ groupId })
+      .set('Authorization', `Bearer ${token}`)
+      .expect(200)
+      .expect((listRes) => {
+        const ids = listRes.body.data.map((m: { id: string }) => m.id);
+        expect(ids).toContain(res.body.data.id);
+      });
+  });
+
+  it('🔍 rejects a groupId that does not exist or belongs to another user', async () => {
+    await request(app.getHttpServer())
+      .post('/movements')
+      .set('Authorization', `Bearer ${token}`)
+      .send({
+        amountCents: 450,
+        date: new Date().toISOString(),
+        accountId: accountA,
+        categoryId,
+        movementType: expenseType,
+        groupId: '00000000-0000-0000-0000-000000000000',
+      })
+      .expect(404);
+  });
+
+  it('clears a movement groupId via explicit null on update', async () => {
+    const createRes = await request(app.getHttpServer())
+      .post('/movements')
+      .set('Authorization', `Bearer ${token}`)
+      .send({
+        amountCents: 450,
+        date: new Date().toISOString(),
+        accountId: accountA,
+        categoryId,
+        movementType: expenseType,
+        groupId,
+      })
+      .expect(201);
+    movementIds.push(createRes.body.data.id);
+
+    await request(app.getHttpServer())
+      .patch(`/movements/${createRes.body.data.id}`)
+      .set('Authorization', `Bearer ${token}`)
+      .send({ groupId: null })
+      .expect(200);
+
+    await request(app.getHttpServer())
+      .get(`/movements/${createRes.body.data.id}`)
+      .set('Authorization', `Bearer ${token}`)
+      .expect(200)
+      .expect((getRes) => {
+        expect(getRes.body.data.groupId).toBeUndefined();
+      });
   });
 
   it('filters GET /movements by movementType and by month', async () => {

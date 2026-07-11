@@ -6,6 +6,7 @@ import { MovementEntity } from '../../domain/entities/movement.entity';
 import type { MovementRepositoryPort } from '../../domain/ports/movement.repository.port';
 import type { GetAccountByIdUseCase } from '@modules/money-manager/account/application/use-cases/get-account-by-id.use-case';
 import type { GetCategoryByIdUseCase } from '@modules/money-manager/category/application/use-cases/get-category-by-id.use-case';
+import type { GetGroupByIdUseCase } from '@modules/money-manager/group/application/use-cases/get-group-by-id.use-case';
 import {
   UpdateMovementCommand,
   UpdateMovementUseCase,
@@ -19,6 +20,8 @@ describe('UpdateMovementUseCase', () => {
   let getAccountById: GetAccountByIdUseCase;
   let getCategoryByIdExecute: jest.Mock;
   let getCategoryById: GetCategoryByIdUseCase;
+  let getGroupByIdExecute: jest.Mock;
+  let getGroupById: GetGroupByIdUseCase;
   let useCase: UpdateMovementUseCase;
 
   const date = new Date('2024-01-01T00:00:00Z');
@@ -53,10 +56,15 @@ describe('UpdateMovementUseCase', () => {
     getCategoryById = {
       execute: getCategoryByIdExecute,
     } as unknown as GetCategoryByIdUseCase;
+    getGroupByIdExecute = jest.fn();
+    getGroupById = {
+      execute: getGroupByIdExecute,
+    } as unknown as GetGroupByIdUseCase;
     useCase = new UpdateMovementUseCase(
       repository,
       getAccountById,
       getCategoryById,
+      getGroupById,
     );
   });
 
@@ -218,6 +226,93 @@ describe('UpdateMovementUseCase', () => {
       }),
     );
     expect(result).toEqual({ id: 'mov-1' });
+  });
+
+  it('validates and sets a new groupId', async () => {
+    findById.mockResolvedValue(existing());
+    getGroupByIdExecute.mockResolvedValue({
+      id: 'grp-1',
+      name: 'Fixed Expenses',
+      isActive: true,
+    });
+    let savedEntity: MovementEntity | undefined;
+    update.mockImplementation((entity: MovementEntity) => {
+      savedEntity = entity;
+      return Promise.resolve(entity);
+    });
+
+    const result = await useCase.execute(
+      new UpdateMovementCommand(
+        'mov-1',
+        'user-1',
+        undefined,
+        undefined,
+        undefined,
+        undefined,
+        undefined,
+        undefined,
+        undefined,
+        'grp-1',
+      ),
+    );
+
+    expect(getGroupByIdExecute).toHaveBeenCalledWith('grp-1', 'user-1');
+    expect(savedEntity?.groupId).toBe('grp-1');
+    expect(result).toEqual({ id: 'mov-1' });
+  });
+
+  it('clears an existing groupId when sent explicit null, without validating', async () => {
+    const movement = existing();
+    movement.groupId = 'grp-1';
+    findById.mockResolvedValue(movement);
+    let savedEntity: MovementEntity | undefined;
+    update.mockImplementation((entity: MovementEntity) => {
+      savedEntity = entity;
+      return Promise.resolve(entity);
+    });
+
+    await useCase.execute(
+      new UpdateMovementCommand(
+        'mov-1',
+        'user-1',
+        undefined,
+        undefined,
+        undefined,
+        undefined,
+        undefined,
+        undefined,
+        undefined,
+        null,
+      ),
+    );
+
+    expect(getGroupByIdExecute).not.toHaveBeenCalled();
+    expect(savedEntity?.groupId).toBeUndefined();
+  });
+
+  it('rejects a groupId that does not exist or belong to the user', async () => {
+    findById.mockResolvedValue(existing());
+    getGroupByIdExecute.mockRejectedValue(
+      new NotFoundException('Group "grp-missing" not found'),
+    );
+
+    await expect(
+      useCase.execute(
+        new UpdateMovementCommand(
+          'mov-1',
+          'user-1',
+          undefined,
+          undefined,
+          undefined,
+          undefined,
+          undefined,
+          undefined,
+          undefined,
+          'grp-missing',
+        ),
+      ),
+    ).rejects.toThrow(NotFoundException);
+    expect(update).not.toHaveBeenCalled();
   });
 
   describe('transfer movements', () => {

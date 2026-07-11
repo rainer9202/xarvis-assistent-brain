@@ -128,10 +128,11 @@ Account's `type`/`typeLabel`, see §5.2).
 
 ### 5.1 Groups (owned by the caller)
 
-**Standalone for now — not yet linked to Categories.** The eventual model is one Group having many
-Categories, but that relation doesn't exist in the API yet (no `groupId` on Category, no nested
-routes). This section only covers the Group CRUD itself; treat any grouping UI as unsupported
-until this doc says otherwise.
+**Linked to Movement, not Category.** A Group is a lightweight organizational tag a user attaches
+to individual movements (e.g. a "Casa" group collecting the phone bill, the rent, and the
+electricity movements, regardless of which Category each one uses) — it lets a user answer "how
+much did I spend on Casa this month" via `GET /movements?groupId=<uuid>` (see §5.4). Categories are
+not linked to Groups at all.
 
 | Method | Path |
 |---|---|
@@ -178,9 +179,9 @@ Response `200`, `data`: `{ "id": "uuid" }`.
 Errors: `404` (group not found / not yours) and `409` (name collision, re-checked whenever `name`
 changes) as create.
 
-**DELETE /groups/:id** → `200`, `data`: `{ "id": "uuid" }`. No delete-guard — nothing references a
-Group yet, so delete always succeeds once ownership/existence is confirmed. This will very likely
-change once Category gets linked to Group.
+**DELETE /groups/:id** → `200`, `data`: `{ "id": "uuid" }`. No delete-guard — deleting a Group
+that's still referenced by movements succeeds, and those movements' `groupId` is set to `null`
+server-side (the FK is `ON DELETE SET NULL`). A group is a lightweight tag, not a hard dependency.
 
 Error: `404` — not found / not yours.
 
@@ -360,13 +361,14 @@ bound so today/future-dated movements are always included). If your UI was relyi
 unfiltered `GET /movements` to show everything, it will now silently show less data — pass
 `historic=true` to get the old "everything" behavior back.
 
-**`GET /movements` accepts five optional, combinable query params:**
+**`GET /movements` accepts six optional, combinable query params:**
 
 | Param | Type | Constraints |
 |---|---|---|
 | `accountId` | string (UUID) | matches this movement's `accountId` **or** `toAccountId` — so a transfer into the account shows up in its history too, not just movements originating from it |
 | `categoryId` | string (UUID) or array of UUIDs | matches ANY of the given category ids (OR). Send once for a single category (`?categoryId=<uuid>`) or repeat the param for multiple (`?categoryId=<uuid1>&categoryId=<uuid2>`) |
 | `movementType` | string | must be exactly one of `"MT01" \| "MT02" \| "MT03"` (see §5.0) |
+| `groupId` | string (UUID) | matches this movement's `groupId` exactly — this is how you build "show me everything in the Casa group" (see §5.1) |
 | `month` | string | `YYYY-MM` (e.g. `2026-07`), calendar month boundaries computed in **UTC** |
 | `historic` | boolean | `true` returns full history instead of the default last-3-months window. Accepts `true`/`false` only — anything else is a `400`. |
 
@@ -381,14 +383,15 @@ that one month regardless of `historic`. Without `month`: `historic=true` (or om
 | no | absent or `false` | last 3 calendar months (the new default) |
 
 Example: `GET /movements?accountId=<uuid>&categoryId=<uuid>&movementType=MT01&historic=true`. All
-five params can be combined (AND'd together, except `categoryId` which is OR'd internally when you
+six params can be combined (AND'd together, except `categoryId` which is OR'd internally when you
 pass more than one). There is still no arbitrary date-range filter (only whole-month or the
 3-month/historic toggle) and no pagination — treat those as a gap to raise with the backend team if
 you need them.
 
 Error: `400` if `month` isn't `YYYY-MM`, `movementType` isn't one of the three valid codes,
-`historic` isn't `true`/`false`, or any `categoryId` value isn't a valid UUID (class-validator
-shape).
+`historic` isn't `true`/`false`, or `categoryId`/`groupId` isn't a valid UUID (class-validator
+shape). An unmatched `groupId` (nonexistent or belonging to another user) is not an error here —
+it just yields an empty `data` array, same as any other filter matching nothing.
 
 This is the intended way to build "load this account's movements": resolve the target account's
 `id` (e.g. the principal account, see §5.2) and pass it as `accountId` — don't fetch everything and
@@ -410,6 +413,8 @@ rather than paginating — there is no pagination support yet.
   "categoryLabel": "Groceries",
   "movementType": "MT01",
   "movementTypeLabel": "Gasto",
+  "groupId": "uuid",
+  "groupLabel": "Casa",
   "createdAt": "2026-07-09T00:00:00.000Z"
 }
 ```
@@ -417,10 +422,11 @@ rather than paginating — there is no pagination support yet.
 `categoryLabel` is the category's current `name` (see §5.3), resolved server-side on every read — same
 "render the label, don't build your own id→name mapping" guidance as `movementTypeLabel`, except
 here it's a real per-user `Category` name rather than a static code table, so it can be renamed via
-`PATCH /categories/:id` at any time.
+`PATCH /categories/:id` at any time. `groupLabel` works the same way but resolves the Group's `name`
+(see §5.1), and is `undefined` whenever `groupId` is `undefined`.
 
-`note` and `toAccountId` are omitted/`undefined` when not set (do not assume they are always
-present keys). There is no `updatedAt` in the movement response shape.
+`note`, `toAccountId`, `groupId`, and `groupLabel` are omitted/`undefined` when not set (do not
+assume they are always present keys). There is no `updatedAt` in the movement response shape.
 
 **POST /movements**
 
@@ -433,6 +439,7 @@ present keys). There is no `updatedAt` in the movement response shape.
 | `categoryId` | string (UUID) | **required on every movement, including transfers** — there is no cross-check that the category's own `movementType` matches this movement's `movementType`; any of your own categories is accepted |
 | `movementType` | string | required, must be exactly one of `"MT01" \| "MT02" \| "MT03"` (see §5.0) |
 | `toAccountId` | string (UUID), optional | see transfer rules below |
+| `groupId` | string (UUID), optional | must be your own Group (see §5.1); omit entirely if the movement doesn't belong to a group |
 
 Transfer rules (driven by the stable code `"MT03"` — no lookup call needed, just compare
 `movementType === "MT03"` client-side too if you want to mirror this logic in the UI; do **not**
@@ -451,15 +458,22 @@ Response `201`, `data`: `{ "id": "uuid" }`.
 
 Errors:
 - `400` — validation failures above, invalid `movementType`, or malformed body (class-validator shape)
-- `404` — `accountId`, `categoryId`, or `toAccountId` not found or not yours:
-  `"Account \"<id>\" not found"` / `"Category \"<id>\" not found"` — same ownership-scoped 404
-  pattern as everywhere else (never 403)
+- `404` — `accountId`, `categoryId`, `toAccountId`, or `groupId` not found or not yours:
+  `"Account \"<id>\" not found"` / `"Category \"<id>\" not found"` / `"Group \"<id>\" not found"` —
+  same ownership-scoped 404 pattern as everywhere else (never 403)
 
 **PATCH /movements/:id**
 
 All fields from create are optional and independently settable — send only what changed:
-`amountCents?`, `date?`, `note?`, `accountId?`, `categoryId?`, `movementType?`, `toAccountId?`
-(same type/constraint rules as create, just optional).
+`amountCents?`, `date?`, `note?`, `accountId?`, `categoryId?`, `movementType?`, `toAccountId?`,
+`groupId?` (same type/constraint rules as create, just optional).
+
+**`groupId` has three distinct states on PATCH** — this is the one field that isn't "send it or
+don't":
+- **omit the field** → the movement's group is left unchanged
+- **send `groupId: null`** → clears the group (no re-validation call is made, this always succeeds)
+- **send `groupId: "<uuid>"`** → re-validates ownership and sets it, same 404 as create if it
+  doesn't exist or isn't yours
 
 **Important business rule for the UI**: transfer validation is re-run whenever `accountId`,
 `categoryId` is not involved but `movementType` **or** `toAccountId` **or** `accountId`
@@ -514,8 +528,10 @@ with directly.
 
 ## 6. Business rules a frontend must respect
 
-- **`Group` is standalone, not yet wired to `Category`.** Don't build a "group your categories"
-  UI expecting the backend to enforce or return the relationship — it isn't there yet (see §5.1).
+- **`Group` is wired to `Movement`, not `Category`.** Don't build a "group your categories" UI —
+  the grouping happens per-movement via `Movement.groupId`, letting a user tag movements from
+  different categories into one Group (e.g. "Casa") and filter `GET /movements?groupId=<uuid>` to
+  see them together (see §5.1, §5.4).
 - **A user always has exactly one principal account once they have any account at all.** The
   first account ever created is auto-marked `isPrincipal: true`; every account after that starts
   `false`. It can't be un-principaled directly and it can't be deleted — the only way to change

@@ -1,6 +1,7 @@
 import { Module } from '@nestjs/common';
 import { AccountModule } from '@modules/money-manager/account/account.module';
 import { CategoryModule } from '@modules/money-manager/category/category.module';
+import { GroupModule } from '@modules/money-manager/group/group.module';
 import { CreateMovementUseCase } from './application/use-cases/create-movement.use-case';
 import { UpdateMovementUseCase } from './application/use-cases/update-movement.use-case';
 import { DeleteMovementUseCase } from './application/use-cases/delete-movement.use-case';
@@ -11,7 +12,7 @@ import { MovementController } from './infrastructure/controllers/movement.contro
 import { PrismaMovementRepository } from './infrastructure/repositories/prisma-movement.repository';
 
 @Module({
-  imports: [AccountModule, CategoryModule],
+  imports: [AccountModule, CategoryModule, GroupModule],
   controllers: [MovementController],
   providers: [
     {

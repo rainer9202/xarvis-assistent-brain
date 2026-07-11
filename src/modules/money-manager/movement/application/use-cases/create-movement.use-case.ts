@@ -7,6 +7,7 @@ import { MOVEMENT_TYPE_CODES } from '@domain/enums/movement-type.enum';
 import type { MovementTypeCode } from '@domain/enums/movement-type.enum';
 import { GetAccountByIdUseCase } from '@modules/money-manager/account/application/use-cases/get-account-by-id.use-case';
 import { GetCategoryByIdUseCase } from '@modules/money-manager/category/application/use-cases/get-category-by-id.use-case';
+import { GetGroupByIdUseCase } from '@modules/money-manager/group/application/use-cases/get-group-by-id.use-case';
 import { MovementEntity } from '../../domain/entities/movement.entity';
 import { MOVEMENT_REPOSITORY } from '../../domain/ports/movement.repository.port';
 import type { MovementRepositoryPort } from '../../domain/ports/movement.repository.port';
@@ -29,6 +30,7 @@ export class CreateMovementCommand {
     public readonly movementType: string,
     public readonly userId: string,
     public readonly toAccountId?: string,
+    public readonly groupId?: string,
   ) {}
 }
 
@@ -39,6 +41,7 @@ export class CreateMovementUseCase {
     private readonly repository: MovementRepositoryPort,
     private readonly getAccountById: GetAccountByIdUseCase,
     private readonly getCategoryById: GetCategoryByIdUseCase,
+    private readonly getGroupById: GetGroupByIdUseCase,
   ) {}
 
   async execute(
@@ -54,6 +57,8 @@ export class CreateMovementUseCase {
 
       await this.getAccountById.execute(command.accountId, command.userId);
       await this.getCategoryById.execute(command.categoryId, command.userId);
+      if (command.groupId !== undefined)
+        await this.getGroupById.execute(command.groupId, command.userId);
 
       if (command.movementType === TRANSFER_TYPE_NAME) {
         if (!command.toAccountId)
@@ -77,6 +82,7 @@ export class CreateMovementUseCase {
         toAccountId: command.toAccountId,
         categoryId: command.categoryId,
         movementType: command.movementType,
+        groupId: command.groupId,
         userId: command.userId,
       });
       const saved = await this.repository.save(entity);

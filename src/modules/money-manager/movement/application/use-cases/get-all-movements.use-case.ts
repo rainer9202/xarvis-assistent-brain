@@ -2,6 +2,7 @@ import { Inject, Injectable } from '@nestjs/common';
 import { DomainException } from '@domain/exceptions/domain.exception';
 import { getMovementTypeLabel } from '@domain/enums/movement-type.enum';
 import { GetAllCategoriesUseCase } from '@modules/money-manager/category/application/use-cases/get-all-categories.use-case';
+import { GetAllGroupsUseCase } from '@modules/money-manager/group/application/use-cases/get-all-groups.use-case';
 import { MOVEMENT_REPOSITORY } from '../../domain/ports/movement.repository.port';
 import type {
   MovementFilters,
@@ -19,6 +20,8 @@ export type GetAllMovementsResponse = {
   categoryLabel: string;
   movementType: string;
   movementTypeLabel: string;
+  groupId?: string;
+  groupLabel?: string;
   createdAt: Date;
 };
 
@@ -28,6 +31,7 @@ export class GetAllMovementsUseCase {
     @Inject(MOVEMENT_REPOSITORY)
     private readonly repository: MovementRepositoryPort,
     private readonly getAllCategories: GetAllCategoriesUseCase,
+    private readonly getAllGroups: GetAllGroupsUseCase,
   ) {}
 
   async execute(
@@ -36,13 +40,16 @@ export class GetAllMovementsUseCase {
   ): Promise<GetAllMovementsResponse[]> {
     try {
       // Fetched once per call (not per movement) to avoid an N+1 query —
-      // Category is real per-user data, not a static enum, so there's no
-      // getCategoryLabel()-style pure-function lookup like movementType has.
-      const [entities, categories] = await Promise.all([
+      // Category/Group are real per-user data, not a static enum, so
+      // there's no getXLabel()-style pure-function lookup like movementType
+      // has.
+      const [entities, categories, groups] = await Promise.all([
         this.repository.findAll(userId, filters),
         this.getAllCategories.execute(userId),
+        this.getAllGroups.execute(userId),
       ]);
       const categoryNameById = new Map(categories.map((c) => [c.id, c.name]));
+      const groupNameById = new Map(groups.map((g) => [g.id, g.name]));
 
       return entities.map((item) => ({
         id: item.id!,
@@ -56,6 +63,10 @@ export class GetAllMovementsUseCase {
         movementType: item.movementType,
         movementTypeLabel:
           getMovementTypeLabel(item.movementType) ?? item.movementType,
+        groupId: item.groupId,
+        groupLabel: item.groupId
+          ? (groupNameById.get(item.groupId) ?? item.groupId)
+          : undefined,
         createdAt: item.createdAt!,
       }));
     } catch (error) {

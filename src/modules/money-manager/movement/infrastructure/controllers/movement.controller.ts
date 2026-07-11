@@ -61,6 +61,7 @@ export class MovementController {
         accountId: query.accountId,
         categoryId: query.categoryId,
         movementType: query.movementType,
+        groupId: query.groupId,
         month: query.month,
         historic: query.historic,
       }),
@@ -101,6 +102,7 @@ export class MovementController {
           dto.movementType,
           user.id,
           dto.toAccountId,
+          dto.groupId,
         ),
       ),
     };
@@ -129,6 +131,7 @@ export class MovementController {
           dto.categoryId,
           dto.movementType,
           dto.toAccountId,
+          dto.groupId,
         ),
       ),
     };
