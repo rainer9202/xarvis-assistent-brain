@@ -62,6 +62,7 @@ export class MovementController {
         categoryId: query.categoryId,
         movementType: query.movementType,
         month: query.month,
+        historic: query.historic,
       }),
     };
   }

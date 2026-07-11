@@ -286,6 +286,67 @@ describe('Movement (e2e)', () => {
       .expect(400);
   });
 
+  it('defaults GET /movements to the last 3 months, and historic=true returns everything', async () => {
+    const oldRes = await request(app.getHttpServer())
+      .post('/movements')
+      .set('Authorization', `Bearer ${token}`)
+      .send({
+        amountCents: 1100,
+        date: '2020-06-15T00:00:00.000Z',
+        accountId: accountA,
+        categoryId,
+        movementType: expenseType,
+      })
+      .expect(201);
+    movementIds.push(oldRes.body.data.id);
+
+    const defaultRes = await request(app.getHttpServer())
+      .get('/movements')
+      .set('Authorization', `Bearer ${token}`)
+      .expect(200);
+    const defaultIds = defaultRes.body.data.map((m: { id: string }) => m.id);
+    expect(defaultIds).not.toContain(oldRes.body.data.id);
+
+    const historicRes = await request(app.getHttpServer())
+      .get('/movements')
+      .query({ historic: true })
+      .set('Authorization', `Bearer ${token}`)
+      .expect(200);
+    const historicIds = historicRes.body.data.map((m: { id: string }) => m.id);
+    expect(historicIds).toContain(oldRes.body.data.id);
+  });
+
+  it('an explicit month wins over the default window even without historic=true', async () => {
+    const oldRes = await request(app.getHttpServer())
+      .post('/movements')
+      .set('Authorization', `Bearer ${token}`)
+      .send({
+        amountCents: 1200,
+        date: '2019-05-15T00:00:00.000Z',
+        accountId: accountA,
+        categoryId,
+        movementType: expenseType,
+      })
+      .expect(201);
+    movementIds.push(oldRes.body.data.id);
+
+    const monthRes = await request(app.getHttpServer())
+      .get('/movements')
+      .query({ month: '2019-05' })
+      .set('Authorization', `Bearer ${token}`)
+      .expect(200);
+    const monthIds = monthRes.body.data.map((m: { id: string }) => m.id);
+    expect(monthIds).toEqual([oldRes.body.data.id]);
+  });
+
+  it('🔍 rejects a non-boolean historic query param', async () => {
+    await request(app.getHttpServer())
+      .get('/movements')
+      .query({ historic: 'yesplease' })
+      .set('Authorization', `Bearer ${token}`)
+      .expect(400);
+  });
+
   it('🔍 rejects a transfer without toAccountId', async () => {
     await request(app.getHttpServer())
       .post('/movements')

@@ -23,6 +23,14 @@ export class PrismaMovementRepository implements MovementRepositoryPort {
     const monthRange = filters?.month
       ? this.monthToDateRange(filters.month)
       : undefined;
+    // An explicit month always wins. Otherwise, unless the caller opted
+    // into historic=true, default to only the last 3 calendar months —
+    // open-ended (no upper bound) so it still includes today/future-dated
+    // movements.
+    const defaultWindowStart =
+      !monthRange && !filters?.historic
+        ? this.lastThreeMonthsStart()
+        : undefined;
 
     const records = await this.prisma.movement.findMany({
       where: {
@@ -47,6 +55,7 @@ export class PrismaMovementRepository implements MovementRepositoryPort {
         ...(monthRange
           ? { date: { gte: monthRange.start, lt: monthRange.end } }
           : {}),
+        ...(defaultWindowStart ? { date: { gte: defaultWindowStart } } : {}),
       },
       orderBy: { date: 'desc' },
     });
@@ -106,6 +115,14 @@ export class PrismaMovementRepository implements MovementRepositoryPort {
     const start = new Date(Date.UTC(year, monthNumber - 1, 1));
     const end = new Date(Date.UTC(year, monthNumber, 1));
     return { start, end };
+  }
+
+  // Start of the calendar month 2 months before the current one, UTC — e.g.
+  // if "now" is anywhere in 2026-07, this returns 2026-05-01T00:00:00.000Z,
+  // giving a rolling 3-calendar-month window (May, June, July).
+  private lastThreeMonthsStart(): Date {
+    const now = new Date();
+    return new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() - 2, 1));
   }
 
   private centsToDecimalInput(cents: number): string {

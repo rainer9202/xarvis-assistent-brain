@@ -6,6 +6,9 @@ export type MovementFilters = {
   movementType?: string;
   // Calendar month in YYYY-MM format, UTC.
   month?: string;
+  // When true (and month is absent), skip the default last-3-months window
+  // and return full history.
+  historic?: boolean;
 };
 
 export interface MovementRepositoryPort {

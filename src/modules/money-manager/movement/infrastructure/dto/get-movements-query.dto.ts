@@ -1,5 +1,5 @@
 import { ApiPropertyOptional } from '@nestjs/swagger';
-import { IsIn, IsOptional, IsUUID, Matches } from 'class-validator';
+import { IsBoolean, IsIn, IsOptional, IsUUID, Matches } from 'class-validator';
 import { Transform } from 'class-transformer';
 import { MOVEMENT_TYPE_CODES } from '@domain/enums/movement-type.enum';
 
@@ -41,4 +41,23 @@ export class GetMovementsQueryDto {
     message: 'month must be in YYYY-MM format',
   })
   month?: string;
+
+  @ApiPropertyOptional({
+    example: false,
+    description:
+      'By default only movements from the last 3 calendar months are ' +
+      'returned. Pass historic=true to get the full history instead. ' +
+      'Ignored when month is also present (an explicit month always wins).',
+  })
+  @IsOptional()
+  @Transform(({ value }: { value: unknown }) => {
+    if (value === 'true' || value === true) return true;
+    if (value === 'false' || value === false) return false;
+    // Anything else (e.g. "yesplease") passes through unchanged so
+    // @IsBoolean() below rejects it with a 400 instead of this transform
+    // silently coercing garbage input into false.
+    return value;
+  })
+  @IsBoolean()
+  historic?: boolean;
 }

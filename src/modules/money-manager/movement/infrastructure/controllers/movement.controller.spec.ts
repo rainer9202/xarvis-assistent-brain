@@ -90,6 +90,7 @@ describe('MovementController', () => {
         categoryId: undefined,
         movementType: undefined,
         month: undefined,
+        historic: undefined,
       });
       expect(result).toEqual({
         message: 'Get all movements successfully',
@@ -106,6 +107,7 @@ describe('MovementController', () => {
           categoryId: ['cat-1', 'cat-2'],
           movementType: 'MT01',
           month: '2026-07',
+          historic: true,
         },
         user,
       );
@@ -115,6 +117,7 @@ describe('MovementController', () => {
         categoryId: ['cat-1', 'cat-2'],
         movementType: 'MT01',
         month: '2026-07',
+        historic: true,
       });
     });
   });

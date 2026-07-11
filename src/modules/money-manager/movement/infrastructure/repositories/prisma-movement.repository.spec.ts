@@ -62,7 +62,7 @@ describe('PrismaMovementRepository', () => {
     it('returns records for the given user, mapped to entities, ordered by date desc', async () => {
       prisma.movement.findMany.mockResolvedValue([record]);
 
-      const result = await repository.findAll('user-1');
+      const result = await repository.findAll('user-1', { historic: true });
 
       expect(prisma.movement.findMany).toHaveBeenCalledWith({
         where: { userId: 'user-1' },
@@ -75,10 +75,56 @@ describe('PrismaMovementRepository', () => {
       expect(result[0].toAccountId).toBeUndefined();
     });
 
+    it('defaults to a rolling last-3-calendar-months window when no month/historic is given', async () => {
+      prisma.movement.findMany.mockResolvedValue([]);
+      const now = new Date();
+      const expectedStart = new Date(
+        Date.UTC(now.getUTCFullYear(), now.getUTCMonth() - 2, 1),
+      );
+
+      await repository.findAll('user-1');
+
+      expect(prisma.movement.findMany).toHaveBeenCalledWith({
+        where: { userId: 'user-1', date: { gte: expectedStart } },
+        orderBy: { date: 'desc' },
+      });
+    });
+
+    it('historic:true skips the default window and returns full history', async () => {
+      prisma.movement.findMany.mockResolvedValue([]);
+
+      await repository.findAll('user-1', { historic: true });
+
+      expect(prisma.movement.findMany).toHaveBeenCalledWith({
+        where: { userId: 'user-1' },
+        orderBy: { date: 'desc' },
+      });
+    });
+
+    it('an explicit month wins over the default window even without historic:true', async () => {
+      prisma.movement.findMany.mockResolvedValue([]);
+
+      await repository.findAll('user-1', { month: '2020-03' });
+
+      expect(prisma.movement.findMany).toHaveBeenCalledWith({
+        where: {
+          userId: 'user-1',
+          date: {
+            gte: new Date(Date.UTC(2020, 2, 1)),
+            lt: new Date(Date.UTC(2020, 3, 1)),
+          },
+        },
+        orderBy: { date: 'desc' },
+      });
+    });
+
     it('filters by accountId matching either direction', async () => {
       prisma.movement.findMany.mockResolvedValue([]);
 
-      await repository.findAll('user-1', { accountId: 'acc-1' });
+      await repository.findAll('user-1', {
+        accountId: 'acc-1',
+        historic: true,
+      });
 
       expect(prisma.movement.findMany).toHaveBeenCalledWith({
         where: {
@@ -92,7 +138,10 @@ describe('PrismaMovementRepository', () => {
     it('filters by a single categoryId', async () => {
       prisma.movement.findMany.mockResolvedValue([]);
 
-      await repository.findAll('user-1', { categoryId: ['cat-1'] });
+      await repository.findAll('user-1', {
+        categoryId: ['cat-1'],
+        historic: true,
+      });
 
       expect(prisma.movement.findMany).toHaveBeenCalledWith({
         where: { userId: 'user-1', categoryId: { in: ['cat-1'] } },
@@ -105,6 +154,7 @@ describe('PrismaMovementRepository', () => {
 
       await repository.findAll('user-1', {
         categoryId: ['cat-1', 'cat-2'],
+        historic: true,
       });
 
       expect(prisma.movement.findMany).toHaveBeenCalledWith({
@@ -119,7 +169,7 @@ describe('PrismaMovementRepository', () => {
     it('ignores an empty categoryId array', async () => {
       prisma.movement.findMany.mockResolvedValue([]);
 
-      await repository.findAll('user-1', { categoryId: [] });
+      await repository.findAll('user-1', { categoryId: [], historic: true });
 
       expect(prisma.movement.findMany).toHaveBeenCalledWith({
         where: { userId: 'user-1' },
@@ -130,7 +180,10 @@ describe('PrismaMovementRepository', () => {
     it('filters by movementType', async () => {
       prisma.movement.findMany.mockResolvedValue([]);
 
-      await repository.findAll('user-1', { movementType: 'MT01' });
+      await repository.findAll('user-1', {
+        movementType: 'MT01',
+        historic: true,
+      });
 
       expect(prisma.movement.findMany).toHaveBeenCalledWith({
         where: { userId: 'user-1', movementType: 'MT01' },
