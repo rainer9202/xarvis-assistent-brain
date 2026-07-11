@@ -64,7 +64,7 @@ describe('AccountController', () => {
         {
           id: 'acc-1',
           name: 'Main Checking',
-          type: 'bank',
+          type: 'AT02',
           isActive: true,
           balanceCents: 5000,
           createdAt: new Date('2024-01-01T00:00:00Z'),
@@ -87,7 +87,7 @@ describe('AccountController', () => {
       const data = {
         id: 'acc-1',
         name: 'Main Checking',
-        type: 'bank',
+        type: 'AT02',
         isActive: true,
         balanceCents: 5000,
         createdAt: new Date('2024-01-01T00:00:00Z'),
@@ -106,7 +106,7 @@ describe('AccountController', () => {
 
   describe('createOne', () => {
     it('delegates to CreateAccountUseCase with a command built from the dto', async () => {
-      const dto: CreateAccountDto = { name: 'Main Checking', type: 'bank' };
+      const dto: CreateAccountDto = { name: 'Main Checking', type: 'AT02' };
       let receivedCommand: CreateAccountCommand | undefined;
       createExecute.mockImplementation((command: CreateAccountCommand) => {
         receivedCommand = command;
@@ -118,7 +118,7 @@ describe('AccountController', () => {
       expect(createExecute).toHaveBeenCalledWith(
         expect.objectContaining({
           name: 'Main Checking',
-          type: 'bank',
+          type: 'AT02',
           userId: user.id,
         }),
       );

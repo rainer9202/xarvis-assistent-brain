@@ -4,7 +4,10 @@ import {
   ValidationException,
 } from '@domain/exceptions/domain.exception';
 import { AccountEntity } from '../../domain/entities/account.entity';
-import { ACCOUNT_TYPES } from '../../domain/enums/account-type.enum';
+import {
+  ACCOUNT_TYPE_CODES,
+  type AccountTypeCode,
+} from '../../domain/enums/account-type.enum';
 import { ACCOUNT_REPOSITORY } from '../../domain/ports/account.repository.port';
 import type { AccountRepositoryPort } from '../../domain/ports/account.repository.port';
 
@@ -29,11 +32,9 @@ export class CreateAccountUseCase {
 
   async execute(command: CreateAccountCommand): Promise<CreateAccountResponse> {
     try {
-      if (
-        !ACCOUNT_TYPES.includes(command.type as (typeof ACCOUNT_TYPES)[number])
-      )
+      if (!ACCOUNT_TYPE_CODES.includes(command.type as AccountTypeCode))
         throw new ValidationException(
-          `Account type "${command.type}" is invalid. Must be one of: ${ACCOUNT_TYPES.join(', ')}`,
+          `Account type "${command.type}" is invalid. Must be one of: ${ACCOUNT_TYPE_CODES.join(', ')}`,
         );
 
       const accountCount = await this.repository.countByUserId(command.userId);

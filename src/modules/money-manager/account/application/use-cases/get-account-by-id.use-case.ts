@@ -3,6 +3,7 @@ import {
   DomainException,
   NotFoundException,
 } from '@domain/exceptions/domain.exception';
+import { getAccountTypeLabel } from '../../domain/enums/account-type.enum';
 import { ACCOUNT_REPOSITORY } from '../../domain/ports/account.repository.port';
 import type { AccountRepositoryPort } from '../../domain/ports/account.repository.port';
 
@@ -10,6 +11,7 @@ export type GetAccountByIdResponse = {
   id: string;
   name: string;
   type: string;
+  typeLabel: string;
   isActive: boolean;
   isPrincipal: boolean;
   balanceCents: number;
@@ -32,6 +34,8 @@ export class GetAccountByIdUseCase {
         id: result.account.id!,
         name: result.account.name,
         type: result.account.type,
+        typeLabel:
+          getAccountTypeLabel(result.account.type) ?? result.account.type,
         isActive: result.account.isActive!,
         isPrincipal: result.account.isPrincipal!,
         balanceCents: result.balanceCents,

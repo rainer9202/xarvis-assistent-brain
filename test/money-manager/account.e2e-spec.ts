@@ -23,7 +23,7 @@ describe('Account (e2e)', () => {
     const res = await request(app.getHttpServer())
       .post('/accounts')
       .set('Authorization', `Bearer ${token}`)
-      .send({ name: `Checking-${Date.now()}`, type: 'bank' })
+      .send({ name: `Checking-${Date.now()}`, type: 'AT02' })
       .expect(201);
 
     const id = res.body.data.id;
@@ -35,7 +35,7 @@ describe('Account (e2e)', () => {
       .expect(200)
       .expect((getRes) => {
         expect(getRes.body.data.balanceCents).toBe(0);
-        expect(getRes.body.data.type).toBe('bank');
+        expect(getRes.body.data.type).toBe('AT02');
       });
   });
 
@@ -51,7 +51,7 @@ describe('Account (e2e)', () => {
     const createRes = await request(app.getHttpServer())
       .post('/accounts')
       .set('Authorization', `Bearer ${token}`)
-      .send({ name: `Savings-${Date.now()}`, type: 'bank' })
+      .send({ name: `Savings-${Date.now()}`, type: 'AT02' })
       .expect(201);
     const id = createRes.body.data.id;
     createdIds.push(id);
@@ -59,14 +59,14 @@ describe('Account (e2e)', () => {
     await request(app.getHttpServer())
       .patch(`/accounts/${id}`)
       .set('Authorization', `Bearer ${token}`)
-      .send({ type: 'cash', isActive: false })
+      .send({ type: 'AT01', isActive: false })
       .expect(200)
       .expect((res) => {
         expect(res.body.data).toEqual({ id });
       });
 
     const account = await prisma.account.findUniqueOrThrow({ where: { id } });
-    expect(account.type).toBe('cash');
+    expect(account.type).toBe('AT01');
     expect(account.isActive).toBe(false);
   });
 
@@ -74,7 +74,7 @@ describe('Account (e2e)', () => {
     const createRes = await request(app.getHttpServer())
       .post('/accounts')
       .set('Authorization', `Bearer ${token}`)
-      .send({ name: `Checking-${Date.now()}`, type: 'bank' })
+      .send({ name: `Checking-${Date.now()}`, type: 'AT02' })
       .expect(201);
     createdIds.push(createRes.body.data.id);
 
@@ -100,7 +100,7 @@ describe('Account (e2e)', () => {
     const accountRes = await request(app.getHttpServer())
       .post('/accounts')
       .set('Authorization', `Bearer ${token}`)
-      .send({ name: `Referenced-${Date.now()}`, type: 'bank' })
+      .send({ name: `Referenced-${Date.now()}`, type: 'AT02' })
       .expect(201);
     const accountId = accountRes.body.data.id;
     createdIds.push(accountId);
@@ -142,7 +142,7 @@ describe('Account (e2e)', () => {
     const createRes = await request(app.getHttpServer())
       .post('/accounts')
       .set('Authorization', `Bearer ${token}`)
-      .send({ name: `Private-${Date.now()}`, type: 'bank' })
+      .send({ name: `Private-${Date.now()}`, type: 'AT02' })
       .expect(201);
     const accountId = createRes.body.data.id;
     createdIds.push(accountId);
@@ -186,7 +186,7 @@ describe('Account (e2e)', () => {
     const firstRes = await request(app.getHttpServer())
       .post('/accounts')
       .set('Authorization', `Bearer ${freshToken}`)
-      .send({ name: `First-${Date.now()}`, type: 'bank' })
+      .send({ name: `First-${Date.now()}`, type: 'AT02' })
       .expect(201);
     const firstId = firstRes.body.data.id;
     createdIds.push(firstId);
@@ -194,7 +194,7 @@ describe('Account (e2e)', () => {
     const secondRes = await request(app.getHttpServer())
       .post('/accounts')
       .set('Authorization', `Bearer ${freshToken}`)
-      .send({ name: `Second-${Date.now()}`, type: 'cash' })
+      .send({ name: `Second-${Date.now()}`, type: 'AT01' })
       .expect(201);
     const secondId = secondRes.body.data.id;
     createdIds.push(secondId);

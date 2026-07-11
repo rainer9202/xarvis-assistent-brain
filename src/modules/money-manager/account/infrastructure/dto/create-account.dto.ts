@@ -1,6 +1,6 @@
 import { ApiProperty } from '@nestjs/swagger';
 import { IsIn, IsNotEmpty, IsString, MaxLength } from 'class-validator';
-import { ACCOUNT_TYPES } from '../../domain/enums/account-type.enum';
+import { ACCOUNT_TYPE_CODES } from '../../domain/enums/account-type.enum';
 
 export class CreateAccountDto {
   @ApiProperty({ example: 'Main Checking', maxLength: 50 })
@@ -9,7 +9,7 @@ export class CreateAccountDto {
   @MaxLength(50)
   name: string;
 
-  @ApiProperty({ example: 'bank', enum: ACCOUNT_TYPES })
-  @IsIn(ACCOUNT_TYPES)
+  @ApiProperty({ example: 'AT02', enum: ACCOUNT_TYPE_CODES })
+  @IsIn(ACCOUNT_TYPE_CODES)
   type: string;
 }

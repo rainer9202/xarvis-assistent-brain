@@ -162,7 +162,7 @@ describe('UpdateMovementUseCase', () => {
     getAccountByIdExecute.mockResolvedValue({
       id: 'acc-2',
       name: 'Savings',
-      type: 'bank',
+      type: 'AT02',
       isActive: true,
     });
     getCategoryByIdExecute.mockResolvedValue({
@@ -218,7 +218,7 @@ describe('UpdateMovementUseCase', () => {
         Promise.resolve({
           id,
           name: 'Some account',
-          type: 'bank',
+          type: 'AT02',
           isActive: true,
         }),
       );
@@ -301,7 +301,7 @@ describe('UpdateMovementUseCase', () => {
         return Promise.resolve({
           id,
           name: 'Some account',
-          type: 'bank',
+          type: 'AT02',
           isActive: true,
         });
       });

@@ -37,7 +37,7 @@ describe('DeleteAccountUseCase', () => {
     const entity = new AccountEntity({
       id: 'acc-1',
       name: 'Main Checking',
-      type: 'bank',
+      type: 'AT02',
       userId: 'user-1',
       isActive: true,
     });
@@ -58,7 +58,7 @@ describe('DeleteAccountUseCase', () => {
     const entity = new AccountEntity({
       id: 'acc-1',
       name: 'Main Checking',
-      type: 'bank',
+      type: 'AT02',
       userId: 'user-1',
       isActive: true,
     });
@@ -84,7 +84,7 @@ describe('DeleteAccountUseCase', () => {
     const entity = new AccountEntity({
       id: 'acc-1',
       name: 'Main Checking',
-      type: 'bank',
+      type: 'AT02',
       userId: 'user-1',
       isActive: true,
       isPrincipal: true,

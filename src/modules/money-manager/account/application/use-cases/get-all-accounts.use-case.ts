@@ -1,5 +1,6 @@
 import { Inject, Injectable } from '@nestjs/common';
 import { DomainException } from '@domain/exceptions/domain.exception';
+import { getAccountTypeLabel } from '../../domain/enums/account-type.enum';
 import { ACCOUNT_REPOSITORY } from '../../domain/ports/account.repository.port';
 import type { AccountRepositoryPort } from '../../domain/ports/account.repository.port';
 
@@ -7,6 +8,7 @@ export type GetAllAccountsResponse = {
   id: string;
   name: string;
   type: string;
+  typeLabel: string;
   isActive: boolean;
   isPrincipal: boolean;
   balanceCents: number;
@@ -27,6 +29,7 @@ export class GetAllAccountsUseCase {
         id: account.id!,
         name: account.name,
         type: account.type,
+        typeLabel: getAccountTypeLabel(account.type) ?? account.type,
         isActive: account.isActive!,
         isPrincipal: account.isPrincipal!,
         balanceCents,

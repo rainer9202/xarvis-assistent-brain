@@ -30,7 +30,7 @@ describe('GetAccountByIdUseCase', () => {
       account: new AccountEntity({
         id: 'acc-1',
         name: 'Main Checking',
-        type: 'bank',
+        type: 'AT02',
         userId: 'user-1',
         isActive: true,
         isPrincipal: true,
@@ -45,7 +45,8 @@ describe('GetAccountByIdUseCase', () => {
     expect(result).toEqual({
       id: 'acc-1',
       name: 'Main Checking',
-      type: 'bank',
+      type: 'AT02',
+      typeLabel: 'Banco',
       isActive: true,
       isPrincipal: true,
       balanceCents: 5000,
@@ -67,5 +68,24 @@ describe('GetAccountByIdUseCase', () => {
     await expect(useCase.execute('acc-1', 'user-1')).rejects.toThrow(
       'Unexpected error fetching account',
     );
+  });
+
+  it('falls back typeLabel to the raw code when no label matches', async () => {
+    findByIdWithBalance.mockResolvedValue({
+      account: new AccountEntity({
+        id: 'acc-1',
+        name: 'Main Checking',
+        type: 'AT99',
+        userId: 'user-1',
+        isActive: true,
+        isPrincipal: true,
+        createdAt: new Date('2024-01-01T00:00:00Z'),
+      }),
+      balanceCents: 0,
+    });
+
+    const result = await useCase.execute('acc-1', 'user-1');
+
+    expect(result.typeLabel).toBe('AT99');
   });
 });

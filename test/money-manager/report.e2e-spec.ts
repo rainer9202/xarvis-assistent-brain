@@ -39,10 +39,10 @@ describe('Report (e2e)', () => {
   it('sums balanceCents across every account into a single total', async () => {
     const [a, b] = await Promise.all([
       prisma.account.create({
-        data: { name: `RA-${Date.now()}`, type: 'bank', userId },
+        data: { name: `RA-${Date.now()}`, type: 'AT02', userId },
       }),
       prisma.account.create({
-        data: { name: `RB-${Date.now()}`, type: 'cash', userId },
+        data: { name: `RB-${Date.now()}`, type: 'AT01', userId },
       }),
     ]);
     accountIds.push(a.id, b.id);

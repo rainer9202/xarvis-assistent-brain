@@ -38,7 +38,7 @@ describe('UpdateAccountUseCase', () => {
     const existing = new AccountEntity({
       id: 'acc-1',
       name: 'Main Checking',
-      type: 'bank',
+      type: 'AT02',
       userId: 'user-1',
       isActive: true,
     });
@@ -55,7 +55,7 @@ describe('UpdateAccountUseCase', () => {
     expect(update).toHaveBeenCalledWith(
       expect.objectContaining({
         name: 'Savings',
-        type: 'bank',
+        type: 'AT02',
         isActive: true,
       }),
     );
@@ -71,11 +71,11 @@ describe('UpdateAccountUseCase', () => {
     expect(update).not.toHaveBeenCalled();
   });
 
-  it('throws ValidationException when type is not cash/bank/card', async () => {
+  it('throws ValidationException when type is not AT01/AT02/AT03', async () => {
     const existing = new AccountEntity({
       id: 'acc-1',
       name: 'Main Checking',
-      type: 'bank',
+      type: 'AT02',
       userId: 'user-1',
       isActive: true,
     });
@@ -89,11 +89,29 @@ describe('UpdateAccountUseCase', () => {
     expect(update).not.toHaveBeenCalled();
   });
 
+  it('rejects the old label "Banco" — codes and labels are not interchangeable', async () => {
+    const existing = new AccountEntity({
+      id: 'acc-1',
+      name: 'Main Checking',
+      type: 'AT02',
+      userId: 'user-1',
+      isActive: true,
+    });
+    findById.mockResolvedValue(existing);
+
+    await expect(
+      useCase.execute(
+        new UpdateAccountCommand('acc-1', 'user-1', undefined, 'Banco'),
+      ),
+    ).rejects.toThrow(ValidationException);
+    expect(update).not.toHaveBeenCalled();
+  });
+
   it('atomically swaps the principal account via repository.setPrincipal', async () => {
     const existing = new AccountEntity({
       id: 'acc-2',
       name: 'Savings',
-      type: 'bank',
+      type: 'AT02',
       userId: 'user-1',
       isActive: true,
       isPrincipal: false,
@@ -123,7 +141,7 @@ describe('UpdateAccountUseCase', () => {
     const existing = new AccountEntity({
       id: 'acc-1',
       name: 'Main Checking',
-      type: 'bank',
+      type: 'AT02',
       userId: 'user-1',
       isActive: true,
       isPrincipal: true,
@@ -150,7 +168,7 @@ describe('UpdateAccountUseCase', () => {
     const existing = new AccountEntity({
       id: 'acc-1',
       name: 'Main Checking',
-      type: 'bank',
+      type: 'AT02',
       userId: 'user-1',
       isActive: true,
       isPrincipal: true,

@@ -30,10 +30,10 @@ describe('Movement (e2e)', () => {
 
     const [a, b] = await Promise.all([
       prisma.account.create({
-        data: { name: `A-${Date.now()}`, type: 'bank', userId },
+        data: { name: `A-${Date.now()}`, type: 'AT02', userId },
       }),
       prisma.account.create({
-        data: { name: `B-${Date.now()}`, type: 'bank', userId },
+        data: { name: `B-${Date.now()}`, type: 'AT02', userId },
       }),
     ]);
     accountA = a.id;
@@ -366,7 +366,7 @@ describe('Movement (e2e)', () => {
     const otherAccountRes = await request(app.getHttpServer())
       .post('/accounts')
       .set('Authorization', `Bearer ${otherToken}`)
-      .send({ name: `Other-${Date.now()}`, type: 'bank' })
+      .send({ name: `Other-${Date.now()}`, type: 'AT02' })
       .expect(201);
     const otherCategoryRes = await request(app.getHttpServer())
       .post('/categories')

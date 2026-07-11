@@ -26,7 +26,7 @@ describe('GetAllAccountsUseCase', () => {
     const account = new AccountEntity({
       id: 'acc-1',
       name: 'Main Checking',
-      type: 'bank',
+      type: 'AT02',
       userId: 'user-1',
       isActive: true,
       isPrincipal: true,
@@ -43,7 +43,8 @@ describe('GetAllAccountsUseCase', () => {
       {
         id: 'acc-1',
         name: 'Main Checking',
-        type: 'bank',
+        type: 'AT02',
+        typeLabel: 'Banco',
         isActive: true,
         isPrincipal: true,
         balanceCents: 4500,
@@ -56,7 +57,7 @@ describe('GetAllAccountsUseCase', () => {
     const account = new AccountEntity({
       id: 'acc-2',
       name: 'Empty Wallet',
-      type: 'cash',
+      type: 'AT01',
       userId: 'user-1',
       isActive: true,
       createdAt: new Date('2024-01-01T00:00:00Z'),
@@ -77,5 +78,23 @@ describe('GetAllAccountsUseCase', () => {
     const result = await useCase.execute('user-1');
 
     expect(result).toEqual([]);
+  });
+
+  it('falls back typeLabel to the raw code when no label matches', async () => {
+    const account = new AccountEntity({
+      id: 'acc-3',
+      name: 'Unknown Type Account',
+      type: 'AT99',
+      userId: 'user-1',
+      isActive: true,
+      createdAt: new Date('2024-01-01T00:00:00Z'),
+    });
+    repository.findAllWithBalance.mockResolvedValue([
+      { account, balanceCents: 0 },
+    ]);
+
+    const result = await useCase.execute('user-1');
+
+    expect(result[0].typeLabel).toBe('AT99');
   });
 });

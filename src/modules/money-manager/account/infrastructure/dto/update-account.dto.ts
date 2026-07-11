@@ -6,7 +6,7 @@ import {
   IsString,
   MaxLength,
 } from 'class-validator';
-import { ACCOUNT_TYPES } from '../../domain/enums/account-type.enum';
+import { ACCOUNT_TYPE_CODES } from '../../domain/enums/account-type.enum';
 
 export class UpdateAccountDto {
   @ApiPropertyOptional({ example: 'Main Checking', maxLength: 50 })
@@ -15,9 +15,9 @@ export class UpdateAccountDto {
   @MaxLength(50)
   name?: string;
 
-  @ApiPropertyOptional({ example: 'bank', enum: ACCOUNT_TYPES })
+  @ApiPropertyOptional({ example: 'AT02', enum: ACCOUNT_TYPE_CODES })
   @IsOptional()
-  @IsIn(ACCOUNT_TYPES)
+  @IsIn(ACCOUNT_TYPE_CODES)
   type?: string;
 
   @ApiPropertyOptional({ example: true })

@@ -33,7 +33,7 @@ describe('PrismaAccountRepository', () => {
   const record = {
     id: 'acc-1',
     name: 'Main Checking',
-    type: 'bank',
+    type: 'AT02',
     userId: 'user-1',
     isActive: true,
     isPrincipal: false,
@@ -95,7 +95,7 @@ describe('PrismaAccountRepository', () => {
         where: { id: 'acc-1', userId: 'user-1' },
       });
       expect(result).toBeInstanceOf(AccountEntity);
-      expect(result?.type).toBe('bank');
+      expect(result?.type).toBe('AT02');
     });
 
     it('returns null when not found', async () => {
@@ -111,7 +111,7 @@ describe('PrismaAccountRepository', () => {
     it('creates a record from the entity and returns the mapped entity', async () => {
       const entity = new AccountEntity({
         name: 'Main Checking',
-        type: 'bank',
+        type: 'AT02',
         userId: 'user-1',
         isActive: true,
         isPrincipal: true,
@@ -124,7 +124,7 @@ describe('PrismaAccountRepository', () => {
         data: {
           id: undefined,
           name: 'Main Checking',
-          type: 'bank',
+          type: 'AT02',
           userId: 'user-1',
           isActive: true,
           isPrincipal: true,
@@ -143,7 +143,7 @@ describe('PrismaAccountRepository', () => {
     it('retries as non-principal when the principal-uniqueness index rejects a concurrent isPrincipal:true insert', async () => {
       const entity = new AccountEntity({
         name: 'Main Checking',
-        type: 'bank',
+        type: 'AT02',
         userId: 'user-1',
         isActive: true,
         isPrincipal: true,
@@ -164,7 +164,7 @@ describe('PrismaAccountRepository', () => {
         data: {
           id: undefined,
           name: 'Main Checking',
-          type: 'bank',
+          type: 'AT02',
           userId: 'user-1',
           isActive: true,
           isPrincipal: false,
@@ -176,7 +176,7 @@ describe('PrismaAccountRepository', () => {
     it('rethrows a P2002 unrelated to the principal race unchanged when isPrincipal was not requested', async () => {
       const entity = new AccountEntity({
         name: 'Main Checking',
-        type: 'bank',
+        type: 'AT02',
         userId: 'user-1',
         isActive: true,
         isPrincipal: false,
@@ -193,7 +193,7 @@ describe('PrismaAccountRepository', () => {
     it('rethrows any other error unchanged', async () => {
       const entity = new AccountEntity({
         name: 'Main Checking',
-        type: 'bank',
+        type: 'AT02',
         userId: 'user-1',
         isActive: true,
         isPrincipal: true,
@@ -213,7 +213,7 @@ describe('PrismaAccountRepository', () => {
       const entity = new AccountEntity({
         id: 'acc-1',
         name: 'Savings',
-        type: 'bank',
+        type: 'AT02',
         userId: 'user-1',
         isActive: false,
         isPrincipal: false,
@@ -230,7 +230,7 @@ describe('PrismaAccountRepository', () => {
         where: { id: 'acc-1' },
         data: {
           name: 'Savings',
-          type: 'bank',
+          type: 'AT02',
           isActive: false,
           isPrincipal: false,
         },
@@ -280,7 +280,7 @@ describe('PrismaAccountRepository', () => {
       const entity = new AccountEntity({
         id: 'acc-1',
         name: 'Main Checking',
-        type: 'bank',
+        type: 'AT02',
         userId: 'user-1',
         isActive: true,
       });

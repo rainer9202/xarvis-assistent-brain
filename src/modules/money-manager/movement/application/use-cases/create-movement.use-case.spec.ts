@@ -50,7 +50,7 @@ describe('CreateMovementUseCase', () => {
     getAccountByIdExecute.mockResolvedValue({
       id: 'acc-1',
       name: 'Main Checking',
-      type: 'bank',
+      type: 'AT02',
       isActive: true,
     });
     getCategoryByIdExecute.mockResolvedValue({
@@ -139,7 +139,7 @@ describe('CreateMovementUseCase', () => {
     getAccountByIdExecute.mockResolvedValue({
       id: 'acc-1',
       name: 'Main Checking',
-      type: 'bank',
+      type: 'AT02',
       isActive: true,
     });
     getCategoryByIdExecute.mockRejectedValue(
@@ -168,7 +168,7 @@ describe('CreateMovementUseCase', () => {
         Promise.resolve({
           id,
           name: 'Some account',
-          type: 'bank',
+          type: 'AT02',
           isActive: true,
         }),
       );
@@ -275,7 +275,7 @@ describe('CreateMovementUseCase', () => {
         return Promise.resolve({
           id,
           name: 'Some account',
-          type: 'bank',
+          type: 'AT02',
           isActive: true,
         });
       });

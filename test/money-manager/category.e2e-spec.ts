@@ -75,7 +75,7 @@ describe('Category (e2e)', () => {
 
   it('🔍 blocks deleting a category referenced by a movement', async () => {
     const account = await prisma.account.create({
-      data: { name: `Temp-${Date.now()}`, type: 'bank', userId },
+      data: { name: `Temp-${Date.now()}`, type: 'AT02', userId },
     });
     const categoryRes = await request(app.getHttpServer())
       .post('/categories')

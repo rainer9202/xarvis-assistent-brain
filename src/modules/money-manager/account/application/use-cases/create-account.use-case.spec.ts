@@ -46,7 +46,7 @@ describe('CreateAccountUseCase', () => {
     });
 
     const result = await useCase.execute(
-      new CreateAccountCommand('Main Checking', 'bank', 'user-1'),
+      new CreateAccountCommand('Main Checking', 'AT02', 'user-1'),
     );
 
     expect(save).toHaveBeenCalledWith(expect.any(AccountEntity));
@@ -63,7 +63,7 @@ describe('CreateAccountUseCase', () => {
     });
 
     await useCase.execute(
-      new CreateAccountCommand('Main Checking', 'bank', 'user-1'),
+      new CreateAccountCommand('Main Checking', 'AT02', 'user-1'),
     );
 
     expect(countByUserId).toHaveBeenCalledWith('user-1');
@@ -79,17 +79,35 @@ describe('CreateAccountUseCase', () => {
     });
 
     await useCase.execute(
-      new CreateAccountCommand('Savings', 'bank', 'user-1'),
+      new CreateAccountCommand('Savings', 'AT02', 'user-1'),
     );
 
     expect(savedEntity?.isPrincipal).toBe(false);
   });
 
-  it('throws ValidationException when type is not cash/bank/card', async () => {
+  it('throws ValidationException when type is not AT01/AT02/AT03', async () => {
     countByUserId.mockResolvedValue(0);
 
     await expect(
       useCase.execute(new CreateAccountCommand('Wallet', 'crypto', 'user-1')),
+    ).rejects.toThrow(ValidationException);
+    expect(save).not.toHaveBeenCalled();
+  });
+
+  it('throws ValidationException when type is an unknown code like "AT99"', async () => {
+    countByUserId.mockResolvedValue(0);
+
+    await expect(
+      useCase.execute(new CreateAccountCommand('Wallet', 'AT99', 'user-1')),
+    ).rejects.toThrow(ValidationException);
+    expect(save).not.toHaveBeenCalled();
+  });
+
+  it('rejects the old label "Banco" — codes and labels are not interchangeable', async () => {
+    countByUserId.mockResolvedValue(0);
+
+    await expect(
+      useCase.execute(new CreateAccountCommand('Wallet', 'Banco', 'user-1')),
     ).rejects.toThrow(ValidationException);
     expect(save).not.toHaveBeenCalled();
   });

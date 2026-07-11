@@ -130,13 +130,24 @@ the list):
 {
   "id": "uuid",
   "name": "Main Checking",
-  "type": "bank",
+  "type": "AT02",
+  "typeLabel": "Banco",
   "isActive": true,
   "isPrincipal": true,
   "balanceCents": 123456,
   "createdAt": "2026-07-09T00:00:00.000Z"
 }
 ```
+
+`type` is a stable code — it never changes and is what you send back on create/update. `typeLabel`
+is the display text for that code, resolved server-side; render `typeLabel` in the UI and don't
+build your own code→label mapping, since the label can be edited later independently of the code.
+
+| Code | Label |
+|---|---|
+| `AT01` | Efectivo |
+| `AT02` | Banco |
+| `AT03` | Tarjeta |
 
 `balanceCents` is computed live from the account's movements on every read — it is not a stored
 column, so it is always consistent with the movement ledger.
@@ -146,7 +157,7 @@ column, so it is always consistent with the movement ledger.
 | Field | Type | Constraints |
 |---|---|---|
 | `name` | string | required, non-empty, max 50 chars |
-| `type` | string | required, must be exactly one of `"cash" \| "bank" \| "card"` |
+| `type` | string | required, must be exactly one of `"AT01" \| "AT02" \| "AT03"` (see code→label table above) |
 
 `balanceCents` is **not** an accepted create field — a new account always starts at 0 regardless
 of what you send; any `balanceCents` in the body is silently stripped.
@@ -157,7 +168,7 @@ that defaults to `false`. Sending `isPrincipal` in the create body has no effect
 
 Response `201`, `data`: `{ "id": "uuid" }`.
 
-Error: `400` — invalid `type`: `"type must be one of the following values: cash, bank, card"`
+Error: `400` — invalid `type`: `"type must be one of the following values: AT01, AT02, AT03"`
 (class-validator shape, `message` is a string array).
 
 **PATCH /accounts/:id**
@@ -165,7 +176,7 @@ Error: `400` — invalid `type`: `"type must be one of the following values: cas
 | Field | Type | Constraints |
 |---|---|---|
 | `name` | string, optional | non-empty if present, max 50 chars |
-| `type` | string, optional | one of `cash \| bank \| card` if present |
+| `type` | string, optional | one of `AT01 \| AT02 \| AT03` if present |
 | `isActive` | boolean, optional | manual active/inactive toggle |
 | `isPrincipal` | boolean, optional | `true` to make **this** account principal; `false` is rejected |
 
@@ -402,8 +413,12 @@ with directly.
   different user and a resource that simply doesn't exist return the exact same
   `404 NotFoundException` shape. Do not build any UI logic that expects a distinct
   "forbidden" state for `Account`/`Category`/`Movement` — there isn't one.
-- **Account `type` is a closed enum**: `cash | bank | card`. Build the create/edit account form
-  as a fixed select, not a free-text field — anything else is rejected with 400.
+- **Account `type` is a closed enum of stable codes**: `AT01 | AT02 | AT03` (see §5.2 for the
+  code→label table). Build the create/edit account form as a fixed select over the codes, not a
+  free-text field — anything else is rejected with 400. Render the account's `typeLabel` from the
+  API response for display; do not hardcode your own code→label mapping, since the label can
+  change independently of the code (the code is what's validated and stored, the label is purely
+  presentation text).
 - **`movementType` is also a closed enum**: `Gasto | Ingreso | Transferencia` (see §5.0). Build
   the category/movement type picker as a fixed select too — no API call needed to populate it.
 - **A movement's `categoryId` is always required**, even for transfers. There's no
