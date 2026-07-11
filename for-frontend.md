@@ -210,10 +210,10 @@ Errors:
 
 **DELETE /accounts/:id** → `200`, `data`: `{ "id": "uuid" }`.
 
-Errors:
+Errors (checked in this order):
+- `404` — not found / not yours
 - `400` — `"The principal account cannot be deleted — mark a different account as principal
   first"` (`ValidationException`)
-- `404` — not found / not yours
 - `400` — referenced by movements: `"Account cannot be deleted because it is referenced by existing movements"` (`ValidationException`)
 
 ### 5.3 Categories (owned by the caller)
