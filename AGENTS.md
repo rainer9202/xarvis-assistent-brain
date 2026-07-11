@@ -56,6 +56,15 @@ docker compose exec app pnpm db:seed
 
 On Fedora/RHEL (SELinux enforcing), the bind mount uses the `:Z` flag so the container can read the source — don't drop it when editing the volume list.
 
+**Watch-mode zombie-process gotcha:** `pnpm start:dev`'s swc watcher spawns a fresh Node process per rebuild without reliably killing the previous one first. A burst of rapid sequential file saves (e.g. several agent-driven edits landing within the same second) can spawn many restarts back-to-back; every one after the first fails with `EADDRINUSE` because the prior process is still bound to :3000 — and that stale process, running old code, keeps silently serving all requests. Symptom: code changes compile (visible in `docker-compose logs`) but the live API doesn't reflect them at all — `/docs-json` still shows old field names/enum values that were renamed commits ago. This will NOT self-heal; only a full recreate does. After any batch of rapid edits (not single one-off changes), verify before trusting hot-reload:
+```bash
+docker-compose logs --tail=20 app | rg "EADDRINUSE|Nest application successfully started"
+```
+If `EADDRINUSE` appears anywhere after the last real code change, hot-reload is stuck — recreate cleanly:
+```bash
+docker-compose up -d --build -V
+```
+
 ### Deployment (Dokploy)
 
 Production only containerizes the Node.js app — the `runtime` stage in `Dockerfile` (`docker build .` targets it by default, being the last stage). Dokploy provides Postgres as a separate managed service; the container never runs its own database. Point `DATABASE_URL` at the Dokploy-provisioned Postgres instance via environment variables in Dokploy — do not bake credentials into the image. The runtime image does not run migrations automatically; apply `npx prisma migrate deploy` against the target database before (re)deploying a version that changed `prisma/schema.prisma`.
