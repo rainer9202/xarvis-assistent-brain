@@ -2,6 +2,7 @@ import { BaseEntity, BaseEntityProps } from '@domain/base.entity';
 
 export type CategoryProps = BaseEntityProps & {
   name: string;
+  icon: string;
   movementType: string;
   userId: string;
   isActive?: boolean;
@@ -9,6 +10,7 @@ export type CategoryProps = BaseEntityProps & {
 
 export class CategoryEntity extends BaseEntity {
   private _name: string = '';
+  private _icon: string = '';
   private _movementType: string = '';
   private _userId: string = '';
   private _isActive?: boolean;
@@ -17,6 +19,7 @@ export class CategoryEntity extends BaseEntity {
     super(props);
     if (props) {
       this._name = props.name;
+      this._icon = props.icon;
       this._movementType = props.movementType;
       this._userId = props.userId;
       this._isActive = props.isActive;
@@ -29,6 +32,14 @@ export class CategoryEntity extends BaseEntity {
 
   set name(value: string) {
     this._name = value;
+  }
+
+  get icon(): string {
+    return this._icon;
+  }
+
+  set icon(value: string) {
+    this._icon = value;
   }
 
   get userId(): string {

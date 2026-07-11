@@ -39,6 +39,7 @@ export class PrismaCategoryRepository implements CategoryRepositoryPort {
       data: {
         id: entity.id,
         name: entity.name,
+        icon: entity.icon,
         movementType: entity.movementType,
         userId: entity.userId,
         isActive: entity.isActive,
@@ -53,6 +54,7 @@ export class PrismaCategoryRepository implements CategoryRepositoryPort {
       where: { id: entity.id! },
       data: {
         name: entity.name,
+        icon: entity.icon,
         movementType: entity.movementType,
         isActive: entity.isActive,
       },

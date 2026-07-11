@@ -7,6 +7,7 @@ import type { CategoryRepositoryPort } from '../../domain/ports/category.reposit
 export type GetAllCategoriesResponse = {
   id: string;
   name: string;
+  icon: string;
   movementType: string;
   movementTypeLabel: string;
   isActive: boolean;
@@ -26,6 +27,7 @@ export class GetAllCategoriesUseCase {
       return entities.map((item) => ({
         id: item.id!,
         name: item.name,
+        icon: item.icon,
         movementType: item.movementType,
         movementTypeLabel:
           getMovementTypeLabel(item.movementType) ?? item.movementType,

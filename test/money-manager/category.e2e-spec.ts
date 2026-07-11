@@ -9,6 +9,7 @@ describe('Category (e2e)', () => {
   let token: string;
   let userId: string;
   const movementType = 'MT01';
+  const icon = 'pricetag-outline';
   const createdIds: string[] = [];
 
   beforeAll(async () => {
@@ -25,10 +26,27 @@ describe('Category (e2e)', () => {
     const res = await request(app.getHttpServer())
       .post('/categories')
       .set('Authorization', `Bearer ${token}`)
-      .send({ name: `Groceries-${Date.now()}`, movementType })
+      .send({ name: `Groceries-${Date.now()}`, icon, movementType })
       .expect(201);
 
     createdIds.push(res.body.data.id);
+
+    const listRes = await request(app.getHttpServer())
+      .get('/categories')
+      .set('Authorization', `Bearer ${token}`)
+      .expect(200);
+    const created = listRes.body.data.find(
+      (c: { id: string }) => c.id === res.body.data.id,
+    );
+    expect(created.icon).toBe(icon);
+  });
+
+  it('🔍 rejects a missing icon', async () => {
+    await request(app.getHttpServer())
+      .post('/categories')
+      .set('Authorization', `Bearer ${token}`)
+      .send({ name: `NoIcon-${Date.now()}`, movementType })
+      .expect(400);
   });
 
   it('rejects an invalid movementType', async () => {
@@ -57,7 +75,7 @@ describe('Category (e2e)', () => {
     const res = await request(app.getHttpServer())
       .post('/categories')
       .set('Authorization', `Bearer ${token}`)
-      .send({ name: `Labeled-${Date.now()}`, movementType })
+      .send({ name: `Labeled-${Date.now()}`, icon, movementType })
       .expect(201);
     createdIds.push(res.body.data.id);
 
@@ -78,14 +96,14 @@ describe('Category (e2e)', () => {
     const first = await request(app.getHttpServer())
       .post('/categories')
       .set('Authorization', `Bearer ${token}`)
-      .send({ name, movementType })
+      .send({ name, icon, movementType })
       .expect(201);
     createdIds.push(first.body.data.id);
 
     await request(app.getHttpServer())
       .post('/categories')
       .set('Authorization', `Bearer ${token}`)
-      .send({ name, movementType })
+      .send({ name, icon, movementType })
       .expect(409);
   });
 
@@ -93,7 +111,7 @@ describe('Category (e2e)', () => {
     const createRes = await request(app.getHttpServer())
       .post('/categories')
       .set('Authorization', `Bearer ${token}`)
-      .send({ name: `ToUpdate-${Date.now()}`, movementType })
+      .send({ name: `ToUpdate-${Date.now()}`, icon, movementType })
       .expect(201);
     createdIds.push(createRes.body.data.id);
 
@@ -111,7 +129,7 @@ describe('Category (e2e)', () => {
     const categoryRes = await request(app.getHttpServer())
       .post('/categories')
       .set('Authorization', `Bearer ${token}`)
-      .send({ name: `Referenced-${Date.now()}`, movementType })
+      .send({ name: `Referenced-${Date.now()}`, icon, movementType })
       .expect(201);
     const categoryId = categoryRes.body.data.id;
     createdIds.push(categoryId);
@@ -146,7 +164,7 @@ describe('Category (e2e)', () => {
     const createRes = await request(app.getHttpServer())
       .post('/categories')
       .set('Authorization', `Bearer ${token}`)
-      .send({ name, movementType })
+      .send({ name, icon, movementType })
       .expect(201);
     createdIds.push(createRes.body.data.id);
 
@@ -155,7 +173,7 @@ describe('Category (e2e)', () => {
     const otherCreateRes = await request(app.getHttpServer())
       .post('/categories')
       .set('Authorization', `Bearer ${otherToken}`)
-      .send({ name, movementType })
+      .send({ name, icon, movementType })
       .expect(201);
 
     await request(app.getHttpServer())

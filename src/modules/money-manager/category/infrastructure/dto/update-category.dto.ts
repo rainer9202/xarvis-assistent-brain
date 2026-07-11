@@ -17,6 +17,17 @@ export class UpdateCategoryDto {
   @MaxLength(50)
   name?: string;
 
+  @ApiPropertyOptional({
+    example: 'cart-outline',
+    maxLength: 50,
+    description: 'Ionicons icon name (e.g. "cart-outline", "home-outline")',
+  })
+  @IsOptional()
+  @IsString()
+  @IsNotEmpty()
+  @MaxLength(50)
+  icon?: string;
+
   @ApiPropertyOptional({ example: 'MT01', enum: MOVEMENT_TYPE_CODES })
   @IsOptional()
   @IsIn(MOVEMENT_TYPE_CODES)

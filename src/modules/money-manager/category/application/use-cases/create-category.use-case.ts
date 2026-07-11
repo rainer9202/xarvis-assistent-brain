@@ -17,6 +17,7 @@ export type CreateCategoryResponse = {
 export class CreateCategoryCommand {
   constructor(
     public readonly name: string,
+    public readonly icon: string,
     public readonly movementType: string,
     public readonly userId: string,
   ) {}
@@ -52,6 +53,7 @@ export class CreateCategoryUseCase {
 
       const entity = new CategoryEntity({
         name: command.name,
+        icon: command.icon,
         movementType: command.movementType,
         userId: command.userId,
         isActive: true,

@@ -10,6 +10,7 @@ import type { CategoryRepositoryPort } from '../../domain/ports/category.reposit
 export type GetCategoryByIdResponse = {
   id: string;
   name: string;
+  icon: string;
   movementType: string;
   movementTypeLabel: string;
   isActive: boolean;
@@ -30,6 +31,7 @@ export class GetCategoryByIdUseCase {
       return {
         id: category.id!,
         name: category.name,
+        icon: category.icon,
         movementType: category.movementType,
         movementTypeLabel:
           getMovementTypeLabel(category.movementType) ?? category.movementType,

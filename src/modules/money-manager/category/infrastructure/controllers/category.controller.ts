@@ -67,7 +67,12 @@ export class CategoryController {
     return {
       message: `The ${domainName} was created successfully`,
       data: await this.create.execute(
-        new CreateCategoryCommand(dto.name, dto.movementType, user.id),
+        new CreateCategoryCommand(
+          dto.name,
+          dto.icon,
+          dto.movementType,
+          user.id,
+        ),
       ),
     };
   }
@@ -87,6 +92,7 @@ export class CategoryController {
           id,
           user.id,
           dto.name,
+          dto.icon,
           dto.movementType,
           dto.isActive,
         ),

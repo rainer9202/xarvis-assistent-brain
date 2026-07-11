@@ -19,6 +19,7 @@ export class UpdateCategoryCommand {
     public readonly id: string,
     public readonly userId: string,
     public readonly name?: string,
+    public readonly icon?: string,
     public readonly movementType?: string,
     public readonly isActive?: boolean,
   ) {}
@@ -57,6 +58,7 @@ export class UpdateCategoryUseCase {
         category.movementType = command.movementType;
       }
       if (command.name !== undefined) category.name = command.name;
+      if (command.icon !== undefined) category.icon = command.icon;
       if (command.isActive !== undefined) category.isActive = command.isActive;
 
       if (uniquenessKeyChanged) {

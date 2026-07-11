@@ -24,6 +24,7 @@ describe('Movement (e2e)', () => {
       prisma.category.create({
         data: {
           name: `MovementSpec-${Date.now()}`,
+          icon: 'pricetag-outline',
           movementType: expenseType,
           userId,
         },
@@ -31,6 +32,7 @@ describe('Movement (e2e)', () => {
       prisma.category.create({
         data: {
           name: `MovementSpec2-${Date.now()}`,
+          icon: 'pricetag-outline',
           movementType: expenseType,
           userId,
         },
@@ -569,7 +571,11 @@ describe('Movement (e2e)', () => {
     const otherCategoryRes = await request(app.getHttpServer())
       .post('/categories')
       .set('Authorization', `Bearer ${otherToken}`)
-      .send({ name: `OtherCat-${Date.now()}`, movementType: expenseType })
+      .send({
+        name: `OtherCat-${Date.now()}`,
+        icon: 'pricetag-outline',
+        movementType: expenseType,
+      })
       .expect(201);
 
     await request(app.getHttpServer())

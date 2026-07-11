@@ -45,6 +45,7 @@ model Account {
 model Category {
   id           String   @id @default(uuid())
   name         String
+  icon         String
   movementType String   @map("movement_type")
   userId       String   @map("user_id")
   isActive     Boolean  @default(true) @map("is_active")

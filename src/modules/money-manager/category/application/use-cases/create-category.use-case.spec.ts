@@ -39,6 +39,7 @@ describe('CreateCategoryUseCase', () => {
         new CategoryEntity({
           id: 'cat-1',
           name: entity.name,
+          icon: entity.icon,
           movementType: entity.movementType,
           userId: entity.userId,
           isActive: entity.isActive,
@@ -47,7 +48,7 @@ describe('CreateCategoryUseCase', () => {
     });
 
     const result = await useCase.execute(
-      new CreateCategoryCommand('Groceries', 'MT01', 'user-1'),
+      new CreateCategoryCommand('Groceries', 'cart-outline', 'MT01', 'user-1'),
     );
 
     expect(findByNameAndMovementType).toHaveBeenCalledWith(
@@ -63,7 +64,12 @@ describe('CreateCategoryUseCase', () => {
   it('throws ValidationException when the movement type is invalid', async () => {
     await expect(
       useCase.execute(
-        new CreateCategoryCommand('Groceries', 'Invalid', 'user-1'),
+        new CreateCategoryCommand(
+          'Groceries',
+          'cart-outline',
+          'Invalid',
+          'user-1',
+        ),
       ),
     ).rejects.toThrow(ValidationException);
     expect(save).not.toHaveBeenCalled();
@@ -72,7 +78,12 @@ describe('CreateCategoryUseCase', () => {
   it('rejects the old label as an invalid movement type code', async () => {
     await expect(
       useCase.execute(
-        new CreateCategoryCommand('Groceries', 'Gasto', 'user-1'),
+        new CreateCategoryCommand(
+          'Groceries',
+          'cart-outline',
+          'Gasto',
+          'user-1',
+        ),
       ),
     ).rejects.toThrow(ValidationException);
     expect(save).not.toHaveBeenCalled();
@@ -83,6 +94,7 @@ describe('CreateCategoryUseCase', () => {
       new CategoryEntity({
         id: 'cat-1',
         name: 'Groceries',
+        icon: 'cart-outline',
         movementType: 'MT01',
         userId: 'user-1',
         isActive: true,
@@ -90,7 +102,14 @@ describe('CreateCategoryUseCase', () => {
     );
 
     await expect(
-      useCase.execute(new CreateCategoryCommand('Groceries', 'MT01', 'user-1')),
+      useCase.execute(
+        new CreateCategoryCommand(
+          'Groceries',
+          'cart-outline',
+          'MT01',
+          'user-1',
+        ),
+      ),
     ).rejects.toThrow(ConflictException);
     expect(save).not.toHaveBeenCalled();
   });

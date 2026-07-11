@@ -37,6 +37,7 @@ describe('UpdateCategoryUseCase', () => {
     const existing = new CategoryEntity({
       id: 'cat-1',
       name: 'Groceries',
+      icon: 'cart-outline',
       movementType: 'MT01',
       userId: 'user-1',
       isActive: true,
@@ -81,6 +82,7 @@ describe('UpdateCategoryUseCase', () => {
     const existing = new CategoryEntity({
       id: 'cat-1',
       name: 'Groceries',
+      icon: 'cart-outline',
       movementType: 'MT01',
       userId: 'user-1',
       isActive: true,
@@ -89,7 +91,13 @@ describe('UpdateCategoryUseCase', () => {
 
     await expect(
       useCase.execute(
-        new UpdateCategoryCommand('cat-1', 'user-1', undefined, 'Invalid'),
+        new UpdateCategoryCommand(
+          'cat-1',
+          'user-1',
+          undefined,
+          undefined,
+          'Invalid',
+        ),
       ),
     ).rejects.toThrow(ValidationException);
     expect(update).not.toHaveBeenCalled();
@@ -99,6 +107,7 @@ describe('UpdateCategoryUseCase', () => {
     const existing = new CategoryEntity({
       id: 'cat-1',
       name: 'Groceries',
+      icon: 'cart-outline',
       movementType: 'MT01',
       userId: 'user-1',
       isActive: true,
@@ -107,7 +116,13 @@ describe('UpdateCategoryUseCase', () => {
 
     await expect(
       useCase.execute(
-        new UpdateCategoryCommand('cat-1', 'user-1', undefined, 'Gasto'),
+        new UpdateCategoryCommand(
+          'cat-1',
+          'user-1',
+          undefined,
+          undefined,
+          'Gasto',
+        ),
       ),
     ).rejects.toThrow(ValidationException);
     expect(update).not.toHaveBeenCalled();
@@ -117,6 +132,7 @@ describe('UpdateCategoryUseCase', () => {
     const existing = new CategoryEntity({
       id: 'cat-1',
       name: 'Groceries',
+      icon: 'cart-outline',
       movementType: 'MT01',
       userId: 'user-1',
       isActive: true,
@@ -126,6 +142,7 @@ describe('UpdateCategoryUseCase', () => {
       new CategoryEntity({
         id: 'cat-2',
         name: 'Supermarket',
+        icon: 'cart-outline',
         movementType: 'MT01',
         userId: 'user-1',
         isActive: true,
@@ -144,6 +161,7 @@ describe('UpdateCategoryUseCase', () => {
     const existing = new CategoryEntity({
       id: 'cat-1',
       name: 'Groceries',
+      icon: 'cart-outline',
       movementType: 'MT01',
       userId: 'user-1',
       isActive: true,
@@ -165,6 +183,7 @@ describe('UpdateCategoryUseCase', () => {
     const existing = new CategoryEntity({
       id: 'cat-1',
       name: 'Groceries',
+      icon: 'cart-outline',
       movementType: 'MT01',
       userId: 'user-1',
       isActive: true,
@@ -175,7 +194,14 @@ describe('UpdateCategoryUseCase', () => {
     );
 
     const result = await useCase.execute(
-      new UpdateCategoryCommand('cat-1', 'user-1', undefined, undefined, false),
+      new UpdateCategoryCommand(
+        'cat-1',
+        'user-1',
+        undefined,
+        undefined,
+        undefined,
+        false,
+      ),
     );
 
     expect(findByNameAndMovementType).not.toHaveBeenCalled();

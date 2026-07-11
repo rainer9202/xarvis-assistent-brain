@@ -20,6 +20,7 @@ describe('Report (e2e)', () => {
       await prisma.category.create({
         data: {
           name: `ReportSpec-${Date.now()}`,
+          icon: 'pricetag-outline',
           movementType: expenseType,
           userId,
         },

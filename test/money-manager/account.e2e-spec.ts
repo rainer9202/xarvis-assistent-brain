@@ -108,7 +108,11 @@ describe('Account (e2e)', () => {
     const categoryRes = await request(app.getHttpServer())
       .post('/categories')
       .set('Authorization', `Bearer ${token}`)
-      .send({ name: `Cat-${Date.now()}`, movementType: 'MT01' })
+      .send({
+        name: `Cat-${Date.now()}`,
+        icon: 'pricetag-outline',
+        movementType: 'MT01',
+      })
       .expect(201);
     const categoryId = categoryRes.body.data.id;
 
