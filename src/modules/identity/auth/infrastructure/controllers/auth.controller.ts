@@ -4,6 +4,7 @@ import {
   Get,
   HttpCode,
   HttpStatus,
+  NotFoundException,
   Post,
   UseGuards,
 } from '@nestjs/common';
@@ -60,13 +61,20 @@ export class AuthController {
     };
   }
 
-  // TODO(remove-before-prod): debug-only endpoint, no auth guard and no
-  // ownership scoping — lists every user in the system. Delete this route
-  // (and GetAllUsersUseCase) before any non-local deployment.
+  // Debug-only endpoint, no auth guard and no ownership scoping — lists
+  // every user in the system. Fail-closed: hidden (404, same as a
+  // nonexistent route) unless DEBUG_ROUTES_ENABLED is explicitly set to
+  // "true" (see EnvironmentVariables). Opt-in rather than deleted, so it
+  // stays available for local debugging — but unlike a check keyed off
+  // NODE_ENV, a forgotten/misconfigured env var in any real deployment can
+  // never accidentally leave this reachable, since the default is hidden.
   @Public()
   @Get('users')
-  @ApiOkResponse({ description: 'List of all users (temporary, unsecured)' })
+  @ApiOkResponse({ description: 'List of all users (dev-only, unsecured)' })
   async findAllUsers() {
+    if (process.env.DEBUG_ROUTES_ENABLED !== 'true') {
+      throw new NotFoundException();
+    }
     return {
       message: 'Get all users successfully',
       data: await this.getAllUsers.execute(),
