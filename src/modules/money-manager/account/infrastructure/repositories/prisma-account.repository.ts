@@ -47,6 +47,10 @@ export class PrismaAccountRepository implements AccountRepositoryPort {
           userId: entity.userId,
           isActive: entity.isActive,
           isPrincipal: entity.isPrincipal,
+          creditLimitCents:
+            entity.creditLimitCents != null
+              ? this.centsToDecimalInput(entity.creditLimitCents)
+              : null,
         },
       });
 
@@ -70,6 +74,10 @@ export class PrismaAccountRepository implements AccountRepositoryPort {
             userId: entity.userId,
             isActive: entity.isActive,
             isPrincipal: false,
+            creditLimitCents:
+              entity.creditLimitCents != null
+                ? this.centsToDecimalInput(entity.creditLimitCents)
+                : null,
           },
         });
 
@@ -96,6 +104,10 @@ export class PrismaAccountRepository implements AccountRepositoryPort {
         type: entity.type,
         isActive: entity.isActive,
         isPrincipal: entity.isPrincipal,
+        creditLimitCents:
+          entity.creditLimitCents != null
+            ? this.centsToDecimalInput(entity.creditLimitCents)
+            : null,
       },
     });
 
@@ -246,7 +258,20 @@ export class PrismaAccountRepository implements AccountRepositoryPort {
     return Number(amount.toFixed(2).replace('.', ''));
   }
 
+  // Duplicated per-repository rather than extracted into a shared utility —
+  // mirrors PrismaMovementRepository's own centsToDecimalInput/decimalToCents
+  // helpers (see AGENTS.md "Monetary amounts").
+  private centsToDecimalInput(cents: number): string {
+    return (cents / 100).toFixed(2);
+  }
+
   private toEntity(record: AccountModel): AccountEntity {
-    return new AccountEntity(record);
+    return new AccountEntity({
+      ...record,
+      creditLimitCents:
+        record.creditLimitCents != null
+          ? this.amountToCents(record.creditLimitCents)
+          : null,
+    });
   }
 }

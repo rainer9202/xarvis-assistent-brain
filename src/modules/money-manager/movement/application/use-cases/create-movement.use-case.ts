@@ -11,6 +11,10 @@ import { GetGroupByIdUseCase } from '@modules/money-manager/group/application/us
 import { MovementEntity } from '../../domain/entities/movement.entity';
 import { MOVEMENT_REPOSITORY } from '../../domain/ports/movement.repository.port';
 import type { MovementRepositoryPort } from '../../domain/ports/movement.repository.port';
+import {
+  assertWithinCreditLimit,
+  sourceAccountEffectCents,
+} from '../shared/credit-limit';
 
 // Local, duplicated per file — mirrors the EXPENSE_TYPE_NAME pattern in
 // PrismaAccountRepository rather than a shared cross-module enum file.
@@ -55,10 +59,19 @@ export class CreateMovementUseCase {
           `Movement type "${command.movementType}" is invalid. Must be one of: ${MOVEMENT_TYPE_CODES.join(', ')}`,
         );
 
-      await this.getAccountById.execute(command.accountId, command.userId);
+      const sourceAccount = await this.getAccountById.execute(
+        command.accountId,
+        command.userId,
+      );
       await this.getCategoryById.execute(command.categoryId, command.userId);
       if (command.groupId !== undefined)
         await this.getGroupById.execute(command.groupId, command.userId);
+
+      const effect = sourceAccountEffectCents(
+        command.movementType,
+        command.amountCents,
+      );
+      if (effect < 0) assertWithinCreditLimit(sourceAccount, effect);
 
       if (command.movementType === TRANSFER_TYPE_NAME) {
         if (!command.toAccountId)

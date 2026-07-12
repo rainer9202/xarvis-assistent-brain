@@ -43,14 +43,15 @@ model Group {
 }
 
 model Account {
-  id          String   @id @default(uuid())
-  name        String
-  type        String
-  userId      String   @map("user_id")
-  isActive    Boolean  @default(true) @map("is_active")
-  isPrincipal Boolean  @default(false) @map("is_principal")
-  createdAt   DateTime @default(now()) @map("created_at")
-  updatedAt   DateTime @updatedAt @map("updated_at")
+  id               String   @id @default(uuid())
+  name             String
+  type             String
+  userId           String   @map("user_id")
+  isActive         Boolean  @default(true) @map("is_active")
+  isPrincipal      Boolean  @default(false) @map("is_principal")
+  creditLimitCents Decimal? @db.Decimal(14, 2) @map("credit_limit_cents")
+  createdAt        DateTime @default(now()) @map("created_at")
+  updatedAt        DateTime @updatedAt @map("updated_at")
 
   user              User       @relation(fields: [userId], references: [id], onDelete: Cascade)
   movements         Movement[] @relation("MovementSourceAccount")

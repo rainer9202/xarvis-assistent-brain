@@ -39,6 +39,53 @@ describe('Account (e2e)', () => {
       });
   });
 
+  it('creates an AT03 (Crédito) account with creditLimitCents and returns it', async () => {
+    const res = await request(app.getHttpServer())
+      .post('/accounts')
+      .set('Authorization', `Bearer ${token}`)
+      .send({
+        name: `CreditCard-${Date.now()}`,
+        type: 'AT03',
+        creditLimitCents: 50000000,
+      })
+      .expect(201);
+
+    const id = res.body.data.id;
+    createdIds.push(id);
+
+    await request(app.getHttpServer())
+      .get(`/accounts/${id}`)
+      .set('Authorization', `Bearer ${token}`)
+      .expect(200)
+      .expect((getRes) => {
+        expect(getRes.body.data.creditLimitCents).toBe(50000000);
+        expect(getRes.body.data.type).toBe('AT03');
+      });
+  });
+
+  it('rejects creating an AT03 account without creditLimitCents', async () => {
+    await request(app.getHttpServer())
+      .post('/accounts')
+      .set('Authorization', `Bearer ${token}`)
+      .send({ name: `NoCreditLimit-${Date.now()}`, type: 'AT03' })
+      .expect(400);
+  });
+
+  it.each(['AT01', 'AT02', 'AT04'])(
+    'rejects providing creditLimitCents for a %s (non-Crédito) account',
+    async (type) => {
+      await request(app.getHttpServer())
+        .post('/accounts')
+        .set('Authorization', `Bearer ${token}`)
+        .send({
+          name: `WithCreditLimit-${type}-${Date.now()}`,
+          type,
+          creditLimitCents: 50000,
+        })
+        .expect(400);
+    },
+  );
+
   it('rejects an invalid account type', async () => {
     await request(app.getHttpServer())
       .post('/accounts')

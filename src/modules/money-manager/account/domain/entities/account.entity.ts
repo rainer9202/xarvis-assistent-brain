@@ -6,6 +6,7 @@ export type AccountProps = BaseEntityProps & {
   userId: string;
   isActive?: boolean;
   isPrincipal?: boolean;
+  creditLimitCents?: number | null;
 };
 
 export class AccountEntity extends BaseEntity {
@@ -14,6 +15,7 @@ export class AccountEntity extends BaseEntity {
   private _userId: string = '';
   private _isActive?: boolean;
   private _isPrincipal?: boolean;
+  private _creditLimitCents?: number | null;
 
   constructor(props?: AccountProps) {
     super(props);
@@ -23,6 +25,7 @@ export class AccountEntity extends BaseEntity {
       this._userId = props.userId;
       this._isActive = props.isActive;
       this._isPrincipal = props.isPrincipal;
+      this._creditLimitCents = props.creditLimitCents;
     }
   }
 
@@ -60,5 +63,13 @@ export class AccountEntity extends BaseEntity {
 
   set isPrincipal(value: boolean) {
     this._isPrincipal = value;
+  }
+
+  get creditLimitCents(): number | null | undefined {
+    return this._creditLimitCents;
+  }
+
+  set creditLimitCents(value: number | null | undefined) {
+    this._creditLimitCents = value;
   }
 }

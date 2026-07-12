@@ -14,6 +14,7 @@ export type GetAccountByIdResponse = {
   typeLabel: string;
   isActive: boolean;
   isPrincipal: boolean;
+  creditLimitCents: number | null;
   balanceCents: number;
   createdAt: Date;
 };
@@ -38,6 +39,7 @@ export class GetAccountByIdUseCase {
           getAccountTypeLabel(result.account.type) ?? result.account.type,
         isActive: result.account.isActive!,
         isPrincipal: result.account.isPrincipal!,
+        creditLimitCents: result.account.creditLimitCents ?? null,
         balanceCents: result.balanceCents,
         createdAt: result.account.createdAt!,
       };

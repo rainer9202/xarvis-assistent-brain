@@ -46,12 +46,33 @@ describe('GetAccountByIdUseCase', () => {
       id: 'acc-1',
       name: 'Main Checking',
       type: 'AT02',
-      typeLabel: 'Banco',
+      typeLabel: 'Débito',
       isActive: true,
       isPrincipal: true,
+      creditLimitCents: null,
       balanceCents: 5000,
       createdAt: new Date('2024-01-01T00:00:00Z'),
     });
+  });
+
+  it('includes creditLimitCents when present on the account', async () => {
+    findByIdWithBalance.mockResolvedValue({
+      account: new AccountEntity({
+        id: 'acc-1',
+        name: 'Credit Card',
+        type: 'AT03',
+        userId: 'user-1',
+        isActive: true,
+        isPrincipal: false,
+        creditLimitCents: 50000000,
+        createdAt: new Date('2024-01-01T00:00:00Z'),
+      }),
+      balanceCents: -10000,
+    });
+
+    const result = await useCase.execute('acc-1', 'user-1');
+
+    expect(result.creditLimitCents).toBe(50000000);
   });
 
   it('throws NotFoundException when the account does not exist', async () => {

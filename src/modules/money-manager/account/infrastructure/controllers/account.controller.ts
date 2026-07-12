@@ -78,7 +78,12 @@ export class AccountController {
     return {
       message: `The ${domainName} was created successfully`,
       data: await this.create.execute(
-        new CreateAccountCommand(dto.name, dto.type, user.id),
+        new CreateAccountCommand(
+          dto.name,
+          dto.type,
+          user.id,
+          dto.creditLimitCents,
+        ),
       ),
     };
   }
@@ -101,6 +106,7 @@ export class AccountController {
           dto.type,
           dto.isActive,
           dto.isPrincipal,
+          dto.creditLimitCents,
         ),
       ),
     };

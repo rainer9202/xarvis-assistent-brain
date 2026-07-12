@@ -43,6 +43,7 @@ describe('UpdateMovementUseCase', () => {
     update = jest.fn();
     repository = {
       findAll: jest.fn(),
+      count: jest.fn(),
       findById,
       save: jest.fn(),
       update,
@@ -70,6 +71,16 @@ describe('UpdateMovementUseCase', () => {
 
   it('applies only the provided fields, leaving the rest unchanged', async () => {
     findById.mockResolvedValue(existing());
+    // amountCents rises from 1500 to 2000 on the same non-Crédito account —
+    // this makes the movement's own effect more negative (netDelta < 0), so
+    // UpdateMovementUseCase must re-fetch the account to run the credit-limit
+    // check. It's a plain AT02 account, so assertWithinCreditLimit is a no-op.
+    getAccountByIdExecute.mockResolvedValue({
+      id: 'acc-1',
+      name: 'Main Checking',
+      type: 'AT02',
+      isActive: true,
+    });
     update.mockImplementation((entity: MovementEntity) =>
       Promise.resolve(entity),
     );
@@ -79,7 +90,7 @@ describe('UpdateMovementUseCase', () => {
     );
 
     expect(findById).toHaveBeenCalledWith('mov-1', 'user-1');
-    expect(getAccountByIdExecute).not.toHaveBeenCalled();
+    expect(getAccountByIdExecute).toHaveBeenCalledWith('acc-1', 'user-1');
     expect(getCategoryByIdExecute).not.toHaveBeenCalled();
     expect(update).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -450,6 +461,169 @@ describe('UpdateMovementUseCase', () => {
             undefined,
             undefined,
             undefined,
+            undefined,
+            undefined,
+            undefined,
+            'acc-2',
+          ),
+        ),
+      ).rejects.toThrow(ValidationException);
+      expect(update).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('credit limit enforcement', () => {
+    const creditAccount = (overrides: Record<string, unknown> = {}) => ({
+      id: 'acc-1',
+      name: 'Credit Card',
+      type: 'AT03',
+      creditLimitCents: 50000,
+      balanceCents: -20000,
+      isActive: true,
+      ...overrides,
+    });
+
+    beforeEach(() => {
+      update.mockImplementation((entity: MovementEntity) =>
+        Promise.resolve(entity),
+      );
+    });
+
+    it('rejects a same-account amount increase that would breach the limit', async () => {
+      // existing() is a 1500-cent MT01 expense on acc-1. The account's
+      // balanceCents (-20000) already reflects that original -1500 effect.
+      // Bumping the amount to 40000 makes the new effect -40000, a net
+      // delta of -38500, which would push the projected balance to -58500,
+      // beyond the -50000 limit.
+      findById.mockResolvedValue(existing());
+      getAccountByIdExecute.mockResolvedValue(creditAccount());
+
+      await expect(
+        useCase.execute(new UpdateMovementCommand('mov-1', 'user-1', 40000)),
+      ).rejects.toThrow(ValidationException);
+      expect(update).not.toHaveBeenCalled();
+    });
+
+    it('allows a same-account amount decrease that frees up room, without needing a fetch to fail', async () => {
+      findById.mockResolvedValue(existing());
+      getAccountByIdExecute.mockResolvedValue(creditAccount());
+
+      const result = await useCase.execute(
+        new UpdateMovementCommand('mov-1', 'user-1', 500),
+      );
+
+      expect(result).toEqual({ id: 'mov-1' });
+    });
+
+    it('allows switching a Crédito account movement to income, which always frees up room', async () => {
+      findById.mockResolvedValue(existing());
+      getAccountByIdExecute.mockResolvedValue(creditAccount());
+
+      const result = await useCase.execute(
+        new UpdateMovementCommand(
+          'mov-1',
+          'user-1',
+          undefined,
+          undefined,
+          undefined,
+          undefined,
+          undefined,
+          'MT02',
+        ),
+      );
+
+      expect(result).toEqual({ id: 'mov-1' });
+    });
+
+    it('checks the new account limit against the full new amount when moving a movement TO a Crédito account', async () => {
+      findById.mockResolvedValue(existing());
+      getAccountByIdExecute.mockResolvedValue(
+        creditAccount({ id: 'acc-2', balanceCents: -49000 }),
+      );
+
+      await expect(
+        useCase.execute(
+          new UpdateMovementCommand(
+            'mov-1',
+            'user-1',
+            undefined,
+            undefined,
+            undefined,
+            'acc-2',
+          ),
+        ),
+      ).rejects.toThrow(ValidationException);
+      expect(update).not.toHaveBeenCalled();
+    });
+
+    it('is never blocked by the old account limit when moving a movement AWAY FROM a Crédito account', async () => {
+      const movement = new MovementEntity({
+        id: 'mov-1',
+        amountCents: 1000000,
+        date,
+        accountId: 'acc-1',
+        categoryId: 'cat-1',
+        movementType: 'MT01',
+        userId: 'user-1',
+      });
+      findById.mockResolvedValue(movement);
+      getAccountByIdExecute.mockResolvedValue({
+        id: 'acc-2',
+        name: 'Checking',
+        type: 'AT02',
+        balanceCents: 0,
+        isActive: true,
+      });
+
+      const result = await useCase.execute(
+        new UpdateMovementCommand(
+          'mov-1',
+          'user-1',
+          undefined,
+          undefined,
+          undefined,
+          'acc-2',
+        ),
+      );
+
+      expect(result).toEqual({ id: 'mov-1' });
+    });
+
+    it("rejects moving an income movement AWAY from a Crédito account when removing it would breach that account's own limit", async () => {
+      // The income movement being moved away is currently what's keeping
+      // acc-1 (limit 50000) afloat: acc-1's fetched balanceCents (-49000)
+      // already reflects this movement's +1000 contribution. Removing it
+      // drops acc-1 to -50000... but here the move is a bigger amount, so
+      // removal pushes it past the limit.
+      const movement = new MovementEntity({
+        id: 'mov-1',
+        amountCents: 5000,
+        date,
+        accountId: 'acc-1',
+        categoryId: 'cat-1',
+        movementType: 'MT02',
+        userId: 'user-1',
+      });
+      findById.mockResolvedValue(movement);
+      getAccountByIdExecute.mockImplementation((id: string) => {
+        if (id === 'acc-1')
+          return Promise.resolve(
+            creditAccount({ id: 'acc-1', balanceCents: -49000 }),
+          );
+        return Promise.resolve({
+          id: 'acc-2',
+          name: 'Checking',
+          type: 'AT02',
+          balanceCents: 0,
+          isActive: true,
+        });
+      });
+
+      await expect(
+        useCase.execute(
+          new UpdateMovementCommand(
+            'mov-1',
+            'user-1',
             undefined,
             undefined,
             undefined,

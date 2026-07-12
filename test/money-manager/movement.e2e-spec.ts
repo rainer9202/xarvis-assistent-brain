@@ -814,4 +814,55 @@ describe('Movement (e2e)', () => {
       where: { id: otherAccountRes.body.data.id },
     });
   });
+
+  it('🔍 enforces the credit limit on a Crédito account: allows an expense within it, rejects one that exceeds it', async () => {
+    // Seeding directly via Prisma bypasses PrismaAccountRepository's own
+    // cents<->Decimal conversion, so the raw column value must already be in
+    // decimal dollars (limit of 10000 cents == "100.00"), matching what
+    // centsToDecimalInput(10000) would have produced.
+    const creditAccount = await prisma.account.create({
+      data: {
+        name: `CreditCard-${Date.now()}`,
+        type: 'AT03',
+        creditLimitCents: 100.0,
+        userId,
+      },
+    });
+    const createdMovementIds: string[] = [];
+
+    const withinLimitRes = await request(app.getHttpServer())
+      .post('/movements')
+      .set('Authorization', `Bearer ${token}`)
+      .send({
+        amountCents: 6000,
+        date: new Date().toISOString(),
+        accountId: creditAccount.id,
+        categoryId,
+        movementType: expenseType,
+      })
+      .expect(201);
+    createdMovementIds.push(withinLimitRes.body.data.id);
+
+    const overLimitRes = await request(app.getHttpServer())
+      .post('/movements')
+      .set('Authorization', `Bearer ${token}`)
+      .send({
+        amountCents: 6000,
+        date: new Date().toISOString(),
+        accountId: creditAccount.id,
+        categoryId,
+        movementType: expenseType,
+      });
+    if (overLimitRes.status === 201)
+      createdMovementIds.push(overLimitRes.body.data.id);
+    expect(overLimitRes.status).toBe(400);
+
+    // Cleaned up locally (not via the shared movementIds/afterAll teardown)
+    // so every referencing movement is removed before the account, respecting
+    // the movements->accounts onDelete: Restrict constraint.
+    await prisma.movement.deleteMany({
+      where: { id: { in: createdMovementIds } },
+    });
+    await prisma.account.delete({ where: { id: creditAccount.id } });
+  });
 });

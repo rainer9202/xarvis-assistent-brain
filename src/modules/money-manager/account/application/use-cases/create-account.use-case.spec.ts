@@ -111,4 +111,54 @@ describe('CreateAccountUseCase', () => {
     ).rejects.toThrow(ValidationException);
     expect(save).not.toHaveBeenCalled();
   });
+
+  describe('creditLimitCents', () => {
+    it('requires creditLimitCents when creating an AT03 (Crédito) account', async () => {
+      countByUserId.mockResolvedValue(0);
+
+      await expect(
+        useCase.execute(
+          new CreateAccountCommand('Credit Card', 'AT03', 'user-1'),
+        ),
+      ).rejects.toThrow(ValidationException);
+      expect(save).not.toHaveBeenCalled();
+    });
+
+    it('accepts an AT03 account when creditLimitCents is provided', async () => {
+      countByUserId.mockResolvedValue(0);
+      let savedEntity: AccountEntity | undefined;
+      save.mockImplementation((entity: AccountEntity) => {
+        savedEntity = entity;
+        return Promise.resolve(
+          new AccountEntity({
+            id: 'acc-1',
+            name: entity.name,
+            type: entity.type,
+            userId: entity.userId,
+            isActive: entity.isActive,
+            isPrincipal: entity.isPrincipal,
+            creditLimitCents: entity.creditLimitCents,
+          }),
+        );
+      });
+
+      const result = await useCase.execute(
+        new CreateAccountCommand('Credit Card', 'AT03', 'user-1', 50000000),
+      );
+
+      expect(savedEntity?.creditLimitCents).toBe(50000000);
+      expect(result).toEqual({ id: 'acc-1' });
+    });
+
+    it('rejects creditLimitCents for a non-AT03 type', async () => {
+      countByUserId.mockResolvedValue(0);
+
+      await expect(
+        useCase.execute(
+          new CreateAccountCommand('Checking', 'AT02', 'user-1', 50000),
+        ),
+      ).rejects.toThrow(ValidationException);
+      expect(save).not.toHaveBeenCalled();
+    });
+  });
 });

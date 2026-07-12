@@ -128,6 +128,23 @@ describe('AccountController', () => {
         data: { id: 'acc-1' },
       });
     });
+
+    it('passes dto.creditLimitCents through to the command', async () => {
+      const dto: CreateAccountDto = {
+        name: 'Credit Card',
+        type: 'AT03',
+        creditLimitCents: 50000000,
+      };
+      let receivedCommand: CreateAccountCommand | undefined;
+      createExecute.mockImplementation((command: CreateAccountCommand) => {
+        receivedCommand = command;
+        return Promise.resolve({ id: 'acc-1' });
+      });
+
+      await controller.createOne(dto, user);
+
+      expect(receivedCommand?.creditLimitCents).toBe(50000000);
+    });
   });
 
   describe('updateOne', () => {
@@ -169,6 +186,19 @@ describe('AccountController', () => {
         expect.objectContaining({ isPrincipal: true }),
       );
       expect(receivedCommand?.isPrincipal).toBe(true);
+    });
+
+    it('passes dto.creditLimitCents through to the command', async () => {
+      const dto: UpdateAccountDto = { creditLimitCents: null };
+      let receivedCommand: UpdateAccountCommand | undefined;
+      updateExecute.mockImplementation((command: UpdateAccountCommand) => {
+        receivedCommand = command;
+        return Promise.resolve({ id: 'acc-1' });
+      });
+
+      await controller.updateOne('acc-1', dto, user);
+
+      expect(receivedCommand?.creditLimitCents).toBeNull();
     });
   });
 

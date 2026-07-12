@@ -11,6 +11,11 @@ import {
 import { ACCOUNT_REPOSITORY } from '../../domain/ports/account.repository.port';
 import type { AccountRepositoryPort } from '../../domain/ports/account.repository.port';
 
+// Local, duplicated per file — mirrors the TRANSFER_TYPE_NAME pattern
+// duplicated across PrismaAccountRepository / create-movement.use-case.ts /
+// update-movement.use-case.ts, rather than a shared cross-module enum file.
+const CREDIT_TYPE_NAME = 'AT03';
+
 export type UpdateAccountResponse = {
   id: string;
 };
@@ -23,6 +28,7 @@ export class UpdateAccountCommand {
     public readonly type?: string,
     public readonly isActive?: boolean,
     public readonly isPrincipal?: boolean,
+    public readonly creditLimitCents?: number | null,
   ) {}
 }
 
@@ -56,6 +62,35 @@ export class UpdateAccountUseCase {
         account.type = command.type;
       }
       if (command.isActive !== undefined) account.isActive = command.isActive;
+
+      const touchesCreditFields =
+        command.type !== undefined || command.creditLimitCents !== undefined;
+
+      if (touchesCreditFields) {
+        // account.type was already updated above when command.type was
+        // provided, so it already reflects the effective type here.
+        const effectiveCreditLimitCents =
+          command.creditLimitCents !== undefined
+            ? command.creditLimitCents
+            : account.creditLimitCents;
+
+        if (account.type === CREDIT_TYPE_NAME) {
+          if (
+            effectiveCreditLimitCents == null ||
+            effectiveCreditLimitCents < 1
+          )
+            throw new ValidationException(
+              'creditLimitCents is required for Crédito accounts',
+            );
+        } else if (effectiveCreditLimitCents != null) {
+          throw new ValidationException(
+            'creditLimitCents is only allowed for Crédito accounts',
+          );
+        }
+      }
+
+      if (command.creditLimitCents !== undefined)
+        account.creditLimitCents = command.creditLimitCents;
 
       const saved = await this.repository.update(account);
 

@@ -184,4 +184,132 @@ describe('UpdateAccountUseCase', () => {
 
     expect(setPrincipal).not.toHaveBeenCalled();
   });
+
+  describe('creditLimitCents', () => {
+    it('requires creditLimitCents when changing type to AT03 (Crédito)', async () => {
+      const existing = new AccountEntity({
+        id: 'acc-1',
+        name: 'Main Checking',
+        type: 'AT02',
+        userId: 'user-1',
+        isActive: true,
+      });
+      findById.mockResolvedValue(existing);
+
+      await expect(
+        useCase.execute(
+          new UpdateAccountCommand('acc-1', 'user-1', undefined, 'AT03'),
+        ),
+      ).rejects.toThrow(ValidationException);
+      expect(update).not.toHaveBeenCalled();
+    });
+
+    it('accepts changing type to AT03 when creditLimitCents is provided in the same request', async () => {
+      const existing = new AccountEntity({
+        id: 'acc-1',
+        name: 'Main Checking',
+        type: 'AT02',
+        userId: 'user-1',
+        isActive: true,
+      });
+      findById.mockResolvedValue(existing);
+      update.mockImplementation((entity: AccountEntity) =>
+        Promise.resolve(entity),
+      );
+
+      const result = await useCase.execute(
+        new UpdateAccountCommand(
+          'acc-1',
+          'user-1',
+          undefined,
+          'AT03',
+          undefined,
+          undefined,
+          50000000,
+        ),
+      );
+
+      expect(update).toHaveBeenCalledWith(
+        expect.objectContaining({ type: 'AT03', creditLimitCents: 50000000 }),
+      );
+      expect(result).toEqual({ id: 'acc-1' });
+    });
+
+    it('rejects creditLimitCents for a non-AT03 type', async () => {
+      const existing = new AccountEntity({
+        id: 'acc-1',
+        name: 'Main Checking',
+        type: 'AT02',
+        userId: 'user-1',
+        isActive: true,
+      });
+      findById.mockResolvedValue(existing);
+
+      await expect(
+        useCase.execute(
+          new UpdateAccountCommand(
+            'acc-1',
+            'user-1',
+            undefined,
+            undefined,
+            undefined,
+            undefined,
+            50000,
+          ),
+        ),
+      ).rejects.toThrow(ValidationException);
+      expect(update).not.toHaveBeenCalled();
+    });
+
+    it('rejects changing type away from AT03 without explicitly clearing creditLimitCents', async () => {
+      const existing = new AccountEntity({
+        id: 'acc-1',
+        name: 'Credit Card',
+        type: 'AT03',
+        userId: 'user-1',
+        isActive: true,
+        creditLimitCents: 50000000,
+      });
+      findById.mockResolvedValue(existing);
+
+      await expect(
+        useCase.execute(
+          new UpdateAccountCommand('acc-1', 'user-1', undefined, 'AT02'),
+        ),
+      ).rejects.toThrow(ValidationException);
+      expect(update).not.toHaveBeenCalled();
+    });
+
+    it('allows changing type away from AT03 when creditLimitCents is explicitly cleared with null', async () => {
+      const existing = new AccountEntity({
+        id: 'acc-1',
+        name: 'Credit Card',
+        type: 'AT03',
+        userId: 'user-1',
+        isActive: true,
+        creditLimitCents: 50000000,
+      });
+      findById.mockResolvedValue(existing);
+      update.mockImplementation((entity: AccountEntity) =>
+        Promise.resolve(entity),
+      );
+
+      const result = await useCase.execute(
+        new UpdateAccountCommand(
+          'acc-1',
+          'user-1',
+          undefined,
+          'AT02',
+          undefined,
+          undefined,
+          null,
+        ),
+      );
+
+      expect(update).toHaveBeenCalledWith(
+        expect.objectContaining({ type: 'AT02', creditLimitCents: null }),
+      );
+      expect(result).toEqual({ id: 'acc-1' });
+    });
+  });
 });

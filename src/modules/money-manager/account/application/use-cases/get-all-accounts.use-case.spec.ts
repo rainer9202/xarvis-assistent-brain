@@ -44,13 +44,34 @@ describe('GetAllAccountsUseCase', () => {
         id: 'acc-1',
         name: 'Main Checking',
         type: 'AT02',
-        typeLabel: 'Banco',
+        typeLabel: 'Débito',
         isActive: true,
         isPrincipal: true,
+        creditLimitCents: null,
         balanceCents: 4500,
         createdAt,
       },
     ]);
+  });
+
+  it('includes creditLimitCents when present on the account', async () => {
+    const account = new AccountEntity({
+      id: 'acc-1',
+      name: 'Credit Card',
+      type: 'AT03',
+      userId: 'user-1',
+      isActive: true,
+      isPrincipal: false,
+      creditLimitCents: 50000000,
+      createdAt: new Date('2024-01-01T00:00:00Z'),
+    });
+    repository.findAllWithBalance.mockResolvedValue([
+      { account, balanceCents: -10000 },
+    ]);
+
+    const result = await useCase.execute('user-1');
+
+    expect(result[0].creditLimitCents).toBe(50000000);
   });
 
   it('defaults balance to 0 cents when the account has zero movements, never null', async () => {

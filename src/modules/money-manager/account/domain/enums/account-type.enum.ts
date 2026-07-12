@@ -1,7 +1,8 @@
 export const ACCOUNT_TYPES = [
   { code: 'AT01', label: 'Efectivo' },
-  { code: 'AT02', label: 'Banco' },
-  { code: 'AT03', label: 'Tarjeta' },
+  { code: 'AT02', label: 'Débito' },
+  { code: 'AT03', label: 'Crédito' },
+  { code: 'AT04', label: 'Ahorro' },
 ] as const;
 
 export type AccountTypeCode = (typeof ACCOUNT_TYPES)[number]['code'];

@@ -105,6 +105,29 @@ describe('PrismaAccountRepository', () => {
 
       expect(result).toBeNull();
     });
+
+    it('maps a Decimal creditLimitCents into plain integer cents', async () => {
+      prisma.account.findFirst.mockResolvedValue({
+        ...record,
+        type: 'AT03',
+        creditLimitCents: { toFixed: () => '500000.00' },
+      });
+
+      const result = await repository.findById('acc-1', 'user-1');
+
+      expect(result?.creditLimitCents).toBe(50000000);
+    });
+
+    it('maps a null creditLimitCents to null, not undefined', async () => {
+      prisma.account.findFirst.mockResolvedValue({
+        ...record,
+        creditLimitCents: null,
+      });
+
+      const result = await repository.findById('acc-1', 'user-1');
+
+      expect(result?.creditLimitCents).toBeNull();
+    });
   });
 
   describe('save', () => {
@@ -128,10 +151,41 @@ describe('PrismaAccountRepository', () => {
           userId: 'user-1',
           isActive: true,
           isPrincipal: true,
+          creditLimitCents: null,
         },
       });
       expect(result).toBeInstanceOf(AccountEntity);
       expect(result.name).toBe('Main Checking');
+    });
+
+    it('converts a provided creditLimitCents into a Decimal input string', async () => {
+      const entity = new AccountEntity({
+        name: 'Credit Card',
+        type: 'AT03',
+        userId: 'user-1',
+        isActive: true,
+        isPrincipal: false,
+        creditLimitCents: 50000000,
+      });
+      prisma.account.create.mockResolvedValue({
+        ...record,
+        type: 'AT03',
+        creditLimitCents: { toFixed: () => '500000.00' },
+      });
+
+      await repository.save(entity);
+
+      expect(prisma.account.create).toHaveBeenCalledWith({
+        data: {
+          id: undefined,
+          name: 'Credit Card',
+          type: 'AT03',
+          userId: 'user-1',
+          isActive: true,
+          isPrincipal: false,
+          creditLimitCents: '500000.00',
+        },
+      });
     });
 
     // Closes the TOCTOU race in CreateAccountUseCase: two concurrent
@@ -168,6 +222,7 @@ describe('PrismaAccountRepository', () => {
           userId: 'user-1',
           isActive: true,
           isPrincipal: false,
+          creditLimitCents: null,
         },
       });
       expect(result.isPrincipal).toBe(false);
@@ -233,10 +288,41 @@ describe('PrismaAccountRepository', () => {
           type: 'AT02',
           isActive: false,
           isPrincipal: false,
+          creditLimitCents: null,
         },
       });
       expect(result.name).toBe('Savings');
       expect(result.isActive).toBe(false);
+    });
+
+    it('converts a provided creditLimitCents into a Decimal input string, and null clears it', async () => {
+      const entity = new AccountEntity({
+        id: 'acc-1',
+        name: 'Credit Card',
+        type: 'AT03',
+        userId: 'user-1',
+        isActive: true,
+        isPrincipal: false,
+        creditLimitCents: 75000000,
+      });
+      prisma.account.update.mockResolvedValue({
+        ...record,
+        type: 'AT03',
+        creditLimitCents: { toFixed: () => '750000.00' },
+      });
+
+      await repository.update(entity);
+
+      expect(prisma.account.update).toHaveBeenCalledWith({
+        where: { id: 'acc-1' },
+        data: {
+          name: 'Credit Card',
+          type: 'AT03',
+          isActive: true,
+          isPrincipal: false,
+          creditLimitCents: '750000.00',
+        },
+      });
     });
   });
 

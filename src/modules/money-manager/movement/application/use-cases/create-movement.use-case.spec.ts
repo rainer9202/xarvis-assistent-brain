@@ -29,6 +29,7 @@ describe('CreateMovementUseCase', () => {
     save = jest.fn();
     repository = {
       findAll: jest.fn(),
+      count: jest.fn(),
       findById: jest.fn(),
       save,
       update: jest.fn(),
@@ -397,6 +398,137 @@ describe('CreateMovementUseCase', () => {
         ),
       ).rejects.toThrow(ValidationException);
       expect(save).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('credit limit enforcement', () => {
+    beforeEach(() => {
+      getCategoryByIdExecute.mockResolvedValue({
+        id: 'cat-1',
+        name: 'Groceries',
+        movementType: 'MT01',
+        isActive: true,
+      });
+      save.mockImplementation((entity: MovementEntity) =>
+        Promise.resolve(
+          new MovementEntity({
+            id: 'mov-1',
+            amountCents: entity.amountCents,
+            date: entity.date,
+            note: entity.note,
+            accountId: entity.accountId,
+            categoryId: entity.categoryId,
+            movementType: entity.movementType,
+            userId: entity.userId,
+          }),
+        ),
+      );
+    });
+
+    it('allows an expense on a Crédito account that stays within the limit', async () => {
+      getAccountByIdExecute.mockResolvedValue({
+        id: 'acc-1',
+        name: 'Credit Card',
+        type: 'AT03',
+        creditLimitCents: 50000,
+        balanceCents: -10000,
+        isActive: true,
+      });
+
+      await useCase.execute(
+        new CreateMovementCommand(
+          5000,
+          date,
+          undefined,
+          'acc-1',
+          'cat-1',
+          'MT01',
+          'user-1',
+        ),
+      );
+
+      expect(save).toHaveBeenCalled();
+    });
+
+    it('rejects an expense on a Crédito account that would exceed the limit', async () => {
+      getAccountByIdExecute.mockResolvedValue({
+        id: 'acc-1',
+        name: 'Credit Card',
+        type: 'AT03',
+        creditLimitCents: 50000,
+        balanceCents: -49000,
+        isActive: true,
+      });
+
+      await expect(
+        useCase.execute(
+          new CreateMovementCommand(
+            2000,
+            date,
+            undefined,
+            'acc-1',
+            'cat-1',
+            'MT01',
+            'user-1',
+          ),
+        ),
+      ).rejects.toThrow(ValidationException);
+      expect(save).not.toHaveBeenCalled();
+    });
+
+    it('never checks the limit for income on a Crédito account, regardless of amount', async () => {
+      getCategoryByIdExecute.mockResolvedValue({
+        id: 'cat-1',
+        name: 'Refund',
+        movementType: 'MT02',
+        isActive: true,
+      });
+      getAccountByIdExecute.mockResolvedValue({
+        id: 'acc-1',
+        name: 'Credit Card',
+        type: 'AT03',
+        creditLimitCents: 50000,
+        balanceCents: -49999,
+        isActive: true,
+      });
+
+      await useCase.execute(
+        new CreateMovementCommand(
+          1000000,
+          date,
+          undefined,
+          'acc-1',
+          'cat-1',
+          'MT02',
+          'user-1',
+        ),
+      );
+
+      expect(save).toHaveBeenCalled();
+    });
+
+    it('never checks the limit for a non-Crédito account, even with a huge amount', async () => {
+      getAccountByIdExecute.mockResolvedValue({
+        id: 'acc-1',
+        name: 'Checking',
+        type: 'AT02',
+        balanceCents: 0,
+        isActive: true,
+      });
+
+      await useCase.execute(
+        new CreateMovementCommand(
+          1000000000,
+          date,
+          undefined,
+          'acc-1',
+          'cat-1',
+          'MT01',
+          'user-1',
+        ),
+      );
+
+      expect(save).toHaveBeenCalled();
     });
   });
 });
