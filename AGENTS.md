@@ -86,7 +86,7 @@ src/modules/<domain>/<feature>/
 │   └── ports/              ← repository interfaces + injection Symbol
 ├── application/
 │   ├── use-cases/          ← one file per use case, depend only on ports
-│   └── shared/             ← cross-use-case application helpers (not use-case-specific, but still application-layer — e.g. `identity/auth`'s `buildAuthResponse()`)
+│   └── shared/             ← cross-use-case application helpers (not use-case-specific, but still application-layer — e.g. `identity/auth`'s `buildAuthResponse()`, `movement`'s `credit-limit.ts`)
 ├── infrastructure/
 │   ├── controllers/        ← HTTP layer, calls use cases directly
 │   ├── repositories/       ← Prisma implementations of domain ports
@@ -174,6 +174,10 @@ Each use case defines its own response type (e.g. `CreateAccountResponse`) inste
 
 **Create/Update/Delete return `{ id: string }` only** — never the full entity fields, even if the repository call returns more. `GetAll`/`GetById` use cases are unaffected and still return full mapped field sets.
 
+### Pagination (opt-in, additive)
+
+`GET /movements` (`GetAllMovementsUseCase`/`PrismaMovementRepository`) is the first paginated list endpoint; use it as the template for the next one (`accounts`, `categories`, etc.) rather than inventing a different shape. Pagination is page/limit (not cursor — this app's per-user row counts don't justify cursor complexity) and strictly opt-in: a request with neither `page` nor `limit` gets byte-for-byte the same response as before pagination existed (`data` as a plain array, no extra keys), so existing unpaginated callers never need to change. Sending either param switches the controller's response to add `page`/`limit`/`totalCount`/`totalPages`/`hasMore` as **sibling keys next to `data`** (not nested inside it) — `data` stays a plain array in both modes. The use case resolves `page`/`limit` defaults once (`?? 1`/`?? 20`) and is the single place that decides whether the mode is paginated (`page !== undefined || limit !== undefined`); the repository's own `findAll` only runs a `count()` query when it receives already-resolved pagination params, so unpaginated callers never pay for an extra `COUNT(*)`.
+
 ### Domain enums and constants
 
 Allowed-values lists (e.g. `ACCOUNT_TYPES`, `MOVEMENT_TYPES`) live in `domain/enums/<name>.enum.ts`, never inline inside a use-case or a DTO. If both a DTO (`class-validator`'s `@IsIn`) and a use case need the same list, both import it from that single file — never duplicate the literal array.
@@ -194,7 +198,7 @@ export function getMovementTypeLabel(code: string): string | undefined {
 }
 ```
 
-The stored/validated value is always the stable `code` (`AT01`, `MT01`, etc.), never the label — `@IsIn()` and every use-case symmetric-validation check run against the `*_CODES` array, not `*_TYPES` itself. `GetAll`/`GetById` responses return both the code (under the original field name — `type`, `movementType`) and a sibling `<field>Label` computed via `get<X>Label(code) ?? code`, so the frontend never needs its own code→label mapping. `Create`/`Update`/`Delete` responses stay `{ id }`-only per convention — the label is never added there. Any business logic that discriminates on the value (e.g. `TRANSFER_TYPE_NAME` in `PrismaAccountRepository`/`CreateMovementUseCase`/`UpdateMovementUseCase`) compares against the **code**, never the label.
+The stored/validated value is always the stable `code` (`AT01`, `MT01`, etc.), never the label — `@IsIn()` and every use-case symmetric-validation check run against the `*_CODES` array, not `*_TYPES` itself. `GetAll`/`GetById` responses return both the code (under the original field name — `type`, `movementType`) and a sibling `<field>Label` computed via `get<X>Label(code) ?? code`, so the frontend never needs its own code→label mapping. `Create`/`Update`/`Delete` responses stay `{ id }`-only per convention — the label is never added there. Any business logic that discriminates on the value (e.g. `TRANSFER_TYPE_NAME` in `PrismaAccountRepository`/`CreateMovementUseCase`/`UpdateMovementUseCase`, or `CREDIT_TYPE_NAME` in `CreateAccountUseCase`/`UpdateAccountUseCase`/`movement/application/shared/credit-limit.ts`) compares against the **code**, never the label. These small type-discriminator constants (`TRANSFER_TYPE_NAME`, `EXPENSE_TYPE_NAME`, `CREDIT_TYPE_NAME`) are intentionally duplicated as local consts per file/module rather than centralized — same reasoning as the cents↔Decimal helpers in "Monetary amounts".
 
 ### Business-rule validation must be symmetric
 
@@ -234,7 +238,17 @@ Cross-module ownership checks matter just as much as same-module ones: `Movement
 
 ### Monetary amounts
 
-Money is stored in Postgres as `Decimal`, but the domain/DTO layer only ever sees an integer number of cents (e.g. `amountCents`) — never a float. Only the Prisma repository, at the infra boundary, converts to/from `Decimal` (`toFixed(2)` string in, `Number(amount.toFixed(2).replace('.', ''))` out), mirroring the pattern in each repository's own private helper methods. This conversion is intentionally duplicated per-repository rather than extracted into a shared utility (kept local, same as each repository's own `toEntity` mapper).
+Money is stored in Postgres as `Decimal`, but the domain/DTO layer only ever sees an integer number of cents (e.g. `amountCents`) — never a float. Only the Prisma repository, at the infra boundary, converts to/from `Decimal` (`toFixed(2)` string in, `Number(amount.toFixed(2).replace('.', ''))` out), mirroring the pattern in each repository's own private helper methods. This conversion is intentionally duplicated per-repository rather than extracted into a shared utility (kept local, same as each repository's own `toEntity` mapper). `Group.budgetCents` and `Account.creditLimitCents` (below) follow this exact same storage/conversion convention — both are `Decimal` columns, both surface as integer cents everywhere outside their own repository.
+
+### Account types, Group budgets, and the Crédito credit limit
+
+`ACCOUNT_TYPES` (`src/modules/money-manager/account/domain/enums/account-type.enum.ts`) has four codes: `AT01` Efectivo, `AT02` Débito, `AT03` Crédito, `AT04` Ahorro. `AT02`/`AT03` were relabeled in place (`Banco`→`Débito`, `Tarjeta`→`Crédito`) — same stable codes, so existing rows and movements are unaffected; only `typeLabel` in responses changed.
+
+`AT03` (Crédito) is the one account type with real business logic tied to it. `Account.creditLimitCents` is **required** when `type` is `AT03` and **forbidden** for every other type, enforced identically in `CreateAccountUseCase`/`UpdateAccountUseCase` — the same "required only for X, forbidden otherwise" shape as `Movement.toAccountId`/transfers (see "Cross-module dependencies" and `create-movement.use-case.ts`). On `Update`, `creditLimitCents` is a three-state field: omit to leave it unchanged, send `null` to clear it, send a number to set/replace it. Changing `type` away from `AT03` on a request that doesn't also send `creditLimitCents: null` is rejected, so a stale limit can never be silently orphaned on a no-longer-Crédito account. `Group.budgetCents` uses the identical Decimal-storage and omit/null/value three-state shape, but is currently **informational only** — nothing enforces it against a Group's movements. Don't assume the two work the same way just because the field shape matches; check whether a cap is meant to be enforced before copying either pattern.
+
+The enforcement itself lives in `movement/application/shared/credit-limit.ts` (`sourceAccountEffectCents`, `assertWithinCreditLimit`) — `CreateMovementUseCase`/`UpdateMovementUseCase` call it against the account already fetched via the existing cross-module `GetAccountByIdUseCase` call, so no new coupling was added to reach into `account`'s data. An expense or outgoing transfer that would push a Crédito account's balance past `-creditLimitCents` is rejected; income never risks the limit since it only ever raises a balance.
+
+**Gotcha, worth re-reading before touching this code**: `sourceAccountEffectCents(movementType, amountCents)` must return the *true* signed contribution a movement makes to its account's balance (`+amountCents` for income, `-amountCents` for expense/transfer-out), mirroring `PrismaAccountRepository`'s real balance formula exactly — it must NOT just return whatever value is convenient for a single call site. An earlier version returned `0` for income on the theory that "income can never risk the limit," which is true for `Create` (the account's fetched balance doesn't yet include the new movement) but wrong for `Update`, which reuses the same function to compute the *net delta* between a movement's old and new state: removing or shrinking an existing income movement genuinely lowers the account's balance, and a `0` effect silently hid that. If you add a similar "effect"/delta helper anywhere, keep the "is this risky" gate (`effect < 0`) and the "what actually changed" value (the true signed effect) conceptually separate — collapsing them into one shortcut value is exactly how this bug happened. Relatedly, any "is this limit/cap set" check must use `value == null` (or `!== undefined`/`!== null`), never a plain `!value` — a limit or cap of exactly `0` is a real, meaningful value, not "unset."
 
 ### Key TypeScript constraints
 
@@ -258,3 +272,4 @@ Money is stored in Postgres as `Decimal`, but the domain/DTO layer only ever see
 11. `Delete` implemented as a soft-delete flag flip instead of a real `repository.delete()`, or missing a referential guard for entities that ARE referenced elsewhere in the schema.
 12. Enum-like literal arrays duplicated across files instead of living in a single `domain/enums/*.ts`.
 13. An ownership-scoped entity's use case/repository method missing a `userId` filter, trusting a `userId` from the request body instead of `@CurrentUser()`, or returning 403 instead of 404 for another user's row.
+14. A `null`/omit/value three-state update field (e.g. a spending cap) whose "is this required/set" check uses a falsy comparison (`!value`) instead of `== null` — silently mishandling an explicit `0`. Also flag a "risk gate" effect/delta helper (returns 0 for a "safe" case) being reused for an actual delta computation without re-deriving whether that shortcut still holds — see "Account types, Group budgets, and the Crédito credit limit".
