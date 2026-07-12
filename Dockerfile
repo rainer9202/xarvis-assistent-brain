@@ -32,7 +32,13 @@ RUN pnpm build
 # ---- prod-deps: production-only dependency graph ----
 FROM base AS prod-deps
 COPY package.json pnpm-lock.yaml ./
-RUN pnpm install --frozen-lockfile --prod
+# --ignore-scripts: this layer only copies package.json/lockfile (no .husky/
+# dir yet), so the root "prepare" script (husky) would fail outright — and
+# --prod excludes husky (a devDependency) entirely anyway. Safe to skip:
+# argon2's own "install" script is redundant with its runtime node-gyp-build()
+# lookup against its bundled prebuilds/, so the native binding still resolves
+# correctly without it.
+RUN pnpm install --frozen-lockfile --prod --ignore-scripts
 
 # ---- runtime: final image, this is what Dokploy builds and deploys ----
 FROM base AS runtime
