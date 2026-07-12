@@ -65,7 +65,7 @@ export class GroupController {
     return {
       message: `The ${domainName} was created successfully`,
       data: await this.create.execute(
-        new CreateGroupCommand(dto.name, user.id),
+        new CreateGroupCommand(dto.name, user.id, dto.budgetCents),
       ),
     };
   }
@@ -81,7 +81,13 @@ export class GroupController {
     return {
       message: `The ${domainName} was updated successfully`,
       data: await this.update.execute(
-        new UpdateGroupCommand(id, user.id, dto.name, dto.isActive),
+        new UpdateGroupCommand(
+          id,
+          user.id,
+          dto.name,
+          dto.isActive,
+          dto.budgetCents,
+        ),
       ),
     };
   }

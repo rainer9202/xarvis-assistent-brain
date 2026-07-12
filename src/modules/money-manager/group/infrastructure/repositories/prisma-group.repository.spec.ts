@@ -127,9 +127,35 @@ describe('PrismaGroupRepository', () => {
           name: 'Fixed Expenses',
           userId: 'user-1',
           isActive: true,
+          budgetCents: null,
         },
       });
       expect(result).toBeInstanceOf(GroupEntity);
+    });
+
+    it('creates a record with the given budgetCents when provided', async () => {
+      const entity = new GroupEntity({
+        name: 'Fixed Expenses',
+        userId: 'user-1',
+        isActive: true,
+        budgetCents: 5000000,
+      });
+      prisma.group.create.mockResolvedValue({
+        ...record,
+        budgetCents: 5000000,
+      });
+
+      await repository.save(entity);
+
+      expect(prisma.group.create).toHaveBeenCalledWith({
+        data: {
+          id: undefined,
+          name: 'Fixed Expenses',
+          userId: 'user-1',
+          isActive: true,
+          budgetCents: '50000.00',
+        },
+      });
     });
   });
 
@@ -151,9 +177,32 @@ describe('PrismaGroupRepository', () => {
 
       expect(prisma.group.update).toHaveBeenCalledWith({
         where: { id: 'grp-1' },
-        data: { name: 'Renamed', isActive: false },
+        data: { name: 'Renamed', isActive: false, budgetCents: null },
       });
       expect(result.name).toBe('Renamed');
+    });
+
+    it('sends budgetCents through to the update data as-is (including null)', async () => {
+      const entity = new GroupEntity({
+        id: 'grp-1',
+        name: 'Renamed',
+        userId: 'user-1',
+        isActive: false,
+        budgetCents: null,
+      });
+      prisma.group.update.mockResolvedValue({
+        ...record,
+        name: 'Renamed',
+        isActive: false,
+        budgetCents: null,
+      });
+
+      await repository.update(entity);
+
+      expect(prisma.group.update).toHaveBeenCalledWith({
+        where: { id: 'grp-1' },
+        data: { name: 'Renamed', isActive: false, budgetCents: null },
+      });
     });
   });
 

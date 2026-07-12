@@ -15,6 +15,7 @@ export class CreateGroupCommand {
   constructor(
     public readonly name: string,
     public readonly userId: string,
+    public readonly budgetCents?: number,
   ) {}
 }
 
@@ -38,6 +39,7 @@ export class CreateGroupUseCase {
         name: command.name,
         userId: command.userId,
         isActive: true,
+        budgetCents: command.budgetCents ?? null,
       });
       const saved = await this.repository.save(entity);
 

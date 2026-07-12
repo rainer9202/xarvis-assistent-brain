@@ -17,6 +17,7 @@ export class UpdateGroupCommand {
     public readonly userId: string,
     public readonly name?: string,
     public readonly isActive?: boolean,
+    public readonly budgetCents?: number | null,
   ) {}
 }
 
@@ -43,6 +44,8 @@ export class UpdateGroupUseCase {
         group.name = command.name;
       }
       if (command.isActive !== undefined) group.isActive = command.isActive;
+      if (command.budgetCents !== undefined)
+        group.budgetCents = command.budgetCents;
 
       const saved = await this.repository.update(group);
 

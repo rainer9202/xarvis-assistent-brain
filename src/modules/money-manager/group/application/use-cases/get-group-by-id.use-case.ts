@@ -10,6 +10,7 @@ export type GetGroupByIdResponse = {
   id: string;
   name: string;
   isActive: boolean;
+  budgetCents: number | null;
 };
 
 @Injectable()
@@ -28,6 +29,7 @@ export class GetGroupByIdUseCase {
         id: group.id!,
         name: group.name,
         isActive: group.isActive!,
+        budgetCents: group.budgetCents ?? null,
       };
     } catch (error) {
       if (error instanceof DomainException) throw error;

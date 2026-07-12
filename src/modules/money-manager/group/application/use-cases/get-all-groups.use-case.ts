@@ -8,6 +8,7 @@ export type GetAllGroupsResponse = {
   name: string;
   isActive: boolean;
   createdAt: Date;
+  budgetCents: number | null;
 };
 
 @Injectable()
@@ -25,6 +26,7 @@ export class GetAllGroupsUseCase {
         name: item.name,
         isActive: item.isActive!,
         createdAt: item.createdAt!,
+        budgetCents: item.budgetCents ?? null,
       }));
     } catch (error) {
       if (error instanceof DomainException) throw error;

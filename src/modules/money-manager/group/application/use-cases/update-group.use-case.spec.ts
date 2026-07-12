@@ -104,4 +104,64 @@ describe('UpdateGroupUseCase', () => {
     expect(findByName).not.toHaveBeenCalled();
     expect(result).toEqual({ id: 'grp-1' });
   });
+
+  it('sets budgetCents when a number is provided', async () => {
+    const existing = new GroupEntity({
+      id: 'grp-1',
+      name: 'Fixed Expenses',
+      userId: 'user-1',
+      isActive: true,
+      budgetCents: null,
+    });
+    findById.mockResolvedValue(existing);
+    update.mockImplementation((entity: GroupEntity) => Promise.resolve(entity));
+
+    await useCase.execute(
+      new UpdateGroupCommand('grp-1', 'user-1', undefined, undefined, 5000000),
+    );
+
+    expect(update).toHaveBeenCalledWith(
+      expect.objectContaining({ budgetCents: 5000000 }),
+    );
+  });
+
+  it('clears budgetCents when explicitly set to null', async () => {
+    const existing = new GroupEntity({
+      id: 'grp-1',
+      name: 'Fixed Expenses',
+      userId: 'user-1',
+      isActive: true,
+      budgetCents: 5000000,
+    });
+    findById.mockResolvedValue(existing);
+    update.mockImplementation((entity: GroupEntity) => Promise.resolve(entity));
+
+    await useCase.execute(
+      new UpdateGroupCommand('grp-1', 'user-1', undefined, undefined, null),
+    );
+
+    expect(update).toHaveBeenCalledWith(
+      expect.objectContaining({ budgetCents: null }),
+    );
+  });
+
+  it('leaves budgetCents untouched when omitted', async () => {
+    const existing = new GroupEntity({
+      id: 'grp-1',
+      name: 'Fixed Expenses',
+      userId: 'user-1',
+      isActive: true,
+      budgetCents: 5000000,
+    });
+    findById.mockResolvedValue(existing);
+    update.mockImplementation((entity: GroupEntity) => Promise.resolve(entity));
+
+    await useCase.execute(
+      new UpdateGroupCommand('grp-1', 'user-1', undefined, false),
+    );
+
+    expect(update).toHaveBeenCalledWith(
+      expect.objectContaining({ budgetCents: 5000000 }),
+    );
+  });
 });

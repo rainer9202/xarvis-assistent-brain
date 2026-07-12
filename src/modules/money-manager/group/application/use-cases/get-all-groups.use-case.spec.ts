@@ -34,8 +34,30 @@ describe('GetAllGroupsUseCase', () => {
 
     expect(repository.findAll).toHaveBeenCalledWith('user-1');
     expect(result).toEqual([
-      { id: 'grp-1', name: 'Fixed Expenses', isActive: true, createdAt },
+      {
+        id: 'grp-1',
+        name: 'Fixed Expenses',
+        isActive: true,
+        createdAt,
+        budgetCents: null,
+      },
     ]);
+  });
+
+  it('maps a set budgetCents through to the response', async () => {
+    repository.findAll.mockResolvedValue([
+      new GroupEntity({
+        id: 'grp-1',
+        name: 'Fixed Expenses',
+        userId: 'user-1',
+        isActive: true,
+        budgetCents: 5000000,
+      }),
+    ]);
+
+    const result = await useCase.execute('user-1');
+
+    expect(result[0].budgetCents).toBe(5000000);
   });
 
   it('returns an empty array when there are no groups', async () => {

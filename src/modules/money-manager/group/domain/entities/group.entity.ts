@@ -4,12 +4,14 @@ export type GroupProps = BaseEntityProps & {
   name: string;
   userId: string;
   isActive?: boolean;
+  budgetCents?: number | null;
 };
 
 export class GroupEntity extends BaseEntity {
   private _name: string = '';
   private _userId: string = '';
   private _isActive?: boolean;
+  private _budgetCents?: number | null;
 
   constructor(props?: GroupProps) {
     super(props);
@@ -17,6 +19,7 @@ export class GroupEntity extends BaseEntity {
       this._name = props.name;
       this._userId = props.userId;
       this._isActive = props.isActive;
+      this._budgetCents = props.budgetCents;
     }
   }
 
@@ -38,5 +41,13 @@ export class GroupEntity extends BaseEntity {
 
   set isActive(value: boolean) {
     this._isActive = value;
+  }
+
+  get budgetCents(): number | null | undefined {
+    return this._budgetCents;
+  }
+
+  set budgetCents(value: number | null | undefined) {
+    this._budgetCents = value;
   }
 }

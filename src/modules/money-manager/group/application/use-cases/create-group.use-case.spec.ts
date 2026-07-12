@@ -51,6 +51,50 @@ describe('CreateGroupUseCase', () => {
     expect(result).toEqual({ id: 'grp-1' });
   });
 
+  it('creates a group with budgetCents when provided', async () => {
+    findByName.mockResolvedValue(null);
+    let savedEntity: GroupEntity | undefined;
+    save.mockImplementation((entity: GroupEntity) => {
+      savedEntity = entity;
+      return Promise.resolve(
+        new GroupEntity({
+          id: 'grp-1',
+          name: entity.name,
+          userId: entity.userId,
+          isActive: entity.isActive,
+          budgetCents: entity.budgetCents,
+        }),
+      );
+    });
+
+    await useCase.execute(
+      new CreateGroupCommand('Fixed Expenses', 'user-1', 5000000),
+    );
+
+    expect(savedEntity?.budgetCents).toBe(5000000);
+  });
+
+  it('creates a group with budgetCents defaulting to null when omitted', async () => {
+    findByName.mockResolvedValue(null);
+    let savedEntity: GroupEntity | undefined;
+    save.mockImplementation((entity: GroupEntity) => {
+      savedEntity = entity;
+      return Promise.resolve(
+        new GroupEntity({
+          id: 'grp-1',
+          name: entity.name,
+          userId: entity.userId,
+          isActive: entity.isActive,
+          budgetCents: entity.budgetCents,
+        }),
+      );
+    });
+
+    await useCase.execute(new CreateGroupCommand('Fixed Expenses', 'user-1'));
+
+    expect(savedEntity?.budgetCents).toBeNull();
+  });
+
   it('throws ConflictException when a group with the same name already exists', async () => {
     findByName.mockResolvedValue(
       new GroupEntity({

@@ -87,6 +87,22 @@ describe('GroupController', () => {
         data: { id: 'grp-1' },
       });
     });
+
+    it('forwards budgetCents from the dto to the command', async () => {
+      const dto: CreateGroupDto = {
+        name: 'Fixed Expenses',
+        budgetCents: 5000000,
+      };
+      let receivedCommand: CreateGroupCommand | undefined;
+      createExecute.mockImplementation((command: CreateGroupCommand) => {
+        receivedCommand = command;
+        return Promise.resolve({ id: 'grp-1' });
+      });
+
+      await controller.createOne(dto, user);
+
+      expect(receivedCommand?.budgetCents).toBe(5000000);
+    });
   });
 
   describe('updateOne', () => {
@@ -112,6 +128,19 @@ describe('GroupController', () => {
         message: 'The groups was updated successfully',
         data: { id: 'grp-1' },
       });
+    });
+
+    it('forwards budgetCents (including explicit null) from the dto to the command', async () => {
+      const dto: UpdateGroupDto = { budgetCents: null };
+      let receivedCommand: UpdateGroupCommand | undefined;
+      updateExecute.mockImplementation((command: UpdateGroupCommand) => {
+        receivedCommand = command;
+        return Promise.resolve({ id: 'grp-1' });
+      });
+
+      await controller.updateOne('grp-1', dto, user);
+
+      expect(receivedCommand?.budgetCents).toBeNull();
     });
   });
 
