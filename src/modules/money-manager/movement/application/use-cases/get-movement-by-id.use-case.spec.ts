@@ -17,6 +17,7 @@ describe('GetMovementByIdUseCase', () => {
     findById = jest.fn();
     repository = {
       findAll: jest.fn(),
+      count: jest.fn(),
       findById,
       save: jest.fn(),
       update: jest.fn(),

@@ -55,16 +55,22 @@ export class MovementController {
     @Query() query: GetMovementsQueryDto,
     @CurrentUser() user: AuthenticatedUser,
   ) {
+    const result = await this.getAll.execute(user.id, {
+      accountId: query.accountId,
+      categoryId: query.categoryId,
+      movementType: query.movementType,
+      groupId: query.groupId,
+      month: query.month,
+      historic: query.historic,
+      dateFrom: query.dateFrom,
+      dateTo: query.dateTo,
+      page: query.page,
+      limit: query.limit,
+    });
     return {
       message: `Get all ${domainName} successfully`,
-      data: await this.getAll.execute(user.id, {
-        accountId: query.accountId,
-        categoryId: query.categoryId,
-        movementType: query.movementType,
-        groupId: query.groupId,
-        month: query.month,
-        historic: query.historic,
-      }),
+      data: result.items,
+      ...(result.pagination ?? {}),
     };
   }
 

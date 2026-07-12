@@ -639,6 +639,131 @@ describe('Movement (e2e)', () => {
       .expect(404);
   });
 
+  it('paginates GET /movements with page/limit, returning sibling pagination keys', async () => {
+    const created = [];
+    for (let i = 0; i < 3; i++) {
+      const res = await request(app.getHttpServer())
+        .post('/movements')
+        .set('Authorization', `Bearer ${token}`)
+        .send({
+          amountCents: 111 + i,
+          date: new Date().toISOString(),
+          accountId: accountA,
+          categoryId,
+          movementType: expenseType,
+        })
+        .expect(201);
+      movementIds.push(res.body.data.id);
+      created.push(res.body.data.id);
+    }
+
+    const unpaginated = await request(app.getHttpServer())
+      .get('/movements')
+      .query({ accountId: accountA, historic: true })
+      .set('Authorization', `Bearer ${token}`)
+      .expect(200);
+    expect(Array.isArray(unpaginated.body.data)).toBe(true);
+    expect(unpaginated.body).not.toHaveProperty('page');
+    expect(unpaginated.body).not.toHaveProperty('totalCount');
+
+    const page1 = await request(app.getHttpServer())
+      .get('/movements')
+      .query({ accountId: accountA, historic: true, page: 1, limit: 2 })
+      .set('Authorization', `Bearer ${token}`)
+      .expect(200);
+    expect(page1.body.data.length).toBe(2);
+    expect(page1.body.page).toBe(1);
+    expect(page1.body.limit).toBe(2);
+    expect(page1.body.totalCount).toBe(unpaginated.body.data.length);
+    expect(page1.body.totalPages).toBe(
+      Math.ceil(unpaginated.body.data.length / 2),
+    );
+    expect(page1.body.hasMore).toBe(unpaginated.body.data.length > 2);
+  });
+
+  it('filters GET /movements by dateFrom/dateTo, overriding the default window', async () => {
+    const inRangeRes = await request(app.getHttpServer())
+      .post('/movements')
+      .set('Authorization', `Bearer ${token}`)
+      .send({
+        amountCents: 250,
+        date: '2021-05-15T00:00:00.000Z',
+        accountId: accountA,
+        categoryId,
+        movementType: expenseType,
+      })
+      .expect(201);
+    movementIds.push(inRangeRes.body.data.id);
+
+    const outOfRangeRes = await request(app.getHttpServer())
+      .post('/movements')
+      .set('Authorization', `Bearer ${token}`)
+      .send({
+        amountCents: 350,
+        date: '2022-01-15T00:00:00.000Z',
+        accountId: accountA,
+        categoryId,
+        movementType: expenseType,
+      })
+      .expect(201);
+    movementIds.push(outOfRangeRes.body.data.id);
+
+    const res = await request(app.getHttpServer())
+      .get('/movements')
+      .query({
+        dateFrom: '2021-05-01T00:00:00.000Z',
+        dateTo: '2021-05-31T23:59:59.999Z',
+      })
+      .set('Authorization', `Bearer ${token}`)
+      .expect(200);
+    const ids = res.body.data.map((m: { id: string }) => m.id);
+    expect(ids).toContain(inRangeRes.body.data.id);
+    expect(ids).not.toContain(outOfRangeRes.body.data.id);
+  });
+
+  it('an explicit month wins over dateFrom/dateTo when both are provided', async () => {
+    const monthRes = await request(app.getHttpServer())
+      .post('/movements')
+      .set('Authorization', `Bearer ${token}`)
+      .send({
+        amountCents: 275,
+        date: '2023-08-10T00:00:00.000Z',
+        accountId: accountA,
+        categoryId,
+        movementType: expenseType,
+      })
+      .expect(201);
+    movementIds.push(monthRes.body.data.id);
+
+    const res = await request(app.getHttpServer())
+      .get('/movements')
+      .query({
+        month: '2023-08',
+        dateFrom: '1999-01-01T00:00:00.000Z',
+        dateTo: '1999-01-31T00:00:00.000Z',
+      })
+      .set('Authorization', `Bearer ${token}`)
+      .expect(200);
+    const ids = res.body.data.map((m: { id: string }) => m.id);
+    expect(ids).toEqual([monthRes.body.data.id]);
+  });
+
+  it('🔍 rejects a malformed dateFrom query param', async () => {
+    await request(app.getHttpServer())
+      .get('/movements')
+      .query({ dateFrom: 'not-a-date' })
+      .set('Authorization', `Bearer ${token}`)
+      .expect(400);
+  });
+
+  it('🔍 rejects a limit above the 100 cap', async () => {
+    await request(app.getHttpServer())
+      .get('/movements')
+      .query({ limit: 101 })
+      .set('Authorization', `Bearer ${token}`)
+      .expect(400);
+  });
+
   it("🔍 a second user cannot create a movement against the first user's account, and cannot transfer into it either", async () => {
     const { token: otherToken } = await createAuthenticatedUser(app);
 

@@ -20,47 +20,72 @@ export class PrismaMovementRepository implements MovementRepositoryPort {
     userId: string,
     filters?: MovementFilters,
   ): Promise<MovementEntity[]> {
+    const isPaginated =
+      filters?.page !== undefined || filters?.limit !== undefined;
+    const records = await this.prisma.movement.findMany({
+      where: this.buildWhereClause(userId, filters),
+      orderBy: { date: 'desc' },
+      ...(isPaginated
+        ? {
+            skip: ((filters?.page ?? 1) - 1) * (filters?.limit ?? 20),
+            take: filters?.limit ?? 20,
+          }
+        : {}),
+    });
+    return records.map((r) => this.toEntity(r));
+  }
+
+  async count(userId: string, filters?: MovementFilters): Promise<number> {
+    return this.prisma.movement.count({
+      where: this.buildWhereClause(userId, filters),
+    });
+  }
+
+  private buildWhereClause(
+    userId: string,
+    filters?: MovementFilters,
+  ): Prisma.MovementWhereInput {
     const monthRange = filters?.month
       ? this.monthToDateRange(filters.month)
       : undefined;
-    // An explicit month always wins. Otherwise, unless the caller opted
-    // into historic=true, default to only the last 3 calendar months —
-    // open-ended (no upper bound) so it still includes today/future-dated
-    // movements.
+    const dateRange =
+      !monthRange && (filters?.dateFrom || filters?.dateTo)
+        ? this.dateRangeFilter(filters?.dateFrom, filters?.dateTo)
+        : undefined;
+    // An explicit month always wins. Otherwise an explicit date range
+    // (dateFrom/dateTo) wins over the default window. Otherwise, unless the
+    // caller opted into historic=true, default to only the last 3 calendar
+    // months — open-ended (no upper bound) so it still includes
+    // today/future-dated movements.
     const defaultWindowStart =
-      !monthRange && !filters?.historic
+      !monthRange && !dateRange && !filters?.historic
         ? this.lastThreeMonthsStart()
         : undefined;
 
-    const records = await this.prisma.movement.findMany({
-      where: {
-        userId,
-        // Matches both directions so a transfer INTO this account shows up
-        // in its history too, not just movements originating from it —
-        // mirrors the same OR pattern countMovementsByAccountId() uses.
-        ...(filters?.accountId
-          ? {
-              OR: [
-                { accountId: filters.accountId },
-                { toAccountId: filters.accountId },
-              ],
-            }
-          : {}),
-        ...(filters?.categoryId?.length
-          ? { categoryId: { in: filters.categoryId } }
-          : {}),
-        ...(filters?.movementType
-          ? { movementType: filters.movementType }
-          : {}),
-        ...(filters?.groupId ? { groupId: filters.groupId } : {}),
-        ...(monthRange
-          ? { date: { gte: monthRange.start, lt: monthRange.end } }
-          : {}),
-        ...(defaultWindowStart ? { date: { gte: defaultWindowStart } } : {}),
-      },
-      orderBy: { date: 'desc' },
-    });
-    return records.map((r) => this.toEntity(r));
+    return {
+      userId,
+      // Matches both directions so a transfer INTO this account shows up
+      // in its history too, not just movements originating from it —
+      // mirrors the same OR pattern countMovementsByAccountId() uses.
+      ...(filters?.accountId
+        ? {
+            OR: [
+              { accountId: filters.accountId },
+              { toAccountId: filters.accountId },
+            ],
+          }
+        : {}),
+      ...(filters?.categoryId?.length
+        ? { categoryId: { in: filters.categoryId } }
+        : {}),
+      ...(filters?.movementType ? { movementType: filters.movementType } : {}),
+      ...(filters?.groupId ? { groupId: filters.groupId } : {}),
+      ...(monthRange
+        ? { date: { gte: monthRange.start, lt: monthRange.end } }
+        : {}),
+      ...(dateRange ? { date: dateRange } : {}),
+      ...(defaultWindowStart ? { date: { gte: defaultWindowStart } } : {}),
+    };
   }
 
   async findById(id: string, userId: string): Promise<MovementEntity | null> {
@@ -118,6 +143,18 @@ export class PrismaMovementRepository implements MovementRepositoryPort {
     const start = new Date(Date.UTC(year, monthNumber - 1, 1));
     const end = new Date(Date.UTC(year, monthNumber, 1));
     return { start, end };
+  }
+
+  // Builds a Prisma date-range filter from ISO8601 strings, inclusive on
+  // both ends. Either bound may be omitted independently.
+  private dateRangeFilter(
+    dateFrom?: string,
+    dateTo?: string,
+  ): { gte?: Date; lte?: Date } {
+    return {
+      ...(dateFrom ? { gte: new Date(dateFrom) } : {}),
+      ...(dateTo ? { lte: new Date(dateTo) } : {}),
+    };
   }
 
   // Start of the calendar month 2 months before the current one, UTC — e.g.

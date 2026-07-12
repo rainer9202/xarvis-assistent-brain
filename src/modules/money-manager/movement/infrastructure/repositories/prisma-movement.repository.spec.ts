@@ -19,6 +19,7 @@ describe('PrismaMovementRepository', () => {
       create: jest.Mock;
       update: jest.Mock;
       delete: jest.Mock;
+      count: jest.Mock;
     };
   };
 
@@ -46,6 +47,7 @@ describe('PrismaMovementRepository', () => {
         create: jest.fn(),
         update: jest.fn(),
         delete: jest.fn(),
+        count: jest.fn(),
       },
     };
 
@@ -239,6 +241,159 @@ describe('PrismaMovementRepository', () => {
           },
         },
         orderBy: { date: 'desc' },
+      });
+    });
+
+    it('filters by dateFrom/dateTo, skipping the default window entirely', async () => {
+      prisma.movement.findMany.mockResolvedValue([]);
+
+      await repository.findAll('user-1', {
+        dateFrom: '2026-04-01T00:00:00.000Z',
+        dateTo: '2026-06-30T23:59:59.999Z',
+      });
+
+      expect(prisma.movement.findMany).toHaveBeenCalledWith({
+        where: {
+          userId: 'user-1',
+          date: {
+            gte: new Date('2026-04-01T00:00:00.000Z'),
+            lte: new Date('2026-06-30T23:59:59.999Z'),
+          },
+        },
+        orderBy: { date: 'desc' },
+      });
+    });
+
+    it('accepts only dateFrom without dateTo', async () => {
+      prisma.movement.findMany.mockResolvedValue([]);
+
+      await repository.findAll('user-1', {
+        dateFrom: '2026-04-01T00:00:00.000Z',
+      });
+
+      expect(prisma.movement.findMany).toHaveBeenCalledWith({
+        where: {
+          userId: 'user-1',
+          date: { gte: new Date('2026-04-01T00:00:00.000Z') },
+        },
+        orderBy: { date: 'desc' },
+      });
+    });
+
+    it('accepts only dateTo without dateFrom', async () => {
+      prisma.movement.findMany.mockResolvedValue([]);
+
+      await repository.findAll('user-1', {
+        dateTo: '2026-06-30T23:59:59.999Z',
+      });
+
+      expect(prisma.movement.findMany).toHaveBeenCalledWith({
+        where: {
+          userId: 'user-1',
+          date: { lte: new Date('2026-06-30T23:59:59.999Z') },
+        },
+        orderBy: { date: 'desc' },
+      });
+    });
+
+    it('an explicit month wins over dateFrom/dateTo', async () => {
+      prisma.movement.findMany.mockResolvedValue([]);
+
+      await repository.findAll('user-1', {
+        month: '2026-07',
+        dateFrom: '2020-01-01T00:00:00.000Z',
+        dateTo: '2020-01-31T00:00:00.000Z',
+      });
+
+      expect(prisma.movement.findMany).toHaveBeenCalledWith({
+        where: {
+          userId: 'user-1',
+          date: {
+            gte: new Date(Date.UTC(2026, 6, 1)),
+            lt: new Date(Date.UTC(2026, 7, 1)),
+          },
+        },
+        orderBy: { date: 'desc' },
+      });
+    });
+
+    it('applies skip/take when page/limit are provided (paginated mode)', async () => {
+      prisma.movement.findMany.mockResolvedValue([]);
+
+      await repository.findAll('user-1', {
+        historic: true,
+        page: 2,
+        limit: 10,
+      });
+
+      expect(prisma.movement.findMany).toHaveBeenCalledWith({
+        where: { userId: 'user-1' },
+        orderBy: { date: 'desc' },
+        skip: 10,
+        take: 10,
+      });
+    });
+
+    it('defaults page to 1 and limit to 20 when only one of them is provided', async () => {
+      prisma.movement.findMany.mockResolvedValue([]);
+
+      await repository.findAll('user-1', { historic: true, page: 3 });
+
+      expect(prisma.movement.findMany).toHaveBeenCalledWith({
+        where: { userId: 'user-1' },
+        orderBy: { date: 'desc' },
+        skip: 40,
+        take: 20,
+      });
+    });
+
+    it('omits skip/take entirely when neither page nor limit is provided', async () => {
+      prisma.movement.findMany.mockResolvedValue([]);
+
+      await repository.findAll('user-1', { historic: true });
+
+      const calls = prisma.movement.findMany.mock.calls as unknown[][];
+      const call = calls[0][0] as Record<string, unknown>;
+      expect(call).not.toHaveProperty('skip');
+      expect(call).not.toHaveProperty('take');
+    });
+  });
+
+  describe('count', () => {
+    it('counts records using the same where-clause logic as findAll', async () => {
+      prisma.movement.count.mockResolvedValue(42);
+
+      const result = await repository.count('user-1', {
+        accountId: 'acc-1',
+        movementType: 'MT03',
+        month: '2026-01',
+      });
+
+      expect(prisma.movement.count).toHaveBeenCalledWith({
+        where: {
+          userId: 'user-1',
+          OR: [{ accountId: 'acc-1' }, { toAccountId: 'acc-1' }],
+          movementType: 'MT03',
+          date: {
+            gte: new Date(Date.UTC(2026, 0, 1)),
+            lt: new Date(Date.UTC(2026, 1, 1)),
+          },
+        },
+      });
+      expect(result).toBe(42);
+    });
+
+    it('defaults to the last-3-months window when no month/historic/date-range is given', async () => {
+      prisma.movement.count.mockResolvedValue(0);
+      const now = new Date();
+      const expectedStart = new Date(
+        Date.UTC(now.getUTCFullYear(), now.getUTCMonth() - 2, 1),
+      );
+
+      await repository.count('user-1');
+
+      expect(prisma.movement.count).toHaveBeenCalledWith({
+        where: { userId: 'user-1', date: { gte: expectedStart } },
       });
     });
   });

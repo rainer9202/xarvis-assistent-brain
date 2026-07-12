@@ -25,6 +25,20 @@ export type GetAllMovementsResponse = {
   createdAt: Date;
 };
 
+export type GetAllMovementsResult = {
+  items: GetAllMovementsResponse[];
+  pagination?: {
+    page: number;
+    limit: number;
+    totalCount: number;
+    totalPages: number;
+    hasMore: boolean;
+  };
+};
+
+const DEFAULT_PAGE = 1;
+const DEFAULT_LIMIT = 20;
+
 @Injectable()
 export class GetAllMovementsUseCase {
   constructor(
@@ -37,21 +51,36 @@ export class GetAllMovementsUseCase {
   async execute(
     userId: string,
     filters?: MovementFilters,
-  ): Promise<GetAllMovementsResponse[]> {
+  ): Promise<GetAllMovementsResult> {
     try {
+      const isPaginated =
+        filters?.page !== undefined || filters?.limit !== undefined;
+      // Resolved once here so the use case and the repository agree on the
+      // same effective page/limit — the repository receives the already
+      // -resolved values via the filters object instead of re-defaulting
+      // independently.
+      const effectivePage = filters?.page ?? DEFAULT_PAGE;
+      const effectiveLimit = filters?.limit ?? DEFAULT_LIMIT;
+      const resolvedFilters = isPaginated
+        ? { ...filters, page: effectivePage, limit: effectiveLimit }
+        : filters;
+
       // Fetched once per call (not per movement) to avoid an N+1 query —
       // Category/Group are real per-user data, not a static enum, so
       // there's no getXLabel()-style pure-function lookup like movementType
       // has.
-      const [entities, categories, groups] = await Promise.all([
-        this.repository.findAll(userId, filters),
+      const [entities, categories, groups, totalCount] = await Promise.all([
+        this.repository.findAll(userId, resolvedFilters),
         this.getAllCategories.execute(userId),
         this.getAllGroups.execute(userId),
+        isPaginated
+          ? this.repository.count(userId, resolvedFilters)
+          : Promise.resolve(undefined),
       ]);
       const categoryNameById = new Map(categories.map((c) => [c.id, c.name]));
       const groupNameById = new Map(groups.map((g) => [g.id, g.name]));
 
-      return entities.map((item) => ({
+      const items = entities.map((item) => ({
         id: item.id!,
         amountCents: item.amountCents,
         date: item.date,
@@ -69,6 +98,21 @@ export class GetAllMovementsUseCase {
           : undefined,
         createdAt: item.createdAt!,
       }));
+
+      if (!isPaginated || totalCount === undefined) {
+        return { items };
+      }
+
+      return {
+        items,
+        pagination: {
+          page: effectivePage,
+          limit: effectiveLimit,
+          totalCount,
+          totalPages: Math.ceil(totalCount / effectiveLimit),
+          hasMore: effectivePage * effectiveLimit < totalCount,
+        },
+      };
     } catch (error) {
       if (error instanceof DomainException) throw error;
       throw new Error(`Unexpected error fetching movements: ${error}`);

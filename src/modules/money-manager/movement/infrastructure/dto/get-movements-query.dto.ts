@@ -1,6 +1,16 @@
 import { ApiPropertyOptional } from '@nestjs/swagger';
-import { IsBoolean, IsIn, IsOptional, IsUUID, Matches } from 'class-validator';
-import { Transform } from 'class-transformer';
+import {
+  IsBoolean,
+  IsIn,
+  IsISO8601,
+  IsInt,
+  IsOptional,
+  IsUUID,
+  Matches,
+  Max,
+  Min,
+} from 'class-validator';
+import { Transform, Type } from 'class-transformer';
 import { MOVEMENT_TYPE_CODES } from '@domain/enums/movement-type.enum';
 
 export class GetMovementsQueryDto {
@@ -68,4 +78,55 @@ export class GetMovementsQueryDto {
   })
   @IsBoolean()
   historic?: boolean;
+
+  @ApiPropertyOptional({
+    example: '2026-04-01T00:00:00.000Z',
+    description:
+      'Start of an arbitrary date range (inclusive, ISO8601). Wins over ' +
+      'historic/the default 3-month window, but is ignored when month is ' +
+      'also present.',
+  })
+  @IsOptional()
+  @IsISO8601()
+  dateFrom?: string;
+
+  @ApiPropertyOptional({
+    example: '2026-06-30T23:59:59.999Z',
+    description:
+      'End of an arbitrary date range (inclusive, ISO8601). Wins over ' +
+      'historic/the default 3-month window, but is ignored when month is ' +
+      'also present.',
+  })
+  @IsOptional()
+  @IsISO8601()
+  dateTo?: string;
+
+  @ApiPropertyOptional({
+    example: 1,
+    minimum: 1,
+    description:
+      'Page number (1-based). Providing page or limit switches the ' +
+      'response into paginated mode, adding page/limit/totalCount/' +
+      'totalPages/hasMore alongside data. Defaults to 1.',
+  })
+  @IsOptional()
+  @Type(() => Number)
+  @IsInt()
+  @Min(1)
+  page?: number;
+
+  @ApiPropertyOptional({
+    example: 20,
+    minimum: 1,
+    maximum: 100,
+    description:
+      'Page size. Providing page or limit switches the response into ' +
+      'paginated mode. Defaults to 20, capped at 100.',
+  })
+  @IsOptional()
+  @Type(() => Number)
+  @IsInt()
+  @Min(1)
+  @Max(100)
+  limit?: number;
 }

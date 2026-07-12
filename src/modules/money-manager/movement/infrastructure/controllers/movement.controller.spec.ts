@@ -68,7 +68,7 @@ describe('MovementController', () => {
   });
 
   describe('findAll', () => {
-    it('delegates to GetAllMovementsUseCase and returns { message, data }', async () => {
+    it('delegates to GetAllMovementsUseCase and returns { message, data } with no pagination keys when unpaginated', async () => {
       const data = [
         {
           id: 'mov-1',
@@ -81,7 +81,7 @@ describe('MovementController', () => {
           createdAt: new Date('2024-01-01T00:00:00Z'),
         },
       ];
-      getAllExecute.mockResolvedValue(data);
+      getAllExecute.mockResolvedValue({ items: data });
 
       const result = await controller.findAll({}, user);
 
@@ -92,15 +92,24 @@ describe('MovementController', () => {
         groupId: undefined,
         month: undefined,
         historic: undefined,
+        dateFrom: undefined,
+        dateTo: undefined,
+        page: undefined,
+        limit: undefined,
       });
       expect(result).toEqual({
         message: 'Get all movements successfully',
         data,
       });
+      expect(result).not.toHaveProperty('page');
+      expect(result).not.toHaveProperty('limit');
+      expect(result).not.toHaveProperty('totalCount');
+      expect(result).not.toHaveProperty('totalPages');
+      expect(result).not.toHaveProperty('hasMore');
     });
 
     it('passes query filters through to GetAllMovementsUseCase when provided', async () => {
-      getAllExecute.mockResolvedValue([]);
+      getAllExecute.mockResolvedValue({ items: [] });
 
       await controller.findAll(
         {
@@ -110,6 +119,10 @@ describe('MovementController', () => {
           groupId: 'grp-1',
           month: '2026-07',
           historic: true,
+          dateFrom: '2026-04-01T00:00:00.000Z',
+          dateTo: '2026-06-30T23:59:59.999Z',
+          page: 2,
+          limit: 10,
         },
         user,
       );
@@ -121,6 +134,35 @@ describe('MovementController', () => {
         groupId: 'grp-1',
         month: '2026-07',
         historic: true,
+        dateFrom: '2026-04-01T00:00:00.000Z',
+        dateTo: '2026-06-30T23:59:59.999Z',
+        page: 2,
+        limit: 10,
+      });
+    });
+
+    it('adds page/limit/totalCount/totalPages/hasMore as siblings of data when paginated', async () => {
+      getAllExecute.mockResolvedValue({
+        items: [],
+        pagination: {
+          page: 2,
+          limit: 10,
+          totalCount: 25,
+          totalPages: 3,
+          hasMore: true,
+        },
+      });
+
+      const result = await controller.findAll({ page: 2, limit: 10 }, user);
+
+      expect(result).toEqual({
+        message: 'Get all movements successfully',
+        data: [],
+        page: 2,
+        limit: 10,
+        totalCount: 25,
+        totalPages: 3,
+        hasMore: true,
       });
     });
   });
