@@ -151,15 +151,22 @@ not linked to Groups at all.
   "id": "uuid",
   "name": "Fixed Expenses",
   "isActive": true,
+  "budgetCents": 5000000,
   "createdAt": "2026-07-09T00:00:00.000Z"
 }
 ```
+
+`budgetCents` is an optional maximum-spending cap for the group, in cents — `null` when no cap is
+set. **It is purely informational today**: nothing on the backend currently blocks a movement from
+being assigned to a group that's already over its `budgetCents` — treat it as a value to render
+(e.g. a progress bar against the group's actual spend), not as an enforced limit.
 
 **POST /groups**
 
 | Field | Type | Constraints |
 |---|---|---|
 | `name` | string | required, non-empty, max 50 chars |
+| `budgetCents` | integer, optional | `>= 1` if present; omit entirely for no cap |
 
 Response `201`, `data`: `{ "id": "uuid" }`.
 
@@ -173,6 +180,7 @@ a "Fixed Expenses" group without conflicting).
 |---|---|---|
 | `name` | string, optional | non-empty, max 50 chars |
 | `isActive` | boolean, optional | manual toggle |
+| `budgetCents` | integer, `null`, optional | three states: **omit** to leave the cap unchanged, send **`null`** to clear it, send a number (`>= 1`) to set/replace it |
 
 Response `200`, `data`: `{ "id": "uuid" }`.
 
@@ -203,9 +211,10 @@ the list):
   "id": "uuid",
   "name": "Main Checking",
   "type": "AT02",
-  "typeLabel": "Banco",
+  "typeLabel": "Débito",
   "isActive": true,
   "isPrincipal": true,
+  "creditLimitCents": null,
   "balanceCents": 123456,
   "createdAt": "2026-07-09T00:00:00.000Z"
 }
@@ -218,18 +227,32 @@ build your own code→label mapping, since the label can be edited later indepen
 | Code | Label |
 |---|---|
 | `AT01` | Efectivo |
-| `AT02` | Banco |
-| `AT03` | Tarjeta |
+| `AT02` | Débito |
+| `AT03` | Crédito |
+| `AT04` | Ahorro |
+
+**⚠️ Label change, same codes**: `AT02`'s label changed from "Banco" to "Débito" and `AT03`'s
+changed from "Tarjeta" to "Crédito" — the codes themselves didn't change, so existing stored
+accounts are unaffected, but if you had `AT02`/`AT03` hardcoded to those old label strings anywhere
+(rather than rendering `typeLabel` from the API), update them. `AT04` (Ahorro) is a brand-new code.
+
+`creditLimitCents` is only meaningful for `AT03` (Crédito) accounts — see the create/update rules
+below. It's `null` for every other account type.
 
 `balanceCents` is computed live from the account's movements on every read — it is not a stored
-column, so it is always consistent with the movement ledger.
+column, so it is always consistent with the movement ledger. For a Crédito account, `balanceCents`
+is **debt-signed**: a negative value means you owe that much; it moves toward zero as you pay it
+down (a transfer into the Crédito account) and further negative as you spend on it. It is never
+clamped by `creditLimitCents` — a full-history balance report sums the real signed value, not
+"remaining credit."
 
 **POST /accounts**
 
 | Field | Type | Constraints |
 |---|---|---|
 | `name` | string | required, non-empty, max 50 chars |
-| `type` | string | required, must be exactly one of `"AT01" \| "AT02" \| "AT03"` (see code→label table above) |
+| `type` | string | required, must be exactly one of `"AT01" \| "AT02" \| "AT03" \| "AT04"` (see code→label table above) |
+| `creditLimitCents` | integer | **required** if `type` is `"AT03"`, `>= 1`; **must be omitted** for every other type |
 
 `balanceCents` is **not** an accepted create field — a new account always starts at 0 regardless
 of what you send; any `balanceCents` in the body is silently stripped.
@@ -240,23 +263,38 @@ that defaults to `false`. Sending `isPrincipal` in the create body has no effect
 
 Response `201`, `data`: `{ "id": "uuid" }`.
 
-Error: `400` — invalid `type`: `"type must be one of the following values: AT01, AT02, AT03"`
-(class-validator shape, `message` is a string array).
+Errors:
+- `400` — invalid `type`: `"type must be one of the following values: AT01, AT02, AT03, AT04"`
+  (class-validator shape, `message` is a string array)
+- `400` — `"creditLimitCents is required for Crédito accounts"` when `type` is `"AT03"` and
+  `creditLimitCents` is missing (domain-exception shape, `message` is a single string)
+- `400` — `"creditLimitCents is only allowed for Crédito accounts"` when `creditLimitCents` is
+  sent for any type other than `"AT03"`
 
 **PATCH /accounts/:id**
 
 | Field | Type | Constraints |
 |---|---|---|
 | `name` | string, optional | non-empty if present, max 50 chars |
-| `type` | string, optional | one of `AT01 \| AT02 \| AT03` if present |
+| `type` | string, optional | one of `AT01 \| AT02 \| AT03 \| AT04` if present |
 | `isActive` | boolean, optional | manual active/inactive toggle |
 | `isPrincipal` | boolean, optional | `true` to make **this** account principal; `false` is rejected |
+| `creditLimitCents` | integer, `null`, optional | see three-state rule below |
 
 Sending `{ "isPrincipal": true }` atomically switches the principal account: this account becomes
 principal and whichever account was previously principal for this user is unset in the same
 operation — no separate call needed. Sending `{ "isPrincipal": false }` is always rejected with
 `400`, because there must always be exactly one principal account once a user has any account at
 all — you cannot un-principal an account directly, only make a *different* one principal instead.
+
+**`creditLimitCents` three-state rule**, evaluated against the account's *effective* type (the new
+`type` if you're also changing it in this same request, otherwise its current type):
+- **omit the field** → left unchanged
+- **send a number (`>= 1`)** → sets/replaces the cap; rejected with `400` if the effective type
+  isn't `"AT03"`
+- **send `null`** → clears the cap; **required** if you're changing `type` away from `"AT03"` on an
+  account that currently has a cap set — the request is rejected otherwise, so you can't silently
+  strand a stale `creditLimitCents` on a no-longer-Crédito account
 
 All fields optional/independent — send only what changed. Response `200`, `data`: `{ "id": "uuid" }`.
 
@@ -266,6 +304,7 @@ Errors:
   use case, not just at the DTO layer)
 - `400` — `"Cannot unset the principal account directly — mark a different account as principal
   instead"` when `isPrincipal: false` is sent
+- `400` — same two `creditLimitCents` messages as create, evaluated against the effective type/value
 
 **DELETE /accounts/:id** → `200`, `data`: `{ "id": "uuid" }`.
 
@@ -361,7 +400,7 @@ bound so today/future-dated movements are always included). If your UI was relyi
 unfiltered `GET /movements` to show everything, it will now silently show less data — pass
 `historic=true` to get the old "everything" behavior back.
 
-**`GET /movements` accepts six optional, combinable query params:**
+**`GET /movements` accepts ten optional, combinable query params:**
 
 | Param | Type | Constraints |
 |---|---|---|
@@ -371,33 +410,56 @@ unfiltered `GET /movements` to show everything, it will now silently show less d
 | `groupId` | string (UUID) | matches this movement's `groupId` exactly — this is how you build "show me everything in the Casa group" (see §5.1) |
 | `month` | string | `YYYY-MM` (e.g. `2026-07`), calendar month boundaries computed in **UTC** |
 | `historic` | boolean | `true` returns full history instead of the default last-3-months window. Accepts `true`/`false` only — anything else is a `400`. |
+| `dateFrom` | string | ISO-8601, inclusive lower bound on `date` |
+| `dateTo` | string | ISO-8601, inclusive upper bound on `date` |
+| `page` | integer | `>= 1`. Presence of `page` **or** `limit` switches the response into paginated mode (see below) |
+| `limit` | integer | `>= 1`, `<= 100`. Defaults to `20` if `page` is sent without it |
 
-**Precedence between `month` and `historic`:** an explicit `month` always wins — it filters to
-that one month regardless of `historic`. Without `month`: `historic=true` (or omitted →
-`false`-equivalent) decides between full history and the default last-3-months window.
-
-| `month` sent? | `historic` | Result |
-|---|---|---|
-| yes | (ignored) | that specific month only |
-| no | `true` | full history, no date filter |
-| no | absent or `false` | last 3 calendar months (the new default) |
+**Precedence between `month`, `dateFrom`/`dateTo`, and `historic`** (each level only applies when
+nothing higher in the list was sent):
+1. `month` — filters to that one calendar month, ignoring everything else in this list
+2. `dateFrom`/`dateTo` — an explicit range (either side optional — send just `dateFrom` for "since
+   X", just `dateTo` for "up to X", or both), ignoring `historic`
+3. `historic=true` → full history; otherwise the default last-3-calendar-months window
 
 Example: `GET /movements?accountId=<uuid>&categoryId=<uuid>&movementType=MT01&historic=true`. All
-six params can be combined (AND'd together, except `categoryId` which is OR'd internally when you
-pass more than one). There is still no arbitrary date-range filter (only whole-month or the
-3-month/historic toggle) and no pagination — treat those as a gap to raise with the backend team if
-you need them.
+of the filter params can be combined (AND'd together, except `categoryId` which is OR'd internally
+when you pass more than one).
 
-Error: `400` if `month` isn't `YYYY-MM`, `movementType` isn't one of the three valid codes,
-`historic` isn't `true`/`false`, or `categoryId`/`groupId` isn't a valid UUID (class-validator
+Error: `400` if `month` isn't `YYYY-MM`, `dateFrom`/`dateTo` isn't ISO-8601, `movementType` isn't
+one of the three valid codes, `historic` isn't `true`/`false`, `page`/`limit` isn't a positive
+integer or `limit` exceeds 100, or `categoryId`/`groupId` isn't a valid UUID (class-validator
 shape). An unmatched `groupId` (nonexistent or belonging to another user) is not an error here —
-it just yields an empty `data` array, same as any other filter matching nothing.
+it just yields an empty `data` array, same as any other filter matching nothing. A `dateFrom` after
+`dateTo` is not an error either — it's a well-formed empty range, so you just get `data: []`.
 
 This is the intended way to build "load this account's movements": resolve the target account's
 `id` (e.g. the principal account, see §5.2) and pass it as `accountId` — don't fetch everything and
-filter client-side, the backend now does this for you. For a "view older history" / "load more"
-UI affordance, add `historic=true` (optionally combined with `month` for a specific older month)
-rather than paginating — there is no pagination support yet.
+filter client-side, the backend now does this for you.
+
+**Pagination is fully additive and opt-in.** Omit both `page` and `limit` and the response is
+byte-for-byte identical to before (`{ statusCode, message, data: [...] }`, no pagination keys at
+all) — safe for existing callers like Reports' full-history aggregation to keep ignoring it. Send
+either one and the response gains extra **sibling keys next to `data`** (not nested inside it):
+
+```json
+{
+  "statusCode": 200,
+  "message": "Get all movements successfully",
+  "data": [ /* this page's rows only */ ],
+  "page": 1,
+  "limit": 20,
+  "totalCount": 45,
+  "totalPages": 3,
+  "hasMore": true
+}
+```
+
+`hasMore` is `page * limit < totalCount` — use it to decide whether to request the next page
+(`useInfiniteQuery`-style) rather than re-deriving it from `totalPages`/`page` yourself. Pagination
+combines with every other filter above (`accountId`, `month`, `dateFrom`/`dateTo`, etc.) and with
+`historic` — e.g. `GET /movements?accountId=<uuid>&historic=true&page=2&limit=20` paginates through
+the full history of one account.
 
 **GET /movements** and **GET /movements/:id** → `data` shape (array / single object):
 
@@ -461,6 +523,10 @@ Errors:
 - `404` — `accountId`, `categoryId`, `toAccountId`, or `groupId` not found or not yours:
   `"Account \"<id>\" not found"` / `"Category \"<id>\" not found"` / `"Group \"<id>\" not found"` —
   same ownership-scoped 404 pattern as everywhere else (never 403)
+- `400` — `"This movement would exceed account \"<name>\"'s credit limit"` when `accountId` refers
+  to an `AT03` (Crédito) account and this expense/outgoing-transfer would push its balance past
+  `-creditLimitCents` (see §5.2/§6). Never fires for income, and never checks `toAccountId`'s limit
+  on a transfer — only the account the money is leaving.
 
 **PATCH /movements/:id**
 
@@ -488,7 +554,11 @@ clearing `toAccountId` server-side data, and the movement still has a stored `to
 Response `200`, `data`: `{ "id": "uuid" }`.
 
 Errors: same 400/404 set as create, plus `404` — `"Movement \"<id>\" not found"` if the movement
-itself doesn't exist or isn't yours.
+itself doesn't exist or isn't yours. The credit-limit check also re-runs on update whenever
+`amountCents`, `movementType`, or `accountId` changes — including cases with no direct create-flow
+equivalent, like shrinking an existing income movement's amount, converting an income movement to
+an expense, or moving an income movement away from a Crédito account: each of these can genuinely
+reduce that account's balance and trip the same `400` above.
 
 **DELETE /movements/:id** → `200`, `data`: `{ "id": "uuid" }`. No delete-guard — movements have
 nothing referencing them, so delete always succeeds once ownership/existence is confirmed.
@@ -547,12 +617,18 @@ with directly.
   different user and a resource that simply doesn't exist return the exact same
   `404 NotFoundException` shape. Do not build any UI logic that expects a distinct
   "forbidden" state for `Account`/`Category`/`Movement` — there isn't one.
-- **Account `type` is a closed enum of stable codes**: `AT01 | AT02 | AT03` (see §5.2 for the
+- **Account `type` is a closed enum of stable codes**: `AT01 | AT02 | AT03 | AT04` (see §5.2 for the
   code→label table). Build the create/edit account form as a fixed select over the codes, not a
   free-text field — anything else is rejected with 400. Render the account's `typeLabel` from the
   API response for display; do not hardcode your own code→label mapping, since the label can
   change independently of the code (the code is what's validated and stored, the label is purely
   presentation text).
+- **`AT03` (Crédito) accounts require `creditLimitCents` and enforce it on movements.** Show the
+  limit field only when `type === "AT03"` in the create/edit account form (required there, must be
+  omitted otherwise). An expense or an outgoing transfer that would push a Crédito account's
+  `balanceCents` past `-creditLimitCents` is rejected with `400` — surface that message to the user
+  rather than silently retrying or rounding the amount down. Non-Crédito accounts never have a
+  spending cap.
 - **`movementType` is also a closed enum of stable codes**: `MT01 | MT02 | MT03` (see §5.0 for the
   code→label table). Build the category/movement type picker as a fixed select over the codes too
   — no API call needed to populate it. Render `movementTypeLabel` from the Category/Movement API
@@ -578,6 +654,13 @@ with directly.
   next request — there is no proactive "your session is about to expire" signal from the API.
 - **Extra/unknown JSON fields are silently dropped**, not rejected — do not rely on a 400 to
   catch a typo'd field name in a request body; it will just be ignored.
+- **`GET /movements` pagination is opt-in and additive** (see §5.4) — existing unpaginated callers
+  (e.g. Reports' full-history aggregation) keep working with zero response-shape change. Migrate a
+  screen to pagination by adding `page`/`limit`; don't add them "just in case" if a screen still
+  wants everything in one shot.
+- **`Group.budgetCents` is not enforced anywhere yet.** Unlike `Account.creditLimitCents`, nothing
+  blocks assigning a movement to a group that's already over budget. Treat it as a display-only cap
+  for now — don't build a form that pretends the backend will reject an over-budget movement.
 
 ## 7. Things verified live but worth double-checking if the API changes
 
