@@ -8,6 +8,9 @@ import { CategoryModule } from '@modules/money-manager/category/category.module'
 import { GroupModule } from '@modules/money-manager/group/group.module';
 import { MovementModule } from '@modules/money-manager/movement/movement.module';
 import { ReportModule } from '@modules/money-manager/report/report.module';
+import { ExerciseModule } from '@modules/gym-routine-sessions/exercise/exercise.module';
+import { RoutineModule } from '@modules/gym-routine-sessions/routine/routine.module';
+import { WorkoutSessionModule } from '@modules/gym-routine-sessions/workout-session/workout-session.module';
 import { AuthModule } from '@modules/identity/auth/auth.module';
 import { JwtAuthGuard } from '@infra/guards/jwt-auth.guard';
 import { normalizeJwtExpiry } from '@config/env/normalize-jwt-expiry';
@@ -54,6 +57,9 @@ import { HealthModule } from '@modules/_health/health.module';
     GroupModule,
     MovementModule,
     ReportModule,
+    ExerciseModule,
+    RoutineModule,
+    WorkoutSessionModule,
     AuthModule,
     HealthModule,
   ],

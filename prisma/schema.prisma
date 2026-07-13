@@ -17,10 +17,13 @@ model User {
   createdAt     DateTime @default(now()) @map("created_at")
   updatedAt     DateTime @updatedAt @map("updated_at")
 
-  accounts   Account[]
-  categories Category[]
-  movements  Movement[]
-  groups     Group[]
+  accounts        Account[]
+  categories      Category[]
+  movements       Movement[]
+  groups          Group[]
+  exercises       Exercise[]
+  routines        Routine[]
+  workoutSessions WorkoutSession[]
 
   @@map("users")
 }
@@ -106,4 +109,101 @@ model Movement {
   @@index([date])
   @@index([userId])
   @@map("movements")
+}
+
+model Exercise {
+  id               String   @id @default(uuid())
+  userId           String?  @map("user_id")
+  name             String
+  category         String?
+  bodyPart         String?  @map("body_part")
+  equipment        String?
+  target           String?
+  muscleGroup      String?  @map("muscle_group")
+  secondaryMuscles String[] @map("secondary_muscles")
+  instructions     Json?
+  image            String?
+  gifUrl           String?  @map("gif_url")
+  attribution      String?
+  createdAt        DateTime @default(now()) @map("created_at")
+  updatedAt        DateTime @updatedAt @map("updated_at")
+
+  user             User?                     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  routineExercises RoutineExercise[]
+  sessionExercises WorkoutSessionExercise[]
+
+  @@index([userId])
+  @@map("exercises")
+}
+
+model Routine {
+  id        String   @id @default(uuid())
+  userId    String   @map("user_id")
+  name      String
+  isActive  Boolean  @default(true) @map("is_active")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  user      User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  exercises RoutineExercise[]
+  sessions  WorkoutSession[]
+
+  @@unique([name, userId])
+  @@index([userId])
+  @@map("routines")
+}
+
+model RoutineExercise {
+  id                String   @id @default(uuid())
+  routineId         String   @map("routine_id")
+  exerciseId        String   @map("exercise_id")
+  order             Int
+  targetSets        Int      @map("target_sets")
+  targetReps        Int      @map("target_reps")
+  targetWeightGrams Int      @map("target_weight_grams")
+  createdAt         DateTime @default(now()) @map("created_at")
+  updatedAt         DateTime @updatedAt @map("updated_at")
+
+  routine  Routine  @relation(fields: [routineId], references: [id], onDelete: Cascade)
+  exercise Exercise @relation(fields: [exerciseId], references: [id], onDelete: Restrict)
+
+  @@index([routineId])
+  @@index([exerciseId])
+  @@map("routine_exercises")
+}
+
+model WorkoutSession {
+  id         String    @id @default(uuid())
+  userId     String    @map("user_id")
+  routineId  String    @map("routine_id")
+  date       DateTime
+  finishedAt DateTime? @map("finished_at")
+  createdAt  DateTime  @default(now()) @map("created_at")
+  updatedAt  DateTime  @updatedAt @map("updated_at")
+
+  user      User                     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  routine   Routine                  @relation(fields: [routineId], references: [id], onDelete: Restrict)
+  exercises WorkoutSessionExercise[]
+
+  @@index([userId])
+  @@index([routineId])
+  @@map("workout_sessions")
+}
+
+model WorkoutSessionExercise {
+  id                String   @id @default(uuid())
+  workoutSessionId  String   @map("workout_session_id")
+  exerciseId        String   @map("exercise_id")
+  actualSets        Int      @map("actual_sets")
+  actualReps        Int      @map("actual_reps")
+  actualWeightGrams Int      @map("actual_weight_grams")
+  createdAt         DateTime @default(now()) @map("created_at")
+  updatedAt         DateTime @updatedAt @map("updated_at")
+
+  workoutSession WorkoutSession @relation(fields: [workoutSessionId], references: [id], onDelete: Cascade)
+  exercise       Exercise       @relation(fields: [exerciseId], references: [id], onDelete: Restrict)
+
+  @@index([workoutSessionId])
+  @@index([exerciseId])
+  @@map("workout_session_exercises")
 }
