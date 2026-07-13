@@ -135,6 +135,7 @@ module doc for anything not covered above.
 | Module | Doc | Resources |
 |---|---|---|
 | `money-manager` | [`src/modules/money-manager/for-frontend-money-manager.md`](src/modules/money-manager/for-frontend-money-manager.md) | Accounts, Categories, Movements, Groups, Reports |
+| `gym-routine-sessions` | [`src/modules/gym-routine-sessions/for-frontend-gym-routine-sessions.md`](src/modules/gym-routine-sessions/for-frontend-gym-routine-sessions.md) | Exercises, Routines, Workout Sessions, Workout Session Exercises |
 
 ## 7. Things verified live but worth double-checking if the API changes
 
