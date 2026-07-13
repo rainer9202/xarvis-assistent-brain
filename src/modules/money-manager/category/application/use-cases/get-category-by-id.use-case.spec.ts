@@ -13,6 +13,7 @@ describe('GetCategoryByIdUseCase', () => {
     repository = {
       findAll: jest.fn(),
       findById,
+      findOwnById: jest.fn(),
       findByNameAndMovementType: jest.fn(),
       save: jest.fn(),
       update: jest.fn(),
@@ -42,7 +43,24 @@ describe('GetCategoryByIdUseCase', () => {
       movementType: 'MT01',
       movementTypeLabel: 'Gasto',
       isActive: true,
+      isCustom: true,
     });
+  });
+
+  it('marks a global (userId: null) category as isCustom: false', async () => {
+    findById.mockResolvedValue(
+      new CategoryEntity({
+        id: 'cat-global-1',
+        name: 'Supermercado',
+        movementType: 'MT01',
+        userId: null,
+        isActive: true,
+      }),
+    );
+
+    const result = await useCase.execute('cat-global-1', 'user-1');
+
+    expect(result.isCustom).toBe(false);
   });
 
   it('falls back movementTypeLabel to the raw code when no label matches', async () => {

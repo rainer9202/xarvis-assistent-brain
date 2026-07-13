@@ -11,19 +11,20 @@ import {
 } from './update-category.use-case';
 
 describe('UpdateCategoryUseCase', () => {
-  let findById: jest.Mock;
+  let findOwnById: jest.Mock;
   let findByNameAndMovementType: jest.Mock;
   let update: jest.Mock;
   let repository: CategoryRepositoryPort;
   let useCase: UpdateCategoryUseCase;
 
   beforeEach(() => {
-    findById = jest.fn();
+    findOwnById = jest.fn();
     findByNameAndMovementType = jest.fn();
     update = jest.fn();
     repository = {
       findAll: jest.fn(),
-      findById,
+      findById: jest.fn(),
+      findOwnById,
       findByNameAndMovementType,
       save: jest.fn(),
       update,
@@ -42,7 +43,7 @@ describe('UpdateCategoryUseCase', () => {
       userId: 'user-1',
       isActive: true,
     });
-    findById.mockResolvedValue(existing);
+    findOwnById.mockResolvedValue(existing);
     update.mockImplementation((entity: CategoryEntity) =>
       Promise.resolve(entity),
     );
@@ -51,7 +52,7 @@ describe('UpdateCategoryUseCase', () => {
       new UpdateCategoryCommand('cat-1', 'user-1', 'Supermarket'),
     );
 
-    expect(findById).toHaveBeenCalledWith('cat-1', 'user-1');
+    expect(findOwnById).toHaveBeenCalledWith('cat-1', 'user-1');
     expect(findByNameAndMovementType).toHaveBeenCalledWith(
       'Supermarket',
       'MT01',
@@ -68,7 +69,7 @@ describe('UpdateCategoryUseCase', () => {
   });
 
   it('throws NotFoundException when the category does not exist', async () => {
-    findById.mockResolvedValue(null);
+    findOwnById.mockResolvedValue(null);
 
     await expect(
       useCase.execute(
@@ -87,7 +88,7 @@ describe('UpdateCategoryUseCase', () => {
       userId: 'user-1',
       isActive: true,
     });
-    findById.mockResolvedValue(existing);
+    findOwnById.mockResolvedValue(existing);
 
     await expect(
       useCase.execute(
@@ -112,7 +113,7 @@ describe('UpdateCategoryUseCase', () => {
       userId: 'user-1',
       isActive: true,
     });
-    findById.mockResolvedValue(existing);
+    findOwnById.mockResolvedValue(existing);
 
     await expect(
       useCase.execute(
@@ -137,7 +138,7 @@ describe('UpdateCategoryUseCase', () => {
       userId: 'user-1',
       isActive: true,
     });
-    findById.mockResolvedValue(existing);
+    findOwnById.mockResolvedValue(existing);
     findByNameAndMovementType.mockResolvedValue(
       new CategoryEntity({
         id: 'cat-2',
@@ -166,7 +167,7 @@ describe('UpdateCategoryUseCase', () => {
       userId: 'user-1',
       isActive: true,
     });
-    findById.mockResolvedValue(existing);
+    findOwnById.mockResolvedValue(existing);
     findByNameAndMovementType.mockResolvedValue(existing);
     update.mockImplementation((entity: CategoryEntity) =>
       Promise.resolve(entity),
@@ -188,7 +189,7 @@ describe('UpdateCategoryUseCase', () => {
       userId: 'user-1',
       isActive: true,
     });
-    findById.mockResolvedValue(existing);
+    findOwnById.mockResolvedValue(existing);
     update.mockImplementation((entity: CategoryEntity) =>
       Promise.resolve(entity),
     );

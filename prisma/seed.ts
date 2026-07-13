@@ -124,21 +124,28 @@ async function main() {
     },
   });
 
+  // Global defaults (userId: null), visible to every user — not per-user
+  // rows anymore. The partial unique index
+  // categories_name_movement_type_global_unique enforces uniqueness among
+  // them, but Prisma's schema-level @@unique([name, movementType, userId])
+  // has no typed accessor for a null userId, so this upserts by hand
+  // (find-then-create/skip) instead of prisma.category.upsert().
   for (const category of DEFAULT_CATEGORIES) {
-    await prisma.category.upsert({
+    const existing = await prisma.category.findFirst({
       where: {
-        name_movementType_userId: {
-          name: category.name,
-          movementType: category.movementType,
-          userId: user.id,
-        },
+        name: category.name,
+        movementType: category.movementType,
+        userId: null,
       },
-      update: {},
-      create: {
+    });
+    if (existing) continue;
+
+    await prisma.category.create({
+      data: {
         name: category.name,
         icon: category.icon,
         movementType: category.movementType,
-        userId: user.id,
+        userId: null,
       },
     });
   }

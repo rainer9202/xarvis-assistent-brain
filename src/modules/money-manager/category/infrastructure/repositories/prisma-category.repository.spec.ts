@@ -61,13 +61,13 @@ describe('PrismaCategoryRepository', () => {
   });
 
   describe('findAll', () => {
-    it('returns records for the given user, mapped to entities, ordered by createdAt asc', async () => {
+    it('queries own OR global rows ordered by createdAt asc', async () => {
       prisma.category.findMany.mockResolvedValue([record]);
 
       const result = await repository.findAll('user-1');
 
       expect(prisma.category.findMany).toHaveBeenCalledWith({
-        where: { userId: 'user-1' },
+        where: { OR: [{ userId: 'user-1' }, { userId: null }] },
         orderBy: { createdAt: 'asc' },
       });
       expect(result).toHaveLength(1);
@@ -77,13 +77,13 @@ describe('PrismaCategoryRepository', () => {
   });
 
   describe('findById', () => {
-    it('returns the mapped entity when found for that user', async () => {
+    it('queries own OR global for read access', async () => {
       prisma.category.findFirst.mockResolvedValue(record);
 
       const result = await repository.findById('cat-1', 'user-1');
 
       expect(prisma.category.findFirst).toHaveBeenCalledWith({
-        where: { id: 'cat-1', userId: 'user-1' },
+        where: { id: 'cat-1', OR: [{ userId: 'user-1' }, { userId: null }] },
       });
       expect(result).toBeInstanceOf(CategoryEntity);
       expect(result?.movementType).toBe('MT01');
@@ -93,6 +93,27 @@ describe('PrismaCategoryRepository', () => {
       prisma.category.findFirst.mockResolvedValue(null);
 
       const result = await repository.findById('missing', 'user-1');
+
+      expect(result).toBeNull();
+    });
+  });
+
+  describe('findOwnById', () => {
+    it('queries strictly by userId, excluding global rows', async () => {
+      prisma.category.findFirst.mockResolvedValue(record);
+
+      const result = await repository.findOwnById('cat-1', 'user-1');
+
+      expect(prisma.category.findFirst).toHaveBeenCalledWith({
+        where: { id: 'cat-1', userId: 'user-1' },
+      });
+      expect(result).toBeInstanceOf(CategoryEntity);
+    });
+
+    it('returns null when not found', async () => {
+      prisma.category.findFirst.mockResolvedValue(null);
+
+      const result = await repository.findOwnById('missing', 'user-1');
 
       expect(result).toBeNull();
     });

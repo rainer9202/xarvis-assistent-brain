@@ -230,7 +230,7 @@ Errors (checked in this order):
   first"` (`ValidationException`)
 - `400` — referenced by movements: `"Account cannot be deleted because it is referenced by existing movements"` (`ValidationException`)
 
-### 3. Categories (owned by the caller)
+### 3. Categories (global catalog + owned)
 
 | Method | Path |
 |---|---|
@@ -238,6 +238,13 @@ Errors (checked in this order):
 | POST | `/categories` |
 | PATCH | `/categories/:id` |
 | DELETE | `/categories/:id` |
+
+**⚠️ Ownership model changed — categories are no longer purely per-user.** `GET /categories` now
+returns a **mixed list**: a small set of global default categories (shared across every user, e.g.
+"Supermercado", "Sueldo") plus any categories you created yourself. This is the same optional-
+ownership pattern as `Exercise` in the `gym-routine-sessions` domain — see that module's doc for
+the general shape of the idea. There is no separate endpoint to fetch "just mine" or "just global";
+filter client-side on `isCustom` if you need that split.
 
 **There is no `GET /categories/:id` route.** To resolve a single category, fetch the full list
 via `GET /categories` and find it client-side.
@@ -252,16 +259,23 @@ via `GET /categories` and find it client-side.
   "movementType": "MT01",
   "movementTypeLabel": "Gasto",
   "isActive": true,
+  "isCustom": false,
   "createdAt": "2026-07-09T00:00:00.000Z"
 }
 ```
+
+`isCustom: false` means a global default category — visible to everyone, but nobody can edit or
+delete it via the API (see PATCH/DELETE below). `isCustom: true` means you created it yourself.
+There is no raw `userId` field in the response — `isCustom` is the only ownership signal you get,
+and it's all you need to decide whether to show edit/delete affordances for a given row.
 
 `icon` is an [Ionicons](https://ionic.io/ionicons) icon name (e.g. `"cart-outline"`,
 `"home-outline"`) — the frontend renders it directly with whatever Ionicons component/import it
 already uses; the backend only stores/validates a non-empty string, it does not know or care about
 the icon set beyond that.
 
-**POST /categories**
+**POST /categories** — always creates a **private** category, visible only to you (mixed into
+your own `GET /categories` list). There is no way to create a global category through the API.
 
 | Field | Type | Constraints |
 |---|---|---|
@@ -275,12 +289,17 @@ Errors:
 - `400` — invalid `movementType`: `"movementType must be one of the following values: MT01, MT02, MT03"`
   (class-validator shape, `message` is a string array)
 - `400` — missing/empty `icon`: standard class-validator shape
-- `409` — the `(name, movementType)` pair already exists **for this user**:
-  `"Category \"<name>\" already exists for movement type \"<movementType>\""`
-  (uniqueness is per-user — two different users can each have a "Groceries" category under the
-  same movement type without conflicting with each other)
+- `409` — the `(name, movementType)` pair already exists **among your own categories** —
+  `"Category \"<name>\" already exists for movement type \"<movementType>\""`. This check is
+  scoped to your own categories only: you can freely create a private category with the same
+  name/type as an existing global one (e.g. your own "Supermercado"/`MT01`) without conflict — it
+  just shadows the global one in your own mental model, both still show up as separate rows in
+  `GET /categories`.
 
-**PATCH /categories/:id**
+**PATCH /categories/:id** — **only works on your own custom categories.** Attempting to PATCH a
+global category, or another user's category, returns `404` — identical to a nonexistent id, by
+design (see root doc §5's ownership-404 rule; this extends it: "not yours" and "global" are both
+indistinguishable from "doesn't exist" for write purposes).
 
 | Field | Type | Constraints |
 |---|---|---|
@@ -291,13 +310,18 @@ Errors:
 
 Response `200`, `data`: `{ "id": "uuid" }`.
 
-Errors: `404` (category not found / not yours), `400` (invalid `movementType`), and 409
-(uniqueness conflict, re-checked whenever `name` and/or `movementType` changes) as create.
-
-**DELETE /categories/:id** → `200`, `data`: `{ "id": "uuid" }`.
-
 Errors:
-- `404` — not found / not yours
+- `404` — `"Category \"<id>\" not found"` (covers nonexistent, another user's, and global
+  categories alike)
+- `400` — invalid `movementType`, same message pattern as create
+- `409` — uniqueness conflict among your own categories, re-checked whenever `name` and/or
+  `movementType` changes, same rule as create
+
+**DELETE /categories/:id** → `200`, `data`: `{ "id": "uuid" }`. Same own-only rule as PATCH — `404`
+for a global or another user's category.
+
+Errors (checked in this order):
+- `404` — not found / not yours / global
 - `400` — referenced by movements: `"Category cannot be deleted because it is referenced by existing movements"`
 
 ### 4. Movements (owned by the caller)
@@ -545,6 +569,11 @@ range) — this is a full-history snapshot.
   complete, human-readable sentence).
 - **`Category` has no GET-by-id route.** Any single-item lookup for it must be done by filtering
   the list endpoint client-side.
+- **`Category` has a global-catalog tier, same as `Exercise` in `gym-routine-sessions`.** A handful
+  of default categories are shared across every user (`isCustom: false`); anything you create is
+  private to you. You can create/edit/delete your own, never the global ones — a global category
+  always 404s on PATCH/DELETE. Don't build UI logic that expects a distinct "forbidden" state for
+  this, same ownership-404 rule as everywhere else.
 - **`GET /movements` pagination is opt-in and additive** (see §4 and root doc §5) — existing
   unpaginated callers (e.g. Reports' full-history aggregation) keep working with zero response-shape
   change. Migrate a screen to pagination by adding `page`/`limit`; don't add them "just in case" if

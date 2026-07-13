@@ -29,7 +29,7 @@ export class DeleteCategoryUseCase {
     command: DeleteCategoryCommand,
   ): Promise<DeleteCategoryResponse> {
     try {
-      const category = await this.repository.findById(
+      const category = await this.repository.findOwnById(
         command.id,
         command.userId,
       );

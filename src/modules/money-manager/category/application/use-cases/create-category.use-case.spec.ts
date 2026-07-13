@@ -21,6 +21,7 @@ describe('CreateCategoryUseCase', () => {
     repository = {
       findAll: jest.fn(),
       findById: jest.fn(),
+      findOwnById: jest.fn(),
       findByNameAndMovementType,
       save,
       update: jest.fn(),

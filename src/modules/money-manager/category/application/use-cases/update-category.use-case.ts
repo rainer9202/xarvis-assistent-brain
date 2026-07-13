@@ -36,7 +36,7 @@ export class UpdateCategoryUseCase {
     command: UpdateCategoryCommand,
   ): Promise<UpdateCategoryResponse> {
     try {
-      const category = await this.repository.findById(
+      const category = await this.repository.findOwnById(
         command.id,
         command.userId,
       );
@@ -65,7 +65,7 @@ export class UpdateCategoryUseCase {
         const existing = await this.repository.findByNameAndMovementType(
           category.name,
           category.movementType,
-          category.userId,
+          command.userId,
         );
         if (existing && existing.id !== category.id)
           throw new ConflictException(

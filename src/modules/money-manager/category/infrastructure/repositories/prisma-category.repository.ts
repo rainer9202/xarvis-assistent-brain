@@ -10,13 +10,23 @@ export class PrismaCategoryRepository implements CategoryRepositoryPort {
 
   async findAll(userId: string): Promise<CategoryEntity[]> {
     const records = await this.prisma.category.findMany({
-      where: { userId },
+      where: { OR: [{ userId }, { userId: null }] },
       orderBy: { createdAt: 'asc' },
     });
     return records.map((r) => this.toEntity(r));
   }
 
   async findById(id: string, userId: string): Promise<CategoryEntity | null> {
+    const record = await this.prisma.category.findFirst({
+      where: { id, OR: [{ userId }, { userId: null }] },
+    });
+    return record ? this.toEntity(record) : null;
+  }
+
+  async findOwnById(
+    id: string,
+    userId: string,
+  ): Promise<CategoryEntity | null> {
     const record = await this.prisma.category.findFirst({
       where: { id, userId },
     });

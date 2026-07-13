@@ -186,4 +186,38 @@ describe('Category (e2e)', () => {
       where: { id: otherCreateRes.body.data.id },
     });
   });
+
+  it('🔍 a global category (userId: null) is visible to every user but cannot be updated or deleted by any of them', async () => {
+    const global = await prisma.category.create({
+      data: {
+        name: `Global-${Date.now()}`,
+        icon,
+        movementType,
+        userId: null,
+      },
+    });
+
+    const listRes = await request(app.getHttpServer())
+      .get('/categories')
+      .set('Authorization', `Bearer ${token}`)
+      .expect(200);
+    const found = listRes.body.data.find(
+      (c: { id: string }) => c.id === global.id,
+    );
+    expect(found).toBeDefined();
+    expect(found.isCustom).toBe(false);
+
+    await request(app.getHttpServer())
+      .patch(`/categories/${global.id}`)
+      .set('Authorization', `Bearer ${token}`)
+      .send({ name: 'Hijacked' })
+      .expect(404);
+
+    await request(app.getHttpServer())
+      .delete(`/categories/${global.id}`)
+      .set('Authorization', `Bearer ${token}`)
+      .expect(404);
+
+    await prisma.category.delete({ where: { id: global.id } });
+  });
 });

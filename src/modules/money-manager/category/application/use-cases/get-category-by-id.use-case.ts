@@ -14,6 +14,7 @@ export type GetCategoryByIdResponse = {
   movementType: string;
   movementTypeLabel: string;
   isActive: boolean;
+  isCustom: boolean;
 };
 
 @Injectable()
@@ -36,6 +37,7 @@ export class GetCategoryByIdUseCase {
         movementTypeLabel:
           getMovementTypeLabel(category.movementType) ?? category.movementType,
         isActive: category.isActive!,
+        isCustom: category.userId !== null && category.userId !== undefined,
       };
     } catch (error) {
       if (error instanceof DomainException) throw error;

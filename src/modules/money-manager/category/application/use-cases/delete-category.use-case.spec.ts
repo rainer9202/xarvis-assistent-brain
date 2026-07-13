@@ -10,19 +10,20 @@ import {
 } from './delete-category.use-case';
 
 describe('DeleteCategoryUseCase', () => {
-  let findById: jest.Mock;
+  let findOwnById: jest.Mock;
   let deleteFn: jest.Mock;
   let countMovementsByCategoryId: jest.Mock;
   let repository: CategoryRepositoryPort;
   let useCase: DeleteCategoryUseCase;
 
   beforeEach(() => {
-    findById = jest.fn();
+    findOwnById = jest.fn();
     deleteFn = jest.fn();
     countMovementsByCategoryId = jest.fn();
     repository = {
       findAll: jest.fn(),
-      findById,
+      findById: jest.fn(),
+      findOwnById,
       findByNameAndMovementType: jest.fn(),
       save: jest.fn(),
       update: jest.fn(),
@@ -40,7 +41,7 @@ describe('DeleteCategoryUseCase', () => {
       userId: 'user-1',
       isActive: true,
     });
-    findById.mockResolvedValue(entity);
+    findOwnById.mockResolvedValue(entity);
     countMovementsByCategoryId.mockResolvedValue(0);
     deleteFn.mockResolvedValue(undefined);
 
@@ -61,7 +62,7 @@ describe('DeleteCategoryUseCase', () => {
       userId: 'user-1',
       isActive: true,
     });
-    findById.mockResolvedValue(entity);
+    findOwnById.mockResolvedValue(entity);
     countMovementsByCategoryId.mockResolvedValue(2);
 
     await expect(
@@ -71,7 +72,7 @@ describe('DeleteCategoryUseCase', () => {
   });
 
   it('throws NotFoundException when the category does not exist', async () => {
-    findById.mockResolvedValue(null);
+    findOwnById.mockResolvedValue(null);
 
     await expect(
       useCase.execute(new DeleteCategoryCommand('missing', 'user-1')),

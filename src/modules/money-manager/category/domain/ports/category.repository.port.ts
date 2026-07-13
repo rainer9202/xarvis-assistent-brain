@@ -3,6 +3,7 @@ import { CategoryEntity } from '../entities/category.entity';
 export interface CategoryRepositoryPort {
   findAll(userId: string): Promise<CategoryEntity[]>;
   findById(id: string, userId: string): Promise<CategoryEntity | null>;
+  findOwnById(id: string, userId: string): Promise<CategoryEntity | null>;
   findByNameAndMovementType(
     name: string,
     movementType: string,
