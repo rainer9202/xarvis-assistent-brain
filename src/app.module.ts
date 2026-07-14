@@ -43,7 +43,7 @@ import { HealthModule } from '@modules/_health/health.module';
           // instead of the seconds our own env validation message promises
           // — see src/infrastructure/config/env/normalize-jwt-expiry.ts.
           expiresIn: normalizeJwtExpiry(
-            process.env.JWT_EXPIRES_IN ?? '2h',
+            process.env.JWT_EXPIRES_IN ?? '7d',
           ) as unknown as JwtSignOptions['expiresIn'],
         },
         verifyOptions: {
