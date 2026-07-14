@@ -27,6 +27,7 @@ export class GetExercisesByIdsUseCase {
       return entities.map((item) => ({
         id: item.id!,
         name: item.name,
+        nameEs: item.nameEs,
         category: item.category,
         bodyPart: item.bodyPart,
         equipment: item.equipment,

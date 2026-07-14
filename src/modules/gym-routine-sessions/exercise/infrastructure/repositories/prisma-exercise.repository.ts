@@ -47,6 +47,7 @@ export class PrismaExerciseRepository implements ExerciseRepositoryPort {
         id: entity.id,
         userId: entity.userId,
         name: entity.name,
+        nameEs: entity.nameEs ?? undefined,
         category: entity.category,
         bodyPart: entity.bodyPart,
         equipment: entity.equipment,

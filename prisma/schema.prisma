@@ -115,6 +115,7 @@ model Exercise {
   id               String   @id @default(uuid())
   userId           String?  @map("user_id")
   name             String
+  nameEs           String?  @map("name_es")
   category         String?
   bodyPart         String?  @map("body_part")
   equipment        String?

@@ -3,6 +3,7 @@ import { BaseEntity, BaseEntityProps } from '@domain/base.entity';
 export type ExerciseProps = BaseEntityProps & {
   userId?: string | null;
   name: string;
+  nameEs?: string | null;
   category?: string | null;
   bodyPart?: string | null;
   equipment?: string | null;
@@ -18,6 +19,7 @@ export type ExerciseProps = BaseEntityProps & {
 export class ExerciseEntity extends BaseEntity {
   private _userId?: string | null;
   private _name: string = '';
+  private _nameEs?: string | null;
   private _category?: string | null;
   private _bodyPart?: string | null;
   private _equipment?: string | null;
@@ -34,6 +36,7 @@ export class ExerciseEntity extends BaseEntity {
     if (props) {
       this._userId = props.userId;
       this._name = props.name;
+      this._nameEs = props.nameEs;
       this._category = props.category;
       this._bodyPart = props.bodyPart;
       this._equipment = props.equipment;
@@ -57,6 +60,10 @@ export class ExerciseEntity extends BaseEntity {
 
   set name(value: string) {
     this._name = value;
+  }
+
+  get nameEs(): string | null | undefined {
+    return this._nameEs;
   }
 
   get category(): string | null | undefined {

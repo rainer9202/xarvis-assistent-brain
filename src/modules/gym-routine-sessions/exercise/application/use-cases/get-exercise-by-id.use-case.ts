@@ -9,6 +9,7 @@ import type { ExerciseRepositoryPort } from '../../domain/ports/exercise.reposit
 export type GetExerciseByIdResponse = {
   id: string;
   name: string;
+  nameEs?: string | null;
   category?: string | null;
   bodyPart?: string | null;
   equipment?: string | null;
@@ -43,6 +44,7 @@ export class GetExerciseByIdUseCase {
       return {
         id: exercise.id!,
         name: exercise.name,
+        nameEs: exercise.nameEs,
         category: exercise.category,
         bodyPart: exercise.bodyPart,
         equipment: exercise.equipment,

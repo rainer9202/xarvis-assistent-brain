@@ -53,6 +53,11 @@
           "description": "Full exercise name (e.g. \"3/4 sit-up\").",
           "minLength": 1
         },
+        "name_es": {
+          "type": "string",
+          "description": "Spanish translation of the exercise name (e.g. \"Abdominal 3/4\").",
+          "minLength": 1
+        },
         "category": {
           "type": "string",
           "description": "Body part category. Mirrors body_part.",

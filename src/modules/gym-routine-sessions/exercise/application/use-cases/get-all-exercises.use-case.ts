@@ -6,6 +6,7 @@ import type { ExerciseRepositoryPort } from '../../domain/ports/exercise.reposit
 export type GetAllExercisesResponse = {
   id: string;
   name: string;
+  nameEs?: string | null;
   category?: string | null;
   bodyPart?: string | null;
   equipment?: string | null;
@@ -33,6 +34,7 @@ export class GetAllExercisesUseCase {
       return entities.map((item) => ({
         id: item.id!,
         name: item.name,
+        nameEs: item.nameEs,
         category: item.category,
         bodyPart: item.bodyPart,
         equipment: item.equipment,

@@ -52,6 +52,7 @@ const DEFAULT_CATEGORIES: SeedCategory[] = [
 type SeedExerciseRecord = {
   id: string;
   name: string;
+  name_es: string;
   category: string;
   body_part: string;
   equipment: string;
@@ -69,6 +70,34 @@ const EXERCISES_JSON_PATH = path.join(
   '../src/modules/gym-routine-sessions/data/exercises.json',
 );
 
+async function backfillExerciseNameEs(records: SeedExerciseRecord[]) {
+  // Global exercise rows don't preserve the JSON's own `id` (see the comment
+  // above SeedExerciseRecord — a fresh uuid() is generated per row), so
+  // `name` (English, effectively unique among the global/seeded rows) is the
+  // only reliable join key back to the JSON for a DB that was already seeded
+  // before nameEs existed. Never delete+reinsert to "reseed" — RoutineExercise
+  // / WorkoutSessionExercise hold FK references to Exercise.id, and since IDs
+  // are regenerated on every insert, that would silently orphan any routine
+  // or workout session a real user already created against the old rows.
+  let backfilled = 0;
+  let alreadyPresent = 0;
+  for (const record of records) {
+    const result = await prisma.exercise.updateMany({
+      where: { userId: null, name: record.name, nameEs: null },
+      data: { nameEs: record.name_es },
+    });
+    if (result.count > 0) {
+      backfilled += result.count;
+    } else {
+      alreadyPresent += 1;
+    }
+  }
+  console.log(
+    `Exercise nameEs backfill: ${backfilled} rows updated, ${alreadyPresent} already had nameEs`,
+  );
+  return backfilled;
+}
+
 async function seedExercises() {
   // Idempotent: these are immutable global seed rows (userId: null), so
   // there's no need to re-upsert 1,324 records on every `pnpm db:seed` run —
@@ -76,21 +105,24 @@ async function seedExercises() {
   const existingGlobalCount = await prisma.exercise.count({
     where: { userId: null },
   });
-  if (existingGlobalCount > 0) {
-    console.log(
-      `Skipping exercise catalog seed: ${existingGlobalCount} global exercises already present`,
-    );
-    return existingGlobalCount;
-  }
 
   // Read explicitly at runtime via fs.readFileSync + JSON.parse (NOT a
   // TS/ESM JSON import) — this is a 15MB file, no reason to bundle it.
   const raw = fs.readFileSync(EXERCISES_JSON_PATH, 'utf-8');
   const records: SeedExerciseRecord[] = JSON.parse(raw);
 
+  if (existingGlobalCount > 0) {
+    console.log(
+      `Skipping exercise catalog seed: ${existingGlobalCount} global exercises already present`,
+    );
+    await backfillExerciseNameEs(records);
+    return existingGlobalCount;
+  }
+
   const data = records.map((record) => ({
     userId: null,
     name: record.name,
+    nameEs: record.name_es,
     category: record.category,
     bodyPart: record.body_part,
     equipment: record.equipment,
