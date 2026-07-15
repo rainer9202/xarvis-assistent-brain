@@ -8,6 +8,7 @@ export type GetAllUsersResponse = {
   id: string;
   name: string;
   email: string;
+  birthDate?: Date | null;
   createdAt: Date;
 };
 
@@ -25,6 +26,7 @@ export class GetAllUsersUseCase {
         id: item.id!,
         name: item.name,
         email: item.email,
+        birthDate: item.birthDate,
         createdAt: item.createdAt!,
       }));
     } catch (error) {

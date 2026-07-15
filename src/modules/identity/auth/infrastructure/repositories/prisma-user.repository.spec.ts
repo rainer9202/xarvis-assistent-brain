@@ -29,6 +29,7 @@ describe('PrismaUserRepository', () => {
     name: 'Jane Doe',
     email: 'jane@example.com',
     password: 'hashed-password',
+    birthDate: new Date('1990-05-20T00:00:00Z'),
     createdAt: new Date('2024-01-01T00:00:00Z'),
     updatedAt: new Date('2024-01-02T00:00:00Z'),
   };
@@ -76,6 +77,7 @@ describe('PrismaUserRepository', () => {
         name: 'Jane Doe',
         email: 'jane@example.com',
         password: 'hashed-password',
+        birthDate: new Date('1990-05-20T00:00:00Z'),
       });
       prisma.user.create.mockResolvedValue(record);
 
@@ -86,6 +88,7 @@ describe('PrismaUserRepository', () => {
           name: 'Jane Doe',
           email: 'jane@example.com',
           password: 'hashed-password',
+          birthDate: new Date('1990-05-20T00:00:00Z'),
         },
       });
       expect(result).toBeInstanceOf(UserEntity);

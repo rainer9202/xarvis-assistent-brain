@@ -9,12 +9,14 @@ export type UserProps = BaseEntityProps & {
   name: string;
   email: string;
   password: string;
+  birthDate?: Date | null;
 };
 
 export class UserEntity extends BaseEntity {
   private _name: string = '';
   private _email: string = '';
   private _password: string = '';
+  private _birthDate?: Date | null;
 
   constructor(props?: UserProps) {
     super(props);
@@ -22,6 +24,7 @@ export class UserEntity extends BaseEntity {
       this._name = props.name;
       this._email = props.email;
       this._password = props.password;
+      this._birthDate = props.birthDate;
     }
   }
 
@@ -47,5 +50,13 @@ export class UserEntity extends BaseEntity {
 
   set password(value: string) {
     this._password = value;
+  }
+
+  get birthDate(): Date | null | undefined {
+    return this._birthDate;
+  }
+
+  set birthDate(value: Date | null | undefined) {
+    this._birthDate = value;
   }
 }

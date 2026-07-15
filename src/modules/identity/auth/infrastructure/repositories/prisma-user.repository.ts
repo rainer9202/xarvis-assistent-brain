@@ -26,6 +26,7 @@ export class PrismaUserRepository implements UserRepositoryPort {
           name: entity.name,
           email: entity.email,
           password: entity.password,
+          birthDate: entity.birthDate ?? undefined,
         },
       });
 
@@ -65,6 +66,7 @@ export class PrismaUserRepository implements UserRepositoryPort {
       name: record.name,
       email: record.email,
       password: record.password,
+      birthDate: record.birthDate,
       createdAt: record.createdAt,
       updatedAt: record.updatedAt,
     });

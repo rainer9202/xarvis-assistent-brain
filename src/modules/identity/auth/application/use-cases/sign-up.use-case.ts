@@ -19,6 +19,7 @@ export class SignUpCommand {
     public readonly name: string,
     public readonly email: string,
     public readonly password: string,
+    public readonly birthDate: string,
   ) {}
 }
 
@@ -43,6 +44,7 @@ export class SignUpUseCase {
       name: command.name,
       email: command.email,
       password: hashedPassword,
+      birthDate: new Date(command.birthDate),
     });
     const saved = await this.repository.create(entity);
 

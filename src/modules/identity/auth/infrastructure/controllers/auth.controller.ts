@@ -43,7 +43,7 @@ export class AuthController {
     return {
       message: 'The user was registered successfully',
       data: await this.signUp.execute(
-        new SignUpCommand(dto.name, dto.email, dto.password),
+        new SignUpCommand(dto.name, dto.email, dto.password, dto.birthDate),
       ),
     };
   }

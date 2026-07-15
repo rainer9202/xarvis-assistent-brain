@@ -1,5 +1,6 @@
 import { ApiProperty } from '@nestjs/swagger';
 import {
+  IsDateString,
   IsEmail,
   IsNotEmpty,
   IsString,
@@ -24,4 +25,9 @@ export class SignUpDto {
   // unbounded password is a cheap DoS vector against argon2.hash().
   @MaxLength(128)
   password: string;
+
+  @ApiProperty({ example: '1990-05-20' })
+  @IsDateString()
+  @IsNotEmpty()
+  birthDate: string;
 }
