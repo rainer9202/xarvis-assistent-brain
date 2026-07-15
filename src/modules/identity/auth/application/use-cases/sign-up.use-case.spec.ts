@@ -75,11 +75,11 @@ describe('SignUpUseCase', () => {
     await expect(
       useCase.execute(
         new SignUpCommand(
-        'Jane Doe',
-        'jane@example.com',
-        'plaintext-password',
-        '1990-05-20',
-      ),
+          'Jane Doe',
+          'jane@example.com',
+          'plaintext-password',
+          '1990-05-20',
+        ),
       ),
     ).rejects.toThrow(ConflictException);
     expect(create).not.toHaveBeenCalled();
@@ -100,11 +100,11 @@ describe('SignUpUseCase', () => {
     await expect(
       useCase.execute(
         new SignUpCommand(
-        'Jane Doe',
-        'jane@example.com',
-        'plaintext-password',
-        '1990-05-20',
-      ),
+          'Jane Doe',
+          'jane@example.com',
+          'plaintext-password',
+          '1990-05-20',
+        ),
       ),
     ).rejects.toThrow(ConflictException);
   });
