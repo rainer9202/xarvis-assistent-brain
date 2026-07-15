@@ -25,6 +25,7 @@ model User {
   exercises       Exercise[]
   routines        Routine[]
   workoutSessions WorkoutSession[]
+  bodyMetrics     BodyMetric[]
 
   @@map("users")
 }
@@ -208,4 +209,19 @@ model WorkoutSessionExercise {
   @@index([workoutSessionId])
   @@index([exerciseId])
   @@map("workout_session_exercises")
+}
+
+model BodyMetric {
+  id          String   @id @default(uuid())
+  userId      String   @map("user_id")
+  weightGrams Int      @map("weight_grams")
+  heightCm    Int      @map("height_cm")
+  measuredAt  DateTime @map("measured_at")
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("body_metrics")
 }

@@ -11,6 +11,7 @@ import { ReportModule } from '@modules/money-manager/report/report.module';
 import { ExerciseModule } from '@modules/gym-routine-sessions/exercise/exercise.module';
 import { RoutineModule } from '@modules/gym-routine-sessions/routine/routine.module';
 import { WorkoutSessionModule } from '@modules/gym-routine-sessions/workout-session/workout-session.module';
+import { BodyMetricModule } from '@modules/gym-routine-sessions/body-metric/body-metric.module';
 import { AuthModule } from '@modules/identity/auth/auth.module';
 import { JwtAuthGuard } from '@infra/guards/jwt-auth.guard';
 import { normalizeJwtExpiry } from '@config/env/normalize-jwt-expiry';
@@ -60,6 +61,7 @@ import { HealthModule } from '@modules/_health/health.module';
     ExerciseModule,
     RoutineModule,
     WorkoutSessionModule,
+    BodyMetricModule,
     AuthModule,
     HealthModule,
   ],
