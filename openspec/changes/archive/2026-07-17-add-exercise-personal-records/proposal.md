@@ -76,9 +76,9 @@ Additive, no migration (`WorkoutSessionExercise` and its `@@index([exerciseId])`
 
 ## Success Criteria
 
-- [ ] `GET /workout-sessions/exercises/records` returns one entry per exercise with logged history: `exerciseId`, `exerciseName`, `maxWeightGrams`, `sessionId`, `sessionDate`, `routineId`, `routineName`.
-- [ ] The reported `maxWeightGrams` is the single highest `actualWeightGrams` ever logged for that exercise by the user.
-- [ ] Ties on max weight resolve to the earliest `sessionDate`, deterministically.
-- [ ] An exercise with zero logged history is absent from the response; a user with no history gets `[]` + 200 (never a 404, never a null entry).
-- [ ] Records resolved in a fixed number of queries (no N+1, no per-exercise loop), verified in tests.
-- [ ] Unit + e2e suites green under Strict TDD.
+- [x] `GET /workout-sessions/exercises/records` returns one entry per exercise with logged history: `exerciseId`, `exerciseName`, `maxWeightGrams`, `sessionId`, `sessionDate`, `routineId`, `routineName`.
+- [x] The reported `maxWeightGrams` is the single highest `actualWeightGrams` ever logged for that exercise by the user.
+- [x] Ties on max weight resolve to the earliest `sessionDate`, deterministically.
+- [x] An exercise with zero logged history is absent from the response; a user with no history gets `[]` + 200 (never a 404, never a null entry).
+- [x] Records resolved in a fixed number of queries (no N+1, no per-exercise loop), verified in tests.
+- [x] Unit + e2e suites green under Strict TDD.
