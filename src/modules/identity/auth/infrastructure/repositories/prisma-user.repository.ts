@@ -51,6 +51,23 @@ export class PrismaUserRepository implements UserRepositoryPort {
     }
   }
 
+  async findById(id: string): Promise<UserEntity | null> {
+    const record = await this.prisma.user.findUnique({ where: { id } });
+    return record ? this.toEntity(record) : null;
+  }
+
+  async update(entity: UserEntity): Promise<UserEntity> {
+    const record = await this.prisma.user.update({
+      where: { id: entity.id },
+      data: {
+        name: entity.name,
+        birthDate: entity.birthDate ?? undefined,
+      },
+    });
+
+    return this.toEntity(record);
+  }
+
   private isUniqueConstraintViolation(error: unknown): boolean {
     return (
       typeof error === 'object' &&

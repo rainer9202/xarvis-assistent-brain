@@ -18,6 +18,7 @@ describe('PrismaUserRepository', () => {
     user: {
       findUnique: jest.Mock;
       create: jest.Mock;
+      update: jest.Mock;
     };
   };
 
@@ -39,6 +40,7 @@ describe('PrismaUserRepository', () => {
       user: {
         findUnique: jest.fn(),
         create: jest.fn(),
+        update: jest.fn(),
       },
     };
 
@@ -138,6 +140,57 @@ describe('PrismaUserRepository', () => {
       await expect(repository.create(entity)).rejects.toThrow(
         'connection refused',
       );
+    });
+  });
+
+  describe('findById', () => {
+    it('returns the mapped entity when found', async () => {
+      prisma.user.findUnique.mockResolvedValue(record);
+
+      const result = await repository.findById('user-1');
+
+      expect(prisma.user.findUnique).toHaveBeenCalledWith({
+        where: { id: 'user-1' },
+      });
+      expect(result).toBeInstanceOf(UserEntity);
+      expect(result?.id).toBe('user-1');
+    });
+
+    it('returns null when not found', async () => {
+      prisma.user.findUnique.mockResolvedValue(null);
+
+      const result = await repository.findById('missing');
+
+      expect(result).toBeNull();
+    });
+  });
+
+  describe('update', () => {
+    it('updates only name and birthDate and returns the mapped entity', async () => {
+      const entity = new UserEntity({
+        id: 'user-1',
+        name: 'Jane Updated',
+        email: 'jane@example.com',
+        password: 'hashed-password',
+        birthDate: new Date('1991-06-21T00:00:00Z'),
+      });
+      prisma.user.update.mockResolvedValue({
+        ...record,
+        name: 'Jane Updated',
+        birthDate: new Date('1991-06-21T00:00:00Z'),
+      });
+
+      const result = await repository.update(entity);
+
+      expect(prisma.user.update).toHaveBeenCalledWith({
+        where: { id: 'user-1' },
+        data: {
+          name: 'Jane Updated',
+          birthDate: new Date('1991-06-21T00:00:00Z'),
+        },
+      });
+      expect(result).toBeInstanceOf(UserEntity);
+      expect(result.name).toBe('Jane Updated');
     });
   });
 });
