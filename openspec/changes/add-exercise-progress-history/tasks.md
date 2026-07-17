@@ -36,8 +36,8 @@ Delivery: no PRs — work lands as conventional work-unit commits pushed directl
 
 ## Phase 2: Application (Use Case)
 
-- [ ] 2.1 RED: write `application/use-cases/get-exercise-progress.use-case.spec.ts` — (a) logged-across-sessions: `getExerciseById` resolves, entries mapped and returned ordered asc; (b) visible-but-never-logged: `getExerciseById` resolves, `findLoggedEntriesForExercise` returns `[]` → use case returns `[]`; (c) `getExerciseById` throws `NotFoundException` → propagates, `findLoggedEntriesForExercise` is NOT called — ADR-3
-- [ ] 2.2 GREEN: create `GetExerciseProgressUseCase` (`application/use-cases/get-exercise-progress.use-case.ts`) — constructor-injects `GetExerciseByIdUseCase` and `WORKOUT_SESSION_EXERCISE_REPOSITORY`; `execute(exerciseId, userId)` calls `getExerciseById.execute(exerciseId, userId)` first (gate), then `repository.findLoggedEntriesForExercise(exerciseId, userId)`, mapping to `ExerciseProgressEntry[]` — ADR-6
+- [x] 2.1 RED: write `application/use-cases/get-exercise-progress.use-case.spec.ts` — (a) logged-across-sessions: `getExerciseById` resolves, entries mapped and returned ordered asc; (b) visible-but-never-logged: `getExerciseById` resolves, `findLoggedEntriesForExercise` returns `[]` → use case returns `[]`; (c) `getExerciseById` throws `NotFoundException` → propagates, `findLoggedEntriesForExercise` is NOT called — ADR-3
+- [x] 2.2 GREEN: create `GetExerciseProgressUseCase` (`application/use-cases/get-exercise-progress.use-case.ts`) — constructor-injects `GetExerciseByIdUseCase` and `WORKOUT_SESSION_EXERCISE_REPOSITORY`; `execute(exerciseId, userId)` calls `getExerciseById.execute(exerciseId, userId)` first (gate), then `repository.findLoggedEntriesForExercise(exerciseId, userId)`, mapping to `ExerciseProgressEntry[]` — ADR-6
 
 ## Phase 3: Infrastructure (Controller + Wiring) + e2e Verification
 
