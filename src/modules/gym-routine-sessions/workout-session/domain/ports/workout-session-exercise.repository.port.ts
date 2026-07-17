@@ -14,6 +14,19 @@ export type LoggedExerciseEntry = {
   actualWeightGrams: number;
 };
 
+// One max-weight-per-exercise candidate row, as resolved by the two-query
+// findPersonalRecords aggregation (design.md ADR-2/ADR-4). Ties on max
+// weight are included here — the use case reduces to the earliest session.
+export type PersonalRecordEntry = {
+  exerciseId: string;
+  exerciseName: string;
+  maxWeightGrams: number;
+  sessionId: string;
+  sessionDate: Date;
+  routineId: string;
+  routineName: string;
+};
+
 // A genuinely independent repository, unlike RoutineExercise which has no
 // port at all — WorkoutSessionExercise has its own CRUD endpoints (see
 // AGENTS.md "cada ejercicio por separado" design decision).
@@ -38,6 +51,11 @@ export interface WorkoutSessionExerciseRepositoryPort {
     exerciseId: string,
     userId: string,
   ): Promise<LoggedExerciseEntry[]>;
+  // All-exercises max-weight personal record aggregation, scoped via the
+  // parent WorkoutSession.userId (same ownership shape as above). Returns
+  // candidate rows (ties included, ordered earliest-date-first) — the use
+  // case reduces to one entry per exerciseId (design.md ADR-2/ADR-3).
+  findPersonalRecords(userId: string): Promise<PersonalRecordEntry[]>;
 }
 
 export const WORKOUT_SESSION_EXERCISE_REPOSITORY = Symbol(
