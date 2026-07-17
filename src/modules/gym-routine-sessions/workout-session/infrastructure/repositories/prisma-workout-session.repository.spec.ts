@@ -49,15 +49,44 @@ describe('PrismaWorkoutSessionRepository', () => {
 
   describe('findAll', () => {
     it('orders by date desc (most recent first)', async () => {
-      prisma.workoutSession.findMany.mockResolvedValue([record]);
+      prisma.workoutSession.findMany.mockResolvedValue([
+        { ...record, _count: { exercises: 0 } },
+      ]);
 
       const result = await repository.findAll('user-1');
 
       expect(prisma.workoutSession.findMany).toHaveBeenCalledWith({
         where: { userId: 'user-1' },
         orderBy: { date: 'desc' },
+        include: { _count: { select: { exercises: true } } },
       });
-      expect(result[0]).toBeInstanceOf(WorkoutSessionEntity);
+      expect(result[0].session).toBeInstanceOf(WorkoutSessionEntity);
+    });
+
+    it('maps _count.exercises to loggedExerciseCount per session', async () => {
+      prisma.workoutSession.findMany.mockResolvedValue([
+        { ...record, id: 'session-1', _count: { exercises: 2 } },
+        { ...record, id: 'session-2', _count: { exercises: 0 } },
+      ]);
+
+      const result = await repository.findAll('user-1');
+
+      expect(result[0].session.id).toBe('session-1');
+      expect(result[0].loggedExerciseCount).toBe(2);
+      expect(result[1].session.id).toBe('session-2');
+      expect(result[1].loggedExerciseCount).toBe(0);
+    });
+
+    it('issues a single findMany call regardless of result size (no per-session N+1)', async () => {
+      prisma.workoutSession.findMany.mockResolvedValue([
+        { ...record, id: 'session-1', _count: { exercises: 1 } },
+        { ...record, id: 'session-2', _count: { exercises: 3 } },
+        { ...record, id: 'session-3', _count: { exercises: 0 } },
+      ]);
+
+      await repository.findAll('user-1');
+
+      expect(prisma.workoutSession.findMany).toHaveBeenCalledTimes(1);
     });
   });
 

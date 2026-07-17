@@ -6,8 +6,13 @@ export type WorkoutSessionWithExercises = {
   exercises: WorkoutSessionExerciseEntity[];
 };
 
+export type WorkoutSessionWithLoggedCount = {
+  session: WorkoutSessionEntity;
+  loggedExerciseCount: number;
+};
+
 export interface WorkoutSessionRepositoryPort {
-  findAll(userId: string): Promise<WorkoutSessionEntity[]>;
+  findAll(userId: string): Promise<WorkoutSessionWithLoggedCount[]>;
   findById(id: string, userId: string): Promise<WorkoutSessionEntity | null>;
   findByIdWithExercises(
     id: string,

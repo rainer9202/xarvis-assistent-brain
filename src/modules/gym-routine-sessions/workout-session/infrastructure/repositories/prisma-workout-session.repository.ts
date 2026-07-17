@@ -5,6 +5,7 @@ import { WorkoutSessionExerciseEntity } from '../../domain/entities/workout-sess
 import type {
   WorkoutSessionRepositoryPort,
   WorkoutSessionWithExercises,
+  WorkoutSessionWithLoggedCount,
 } from '../../domain/ports/workout-session.repository.port';
 import {
   WorkoutSessionModel,
@@ -15,12 +16,16 @@ import {
 export class PrismaWorkoutSessionRepository implements WorkoutSessionRepositoryPort {
   constructor(private readonly prisma: PrismaService) {}
 
-  async findAll(userId: string): Promise<WorkoutSessionEntity[]> {
+  async findAll(userId: string): Promise<WorkoutSessionWithLoggedCount[]> {
     const records = await this.prisma.workoutSession.findMany({
       where: { userId },
       orderBy: { date: 'desc' },
+      include: { _count: { select: { exercises: true } } },
     });
-    return records.map((r) => this.toEntity(r));
+    return records.map((r) => ({
+      session: this.toEntity(r),
+      loggedExerciseCount: r._count.exercises,
+    }));
   }
 
   async findById(
