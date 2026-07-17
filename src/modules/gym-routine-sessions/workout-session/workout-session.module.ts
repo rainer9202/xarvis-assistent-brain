@@ -9,10 +9,12 @@ import { GetWorkoutSessionByIdUseCase } from './application/use-cases/get-workou
 import { CreateWorkoutSessionExerciseUseCase } from './application/use-cases/create-workout-session-exercise.use-case';
 import { UpdateWorkoutSessionExerciseUseCase } from './application/use-cases/update-workout-session-exercise.use-case';
 import { DeleteWorkoutSessionExerciseUseCase } from './application/use-cases/delete-workout-session-exercise.use-case';
+import { GetExerciseProgressUseCase } from './application/use-cases/get-exercise-progress.use-case';
 import { WORKOUT_SESSION_REPOSITORY } from './domain/ports/workout-session.repository.port';
 import { WORKOUT_SESSION_EXERCISE_REPOSITORY } from './domain/ports/workout-session-exercise.repository.port';
 import { WorkoutSessionController } from './infrastructure/controllers/workout-session.controller';
 import { WorkoutSessionExerciseController } from './infrastructure/controllers/workout-session-exercise.controller';
+import { ExerciseProgressController } from './infrastructure/controllers/exercise-progress.controller';
 import { PrismaWorkoutSessionRepository } from './infrastructure/repositories/prisma-workout-session.repository';
 import { PrismaWorkoutSessionExerciseRepository } from './infrastructure/repositories/prisma-workout-session-exercise.repository';
 
@@ -22,7 +24,11 @@ import { PrismaWorkoutSessionExerciseRepository } from './infrastructure/reposit
 // independent repository/use-cases/controller.
 @Module({
   imports: [RoutineModule, ExerciseModule],
-  controllers: [WorkoutSessionController, WorkoutSessionExerciseController],
+  controllers: [
+    WorkoutSessionController,
+    WorkoutSessionExerciseController,
+    ExerciseProgressController,
+  ],
   providers: [
     {
       provide: WORKOUT_SESSION_REPOSITORY,
@@ -40,6 +46,7 @@ import { PrismaWorkoutSessionExerciseRepository } from './infrastructure/reposit
     CreateWorkoutSessionExerciseUseCase,
     UpdateWorkoutSessionExerciseUseCase,
     DeleteWorkoutSessionExerciseUseCase,
+    GetExerciseProgressUseCase,
   ],
 })
 export class WorkoutSessionModule {}

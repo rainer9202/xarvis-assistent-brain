@@ -41,15 +41,15 @@ Delivery: no PRs — work lands as conventional work-unit commits pushed directl
 
 ## Phase 3: Infrastructure (Controller + Wiring) + e2e Verification
 
-- [ ] 3.1 Create `ExerciseProgressController` (`infrastructure/controllers/exercise-progress.controller.ts`) — `@Controller('workout-sessions')`, `@Get('exercises/:exerciseId/progress')` handler calling `GetExerciseProgressUseCase.execute` with `@Param('exerciseId')` and `@CurrentUser()` id; returns `{ message, data }` — ADR-1
-- [ ] 3.2 Register `GetExerciseProgressUseCase` provider and `ExerciseProgressController` in `workout-session.module.ts` (`imports: [ExerciseModule]` already present, no change needed there)
-- [ ] 3.3 In `test/gym-routine-sessions/workout-session.e2e-spec.ts` (or exercise-progress-specific e2e file), add: log one exercise across 2+ sessions on different dates → `GET /workout-sessions/exercises/:exerciseId/progress` → 200, `data` ordered by `sessionDate` asc, each entry has the six required fields matching logged rows (spec scenario "Exercise logged across multiple sessions")
-- [ ] 3.4 Add: visible exercise (global catalog or own custom) never logged → 200, `data: []` (spec scenario "Exercise visible but never logged")
-- [ ] 3.5 Add: nonexistent `exerciseId` → 404 (spec scenario "Exercise does not exist")
-- [ ] 3.6 Add: another user's custom `exerciseId` → 404, response body shape indistinguishable from the nonexistent-id case (spec scenario "Exercise belongs to another user's custom exercise")
+- [x] 3.1 Create `ExerciseProgressController` (`infrastructure/controllers/exercise-progress.controller.ts`) — `@Controller('workout-sessions')`, `@Get('exercises/:exerciseId/progress')` handler calling `GetExerciseProgressUseCase.execute` with `@Param('exerciseId')` and `@CurrentUser()` id; returns `{ message, data }` — ADR-1
+- [x] 3.2 Register `GetExerciseProgressUseCase` provider and `ExerciseProgressController` in `workout-session.module.ts` (`imports: [ExerciseModule]` already present, no change needed there)
+- [x] 3.3 In `test/gym-routine-sessions/workout-session.e2e-spec.ts` (or exercise-progress-specific e2e file), add: log one exercise across 2+ sessions on different dates → `GET /workout-sessions/exercises/:exerciseId/progress` → 200, `data` ordered by `sessionDate` asc, each entry has the six required fields matching logged rows (spec scenario "Exercise logged across multiple sessions")
+- [x] 3.4 Add: visible exercise (global catalog or own custom) never logged → 200, `data: []` (spec scenario "Exercise visible but never logged")
+- [x] 3.5 Add: nonexistent `exerciseId` → 404 (spec scenario "Exercise does not exist")
+- [x] 3.6 Add: another user's custom `exerciseId` → 404, response body shape indistinguishable from the nonexistent-id case (spec scenario "Exercise belongs to another user's custom exercise")
 
 ## Phase 4: Verification Commands
 
-- [ ] 4.1 Run `pnpm typecheck` and `pnpm lint` — both clean
-- [ ] 4.2 Run `pnpm test` (unit) — all suites pass, including new `prisma-workout-session-exercise.repository.spec.ts` and `get-exercise-progress.use-case.spec.ts` cases
-- [ ] 4.3 Run `pnpm test:e2e` against the docker-compose `db` service — all 4 new Phase 3 scenarios pass
+- [x] 4.1 Run `pnpm typecheck` and `pnpm lint` — both clean
+- [x] 4.2 Run `pnpm test` (unit) — all suites pass, including new `prisma-workout-session-exercise.repository.spec.ts` and `get-exercise-progress.use-case.spec.ts` cases
+- [x] 4.3 Run `pnpm test:e2e` against the docker-compose `db` service — all 4 new Phase 3 scenarios pass

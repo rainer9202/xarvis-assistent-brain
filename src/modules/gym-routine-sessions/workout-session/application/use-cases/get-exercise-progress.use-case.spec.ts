@@ -53,10 +53,7 @@ describe('GetExerciseProgressUseCase', () => {
     const result = await useCase.execute('ex-1', 'user-1');
 
     expect(getExerciseByIdExecute).toHaveBeenCalledWith('ex-1', 'user-1');
-    expect(findLoggedEntriesForExercise).toHaveBeenCalledWith(
-      'ex-1',
-      'user-1',
-    );
+    expect(findLoggedEntriesForExercise).toHaveBeenCalledWith('ex-1', 'user-1');
     expect(result).toEqual([
       {
         sessionId: 'session-1',

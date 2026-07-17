@@ -471,4 +471,178 @@ describe('WorkoutSession (e2e)', () => {
       .set('Authorization', `Bearer ${otherToken}`)
       .expect(404);
   });
+
+  describe('GET /workout-sessions/exercises/:exerciseId/progress', () => {
+    it('returns logged entries ordered by sessionDate ascending, with all six fields, resolved without a per-session query (spec scenario "Exercise logged across multiple sessions")', async () => {
+      const progressExerciseRes = await request(app.getHttpServer())
+        .post('/exercises')
+        .set('Authorization', `Bearer ${token}`)
+        .send({ name: `Progress Exercise-${Date.now()}` })
+        .expect(201);
+      const progressExerciseId = progressExerciseRes.body.data.id as string;
+      exerciseIds.push(progressExerciseId);
+
+      const progressRoutineRes = await request(app.getHttpServer())
+        .post('/routines')
+        .set('Authorization', `Bearer ${token}`)
+        .send({
+          name: `Progress Routine-${Date.now()}`,
+          exercises: [
+            {
+              exerciseId: progressExerciseId,
+              targetSets: 4,
+              targetReps: 10,
+              targetWeightGrams: 20000,
+            },
+          ],
+        })
+        .expect(201);
+      const progressRoutineId = progressRoutineRes.body.data.id as string;
+      routineIds.push(progressRoutineId);
+
+      const olderSessionRes = await request(app.getHttpServer())
+        .post('/workout-sessions')
+        .set('Authorization', `Bearer ${token}`)
+        .send({
+          routineId: progressRoutineId,
+          date: new Date('2024-01-01T00:00:00Z').toISOString(),
+        })
+        .expect(201);
+      const olderSessionId = olderSessionRes.body.data.id as string;
+      sessionIds.push(olderSessionId);
+
+      const newerSessionRes = await request(app.getHttpServer())
+        .post('/workout-sessions')
+        .set('Authorization', `Bearer ${token}`)
+        .send({
+          routineId: progressRoutineId,
+          date: new Date('2024-03-01T00:00:00Z').toISOString(),
+        })
+        .expect(201);
+      const newerSessionId = newerSessionRes.body.data.id as string;
+      sessionIds.push(newerSessionId);
+
+      const newestSessionRes = await request(app.getHttpServer())
+        .post('/workout-sessions')
+        .set('Authorization', `Bearer ${token}`)
+        .send({
+          routineId: progressRoutineId,
+          date: new Date('2024-06-01T00:00:00Z').toISOString(),
+        })
+        .expect(201);
+      const newestSessionId = newestSessionRes.body.data.id as string;
+      sessionIds.push(newestSessionId);
+
+      await request(app.getHttpServer())
+        .post('/workout-session-exercises')
+        .set('Authorization', `Bearer ${token}`)
+        .send({
+          workoutSessionId: newerSessionId,
+          exerciseId: progressExerciseId,
+          actualSets: 4,
+          actualReps: 10,
+          actualWeightGrams: 20000,
+        })
+        .expect(201);
+      await request(app.getHttpServer())
+        .post('/workout-session-exercises')
+        .set('Authorization', `Bearer ${token}`)
+        .send({
+          workoutSessionId: olderSessionId,
+          exerciseId: progressExerciseId,
+          actualSets: 3,
+          actualReps: 12,
+          actualWeightGrams: 15000,
+        })
+        .expect(201);
+      await request(app.getHttpServer())
+        .post('/workout-session-exercises')
+        .set('Authorization', `Bearer ${token}`)
+        .send({
+          workoutSessionId: newestSessionId,
+          exerciseId: progressExerciseId,
+          actualSets: 5,
+          actualReps: 8,
+          actualWeightGrams: 22500,
+        })
+        .expect(201);
+
+      const progressRes = await request(app.getHttpServer())
+        .get(`/workout-sessions/exercises/${progressExerciseId}/progress`)
+        .set('Authorization', `Bearer ${token}`)
+        .expect(200);
+
+      expect(progressRes.body.data).toHaveLength(3);
+      expect(
+        (progressRes.body.data as Array<{ sessionId: string }>).map(
+          (item) => item.sessionId,
+        ),
+      ).toEqual([olderSessionId, newerSessionId, newestSessionId]);
+      expect(progressRes.body.data[0]).toMatchObject({
+        sessionId: olderSessionId,
+        routineId: progressRoutineId,
+        routineName: expect.any(String),
+        actualSets: 3,
+        actualReps: 12,
+        actualWeightGrams: 15000,
+      });
+    });
+
+    it('returns 200 with an empty array for a visible exercise that was never logged (spec scenario "Exercise visible but never logged")', async () => {
+      const neverLoggedRes = await request(app.getHttpServer())
+        .post('/exercises')
+        .set('Authorization', `Bearer ${token}`)
+        .send({ name: `Never Logged Exercise-${Date.now()}` })
+        .expect(201);
+      const neverLoggedExerciseId = neverLoggedRes.body.data.id as string;
+      exerciseIds.push(neverLoggedExerciseId);
+
+      const progressRes = await request(app.getHttpServer())
+        .get(`/workout-sessions/exercises/${neverLoggedExerciseId}/progress`)
+        .set('Authorization', `Bearer ${token}`)
+        .expect(200);
+
+      expect(progressRes.body.data).toEqual([]);
+    });
+
+    it('returns 404 for a nonexistent exerciseId (spec scenario "Exercise does not exist")', async () => {
+      await request(app.getHttpServer())
+        .get(
+          '/workout-sessions/exercises/00000000-0000-0000-0000-000000000000/progress',
+        )
+        .set('Authorization', `Bearer ${token}`)
+        .expect(404);
+    });
+
+    it("returns 404 for another user's custom exerciseId, indistinguishable from the nonexistent-id case (spec scenario \"Exercise belongs to another user's custom exercise\")", async () => {
+      const { token: otherToken } = await createAuthenticatedUser(app);
+
+      const otherExerciseRes = await request(app.getHttpServer())
+        .post('/exercises')
+        .set('Authorization', `Bearer ${otherToken}`)
+        .send({ name: `Other User Exercise-${Date.now()}` })
+        .expect(201);
+      const otherExerciseId = otherExerciseRes.body.data.id as string;
+      exerciseIds.push(otherExerciseId);
+
+      const nonexistentRes = await request(app.getHttpServer())
+        .get(
+          '/workout-sessions/exercises/00000000-0000-0000-0000-000000000000/progress',
+        )
+        .set('Authorization', `Bearer ${token}`)
+        .expect(404);
+
+      const otherOwnedRes = await request(app.getHttpServer())
+        .get(`/workout-sessions/exercises/${otherExerciseId}/progress`)
+        .set('Authorization', `Bearer ${token}`)
+        .expect(404);
+
+      expect(Object.keys(otherOwnedRes.body).sort()).toEqual(
+        Object.keys(nonexistentRes.body).sort(),
+      );
+      expect(otherOwnedRes.body.statusCode).toEqual(
+        nonexistentRes.body.statusCode,
+      );
+    });
+  });
 });
