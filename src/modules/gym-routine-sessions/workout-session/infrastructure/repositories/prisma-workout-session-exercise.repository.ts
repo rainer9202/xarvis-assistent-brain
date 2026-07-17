@@ -1,7 +1,10 @@
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from '@config/database/prisma.service';
 import { WorkoutSessionExerciseEntity } from '../../domain/entities/workout-session-exercise.entity';
-import type { WorkoutSessionExerciseRepositoryPort } from '../../domain/ports/workout-session-exercise.repository.port';
+import type {
+  LoggedExerciseEntry,
+  WorkoutSessionExerciseRepositoryPort,
+} from '../../domain/ports/workout-session-exercise.repository.port';
 import { WorkoutSessionExerciseModel } from '@config/database/generated/prisma/models.js';
 
 @Injectable()
@@ -51,6 +54,37 @@ export class PrismaWorkoutSessionExerciseRepository implements WorkoutSessionExe
     await this.prisma.workoutSessionExercise.delete({
       where: { id: entity.id! },
     });
+  }
+
+  async findLoggedEntriesForExercise(
+    exerciseId: string,
+    userId: string,
+  ): Promise<LoggedExerciseEntry[]> {
+    // Single joined query — routine name comes free from the existing
+    // WorkoutSession.routine relation, no separate lookup (design.md ADR-4).
+    const rows = await this.prisma.workoutSessionExercise.findMany({
+      where: { exerciseId, workoutSession: { userId } },
+      include: {
+        workoutSession: {
+          select: {
+            id: true,
+            date: true,
+            routine: { select: { id: true, name: true } },
+          },
+        },
+      },
+      orderBy: { workoutSession: { date: 'asc' } },
+    });
+
+    return rows.map((row) => ({
+      sessionId: row.workoutSession.id,
+      sessionDate: row.workoutSession.date,
+      routineId: row.workoutSession.routine.id,
+      routineName: row.workoutSession.routine.name,
+      actualSets: row.actualSets,
+      actualReps: row.actualReps,
+      actualWeightGrams: row.actualWeightGrams,
+    }));
   }
 
   private toEntity(
