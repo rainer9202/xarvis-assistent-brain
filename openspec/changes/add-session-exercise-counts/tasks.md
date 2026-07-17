@@ -51,15 +51,15 @@ are unchanged (design ADR-4) — no infrastructure-layer commit needed.
 
 ## Phase 3: e2e Verification (real docker-compose Postgres)
 
-- [ ] 3.1 In `test/gym-routine-sessions/workout-session.e2e-spec.ts`, add: create
+- [x] 3.1 In `test/gym-routine-sessions/workout-session.e2e-spec.ts`, add: create
       a routine with 4 exercises → create a session → log 2 of them →
       `GET /workout-sessions` → asserts `loggedExerciseCount: 2`,
       `totalExerciseCount: 4`, and all other existing fields unchanged (spec
       scenario 1)
-- [ ] 3.2 Add: create a session with 0 logged exercises whose routine has 5 →
+- [x] 3.2 Add: create a session with 0 logged exercises whose routine has 5 →
       `GET /workout-sessions` → asserts `loggedExerciseCount: 0`,
       `totalExerciseCount: 5` (spec scenario 2)
-- [ ] 3.3 Add: log 6 exercises against a session while its routine has 6, then
+- [x] 3.3 Add: log 6 exercises against a session while its routine has 6, then
       full-replace-edit the routine down to 3 exercises →
       `GET /workout-sessions` → asserts `loggedExerciseCount: 6`,
       `totalExerciseCount: 3`, response is 200 (no clamping, no error) — spec
