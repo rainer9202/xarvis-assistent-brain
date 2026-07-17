@@ -1,0 +1,109 @@
+project: xarvis-assistent-brain
+artifact_store: openspec
+persistence_mode: file-based
+
+tech_stack:
+  runtime: Node.js
+  framework: NestJS v11
+  language: TypeScript 5.7
+  database: PostgreSQL with Prisma 7 ORM
+  package_manager: pnpm
+  transpiler: '@swc/core'
+
+architecture:
+  pattern: Hexagonal (Ports & Adapters)
+  module_structure: "src/modules/<domain>/<feature>/{domain,application,infrastructure}"
+  domains:
+    - identity (auth)
+    - money-manager (account, category, movement, report)
+    - gym-routine-sessions (workout features)
+  conventions:
+    - Entity pattern with BaseEntity
+    - Repository ports with Symbol tokens (DI)
+    - Use-case per file pattern
+    - Monetary amounts stored as integer cents (Decimal in DB)
+    - Code+label enum pattern for ACCOUNT_TYPES, MOVEMENT_TYPES
+    - Ownership scoping by userId
+    - Response envelope with statusCode, message, data
+    - Create/Update/Delete return { id } only
+    - Pagination opt-in (page/limit) with backward compatibility
+
+testing:
+  framework: Jest v30
+  unit_tests:
+    command: "pnpm test"
+    watch: "pnpm test:watch"
+    coverage: "pnpm test:cov"
+    config: "jest config in package.json"
+    test_environment: node
+    test_pattern: "**/*.spec.ts"
+    transform: ts-jest
+    module_mapper: true (path aliases configured)
+  e2e_tests:
+    command: "pnpm test:e2e"
+    config: "test/jest-e2e.json"
+    transform: '@swc/jest'
+    setup_file: "test/setup-env.ts"
+    requirements:
+      - "docker-compose db service running (postgres on localhost:5432)"
+      - "npx prisma migrate deploy"
+      - "pnpm db:seed"
+    harness: createAuthenticatedUser(app) from test/utils/test-app.ts
+    authentication: "Authorization: Bearer <access-token>" header required
+  coverage_collection: true
+  coverage_directory: ./coverage
+  strict_tdd: true
+  test_runner_available: true
+
+build_tools:
+  typecheck: "pnpm typecheck (tsc --noEmit -p tsconfig.build.json)"
+  build: "pnpm build (typecheck + nest build + tsc-alias)"
+  lint: "pnpm lint (eslint with auto-fix)"
+  format: "pnpm format (prettier)"
+  migration: "pnpm db:migrate (prisma migrate dev)"
+  seed: "pnpm db:seed (tsx prisma/seed.ts)"
+
+tooling:
+  linter: ESLint 9 with typescript-eslint
+  formatter: Prettier 3.4.2
+  auth: "@nestjs/jwt + argon2 + rate-limiting @nestjs/throttler"
+  orm: Prisma 7 with @prisma/adapter-pg
+  validation: class-validator + class-transformer
+  api_docs: "@nestjs/swagger"
+
+key_constraints:
+  - "isolatedModules: true (interfaces used in decorated constructors must be import type)"
+  - "moduleResolution: nodenext (all local imports need .js extension outside src/)"
+  - "strict null checks and type safety enabled"
+  - "No soft deletes (physical row removal only)"
+  - "Data ownership via userId scoping"
+  - "Symmetric validation in Create and Update"
+  - "No Passport/Better-Auth (hand-rolled JWT)"
+
+persistence:
+  database: PostgreSQL
+  orm: Prisma 7
+  client_generation: "src/infrastructure/config/database/generated/prisma/"
+  seed: prisma/seed.ts (idempotent via upsert, one default user + 15 categories)
+  migrations: "prisma migrate dev" for development, "prisma migrate deploy" for production
+
+ci_cd:
+  deployment: Dokploy (runtime stage of Dockerfile)
+  container_orchestration: docker-compose (local dev only)
+  database_service: Dokploy-managed Postgres (production), docker-compose Postgres (local)
+
+review_priorities:
+  - Dependency rule violations
+  - Missing import type on interfaces
+  - Entities returned directly instead of mapped response types
+  - Controllers bypassing use-case layer
+  - Missing repository Symbol tokens
+  - Missing .js extensions on local imports
+  - Prisma client imported incorrectly
+  - Modules exporting repository tokens instead of use cases
+  - Create/Update/Delete returning more than { id }
+  - Validation rule missing in Update
+  - Soft deletes or missing referential guards
+  - Duplicated enums instead of single source
+  - Missing userId ownership filters
+  - Falsy checks on optional numeric fields (should use == null)
