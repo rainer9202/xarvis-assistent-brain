@@ -11,6 +11,8 @@ export type GetAllWorkoutSessionsResponse = {
   date: Date;
   finishedAt?: Date | null;
   createdAt: Date;
+  loggedExerciseCount: number;
+  totalExerciseCount: number;
 };
 
 @Injectable()
@@ -25,20 +27,35 @@ export class GetAllWorkoutSessionsUseCase {
     try {
       // Fetched once here (not per session) to avoid an N+1 query — same
       // batched-Map pattern as GetAllMovementsUseCase/GetRoutineByIdUseCase.
-      const [entities, routines] = await Promise.all([
+      const [items, routines] = await Promise.all([
         this.repository.findAll(userId),
         this.getAllRoutines.execute(userId),
       ]);
-      const routineNameById = new Map(routines.map((r) => [r.id, r.name]));
+      const routineById = new Map(
+        routines.map((r) => [
+          r.id,
+          { name: r.name, exerciseCount: r.exerciseCount },
+        ]),
+      );
 
-      return entities.map((item) => ({
-        id: item.id!,
-        routineId: item.routineId,
-        routineName: routineNameById.get(item.routineId) ?? item.routineId,
-        date: item.date,
-        finishedAt: item.finishedAt,
-        createdAt: item.createdAt!,
-      }));
+      return items.map(({ session, loggedExerciseCount }) => {
+        const routine = routineById.get(session.routineId);
+        return {
+          id: session.id!,
+          routineId: session.routineId,
+          routineName: routine?.name ?? session.routineId,
+          date: session.date,
+          finishedAt: session.finishedAt,
+          createdAt: session.createdAt!,
+          loggedExerciseCount,
+          // Routine is guaranteed present whenever any session references it
+          // (WorkoutSession.routineId is onDelete: Restrict and
+          // DeleteRoutineUseCase blocks deletion while referenced — ADR-2),
+          // but the fallback mirrors the existing routineName ?? defensive
+          // pattern above for the same defensive reason.
+          totalExerciseCount: routine?.exerciseCount ?? 0,
+        };
+      });
     } catch (error) {
       if (error instanceof DomainException) throw error;
       throw new Error(`Unexpected error fetching workout sessions: ${error}`);
