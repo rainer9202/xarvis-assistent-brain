@@ -54,4 +54,53 @@ describe('Auth rate limiting (e2e)', () => {
 
     expect(statuses).toContain(429);
   });
+
+  // design.md ADR-6: GET/PATCH /auth/me carry @SkipThrottle() specifically
+  // so they don't inherit AuthController's class-level 5-req/60s
+  // ThrottlerGuard, which exists only to deter sign-up/sign-in brute
+  // force. Without it, this suite (and any real profile screen polling on
+  // focus) would be throttle-fragile. The one-off sign-up call below uses
+  // its own simulated client IP (the two tests above already exhausted the
+  // shared-bucket real IP's /auth/sign-up quota) purely to get a token —
+  // the actual assertion (GET/PATCH /auth/me never 429s, even looped past
+  // the limit) reuses the shared real IP with no custom header, so a real
+  // 429 on a throttled route would already have fired if the exemption
+  // didn't hold.
+  it('/auth/me GET and PATCH are exempt from the 5-req/60s throttle', async () => {
+    const email = `rate-limit-me-${Date.now()}@example.com`;
+    createdEmails.push(email);
+    const signUpRes = await request(app.getHttpServer())
+      .post('/auth/sign-up')
+      .set('X-Forwarded-For', '203.0.113.201')
+      .send({
+        name: 'Throttle Exempt User',
+        email,
+        password: 'password123',
+        birthDate: '1990-05-20',
+      })
+      .expect(201);
+    const token = signUpRes.body.data.accessToken as string;
+
+    const attempts = 16;
+    const getStatuses: number[] = [];
+    const patchStatuses: number[] = [];
+
+    for (let i = 0; i < attempts; i++) {
+      const getRes = await request(app.getHttpServer())
+        .get('/auth/me')
+        .set('Authorization', `Bearer ${token}`);
+      getStatuses.push(getRes.status);
+
+      const patchRes = await request(app.getHttpServer())
+        .patch('/auth/me')
+        .set('Authorization', `Bearer ${token}`)
+        .send({ name: `Throttle Exempt User ${i}` });
+      patchStatuses.push(patchRes.status);
+    }
+
+    expect(getStatuses).not.toContain(429);
+    expect(patchStatuses).not.toContain(429);
+    expect(getStatuses.every((status) => status === 200)).toBe(true);
+    expect(patchStatuses.every((status) => status === 200)).toBe(true);
+  });
 });

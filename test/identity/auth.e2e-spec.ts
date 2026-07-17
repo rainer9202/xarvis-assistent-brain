@@ -40,7 +40,12 @@ describe('Auth (e2e)', () => {
     const signUpRes = await request(app.getHttpServer())
       .post('/auth/sign-up')
       .set('X-Forwarded-For', clientIp)
-      .send({ name: 'Auth E2E User', email, password: 'password123' })
+      .send({
+        name: 'Auth E2E User',
+        email,
+        password: 'password123',
+        birthDate: '1990-05-20',
+      })
       .expect(201);
 
     expect(signUpRes.body.data.id).toEqual(expect.any(String));
@@ -60,14 +65,24 @@ describe('Auth (e2e)', () => {
     const firstRes = await request(app.getHttpServer())
       .post('/auth/sign-up')
       .set('X-Forwarded-For', clientIp)
-      .send({ name: 'First User', email, password: 'password123' })
+      .send({
+        name: 'First User',
+        email,
+        password: 'password123',
+        birthDate: '1990-05-20',
+      })
       .expect(201);
     createdUserIds.push(firstRes.body.data.id);
 
     await request(app.getHttpServer())
       .post('/auth/sign-up')
       .set('X-Forwarded-For', clientIp)
-      .send({ name: 'Second User', email, password: 'password456' })
+      .send({
+        name: 'Second User',
+        email,
+        password: 'password456',
+        birthDate: '1990-05-20',
+      })
       .expect(409);
   });
 
@@ -86,11 +101,21 @@ describe('Auth (e2e)', () => {
       request(app.getHttpServer())
         .post('/auth/sign-up')
         .set('X-Forwarded-For', clientIp)
-        .send({ name: 'Concurrent User A', email, password: 'password123' }),
+        .send({
+          name: 'Concurrent User A',
+          email,
+          password: 'password123',
+          birthDate: '1990-05-20',
+        }),
       request(app.getHttpServer())
         .post('/auth/sign-up')
         .set('X-Forwarded-For', clientIp)
-        .send({ name: 'Concurrent User B', email, password: 'password456' }),
+        .send({
+          name: 'Concurrent User B',
+          email,
+          password: 'password456',
+          birthDate: '1990-05-20',
+        }),
     ]);
 
     const statuses = [firstRes.status, secondRes.status].sort();
@@ -107,7 +132,12 @@ describe('Auth (e2e)', () => {
     const signUpRes = await request(app.getHttpServer())
       .post('/auth/sign-up')
       .set('X-Forwarded-For', clientIp)
-      .send({ name: 'Sign In User', email, password: 'password123' })
+      .send({
+        name: 'Sign In User',
+        email,
+        password: 'password123',
+        birthDate: '1990-05-20',
+      })
       .expect(201);
     createdUserIds.push(signUpRes.body.data.id);
 
@@ -132,7 +162,12 @@ describe('Auth (e2e)', () => {
     const signUpRes = await request(app.getHttpServer())
       .post('/auth/sign-up')
       .set('X-Forwarded-For', clientIp)
-      .send({ name: 'Wrong Pass User', email, password: 'password123' })
+      .send({
+        name: 'Wrong Pass User',
+        email,
+        password: 'password123',
+        birthDate: '1990-05-20',
+      })
       .expect(201);
     createdUserIds.push(signUpRes.body.data.id);
 
@@ -271,5 +306,132 @@ describe('Auth (e2e)', () => {
       .get('/accounts')
       .set('Authorization', `Bearer ${expiredToken}`)
       .expect(401);
+  });
+
+  describe('GET/PATCH /auth/me', () => {
+    // Signs up directly (rather than via createAuthenticatedUser) so the
+    // birthDate is known up front — needed to pin the 'YYYY-MM-DD'
+    // date-format contract (design.md ADR-2) rather than asserting against
+    // a null value.
+    async function signUpProfileUser() {
+      const email = `auth-e2e-profile-${Date.now()}-${Math.random().toString(36).slice(2)}@example.com`;
+      const clientIp = nextTestClientIp();
+
+      const signUpRes = await request(app.getHttpServer())
+        .post('/auth/sign-up')
+        .set('X-Forwarded-For', clientIp)
+        .send({
+          name: 'Profile E2E User',
+          email,
+          password: 'password123',
+          birthDate: '1990-05-20',
+        })
+        .expect(201);
+      createdUserIds.push(signUpRes.body.data.id);
+
+      return {
+        token: signUpRes.body.data.accessToken as string,
+        userId: signUpRes.body.data.id as string,
+        email,
+      };
+    }
+
+    it('GET /auth/me returns 200 with the full profile matching the signed-up user', async () => {
+      const { token, userId, email } = await signUpProfileUser();
+
+      const res = await request(app.getHttpServer())
+        .get('/auth/me')
+        .set('Authorization', `Bearer ${token}`)
+        .expect(200);
+
+      expect(res.body.data).toEqual({
+        id: userId,
+        name: 'Profile E2E User',
+        email,
+        birthDate: '1990-05-20',
+      });
+    });
+
+    it('GET /auth/me with no token returns 401', async () => {
+      await request(app.getHttpServer()).get('/auth/me').expect(401);
+    });
+
+    it('PATCH /auth/me with only name updates name, leaves birthDate unchanged, returns the full profile', async () => {
+      const { token, userId, email } = await signUpProfileUser();
+
+      const res = await request(app.getHttpServer())
+        .patch('/auth/me')
+        .set('Authorization', `Bearer ${token}`)
+        .send({ name: 'Updated Name' })
+        .expect(200);
+
+      expect(res.body.data).toEqual({
+        id: userId,
+        name: 'Updated Name',
+        email,
+        birthDate: '1990-05-20',
+      });
+    });
+
+    it('PATCH /auth/me with only birthDate reflects the new date as YYYY-MM-DD', async () => {
+      const { token } = await signUpProfileUser();
+
+      const res = await request(app.getHttpServer())
+        .patch('/auth/me')
+        .set('Authorization', `Bearer ${token}`)
+        .send({ birthDate: '1995-01-15' })
+        .expect(200);
+
+      expect(res.body.data.birthDate).toBe('1995-01-15');
+      expect(res.body.data.name).toBe('Profile E2E User');
+    });
+
+    it('PATCH /auth/me with email/password in the body returns 200 (not 400) and leaves them unchanged (global whitelist strip, ADR-3)', async () => {
+      const { token, userId, email } = await signUpProfileUser();
+
+      const res = await request(app.getHttpServer())
+        .patch('/auth/me')
+        .set('Authorization', `Bearer ${token}`)
+        .send({
+          name: 'Still Updated',
+          email: 'someone-else@example.com',
+          password: 'a-new-password',
+        })
+        .expect(200);
+
+      // email/password are stripped by the global whitelist ValidationPipe
+      // before the DTO is even built — the response proves the original
+      // email is untouched, and a subsequent sign-in with the original
+      // password (below) proves the password was never touched either.
+      expect(res.body.data).toEqual({
+        id: userId,
+        name: 'Still Updated',
+        email,
+        birthDate: '1990-05-20',
+      });
+
+      await request(app.getHttpServer())
+        .post('/auth/sign-in')
+        .set('X-Forwarded-For', nextTestClientIp())
+        .send({ email, password: 'password123' })
+        .expect(200);
+    });
+
+    it('PATCH /auth/me with a full ISO-8601 datetime birthDate returns 400 (must be YYYY-MM-DD only)', async () => {
+      const { token } = await signUpProfileUser();
+
+      await request(app.getHttpServer())
+        .patch('/auth/me')
+        .set('Authorization', `Bearer ${token}`)
+        .send({ birthDate: '1995-05-20T23:30:00-05:00' })
+        .expect(400);
+    });
+
+    it('PATCH /auth/me with no token returns 401', async () => {
+      await request(app.getHttpServer())
+        .patch('/auth/me')
+        .send({ name: 'No Token User' })
+        .expect(401);
+    });
   });
 });
