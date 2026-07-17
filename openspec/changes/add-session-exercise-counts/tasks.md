@@ -68,9 +68,12 @@ are unchanged (design ADR-4) — no infrastructure-layer commit needed.
 
 ## Phase 4: Verification Commands
 
-- [ ] 4.1 Run `pnpm typecheck` and `pnpm lint` — both clean
-- [ ] 4.2 Run `pnpm test` (unit) — all tests pass, including new
-      `prisma-workout-session.repository.spec.ts` and
+- [x] 4.1 Run `pnpm typecheck` and `pnpm lint` — both clean (0 lint errors;
+      remaining lint warnings are pre-existing `no-unsafe-argument` noise in
+      unrelated e2e specs, not introduced by this change)
+- [x] 4.2 Run `pnpm test` (unit) — all 434 tests pass (73 suites), including
+      new `prisma-workout-session.repository.spec.ts` and
       `get-all-workout-sessions.use-case.spec.ts` cases
-- [ ] 4.3 Run `pnpm test:e2e` against the docker-compose `db` service — new
-      Phase 3 scenarios pass alongside the existing suite
+- [x] 4.3 Run `pnpm test:e2e` against a local Postgres (podman container,
+      docker CLI unavailable in this environment) — all 114 tests pass
+      (11 suites), including the 3 new Phase 3 scenarios

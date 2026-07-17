@@ -218,7 +218,12 @@ describe('WorkoutSession (e2e)', () => {
         .send({
           name: `Session Count Routine-${Date.now()}`,
           exercises: [
-            { exerciseId, targetSets: 4, targetReps: 10, targetWeightGrams: 20000 },
+            {
+              exerciseId,
+              targetSets: 4,
+              targetReps: 10,
+              targetWeightGrams: 20000,
+            },
             {
               exerciseId: secondExerciseId,
               targetSets: 4,
