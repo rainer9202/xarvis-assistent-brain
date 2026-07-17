@@ -4,6 +4,7 @@ import {
   IsEmail,
   IsNotEmpty,
   IsString,
+  Matches,
   MaxLength,
   MinLength,
 } from 'class-validator';
@@ -29,5 +30,8 @@ export class SignUpDto {
   @ApiProperty({ example: '1990-05-20' })
   @IsDateString()
   @IsNotEmpty()
+  @Matches(/^\d{4}-\d{2}-\d{2}$/, {
+    message: 'birthDate must be in YYYY-MM-DD format',
+  })
   birthDate: string;
 }

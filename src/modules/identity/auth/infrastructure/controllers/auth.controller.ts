@@ -5,12 +5,15 @@ import {
   HttpCode,
   HttpStatus,
   NotFoundException,
+  Patch,
   Post,
   UseGuards,
 } from '@nestjs/common';
 import { ApiCreatedResponse, ApiOkResponse, ApiTags } from '@nestjs/swagger';
-import { ThrottlerGuard } from '@nestjs/throttler';
+import { SkipThrottle, ThrottlerGuard } from '@nestjs/throttler';
 import { Public } from '@infra/decorators/public.decorator';
+import { CurrentUser } from '@infra/decorators/current-user.decorator';
+import type { AuthenticatedUser } from '@infra/decorators/current-user.decorator';
 import {
   SignUpCommand,
   SignUpUseCase,
@@ -20,8 +23,14 @@ import {
   SignInUseCase,
 } from '../../application/use-cases/sign-in.use-case';
 import { GetAllUsersUseCase } from '../../application/use-cases/get-all-users.use-case';
+import { GetProfileUseCase } from '../../application/use-cases/get-profile.use-case';
+import {
+  UpdateProfileCommand,
+  UpdateProfileUseCase,
+} from '../../application/use-cases/update-profile.use-case';
 import { SignUpDto } from '../dto/sign-up.dto';
 import { SignInDto } from '../dto/sign-in.dto';
+import { UpdateProfileDto } from '../dto/update-profile.dto';
 
 // ThrottlerGuard is applied only here (AuthModule scopes its own
 // ThrottlerModule.forRoot, see auth.module.ts) — 5 requests per 60s per IP
@@ -34,6 +43,8 @@ export class AuthController {
     private readonly signUp: SignUpUseCase,
     private readonly signIn: SignInUseCase,
     private readonly getAllUsers: GetAllUsersUseCase,
+    private readonly getProfile: GetProfileUseCase,
+    private readonly updateProfile: UpdateProfileUseCase,
   ) {}
 
   @Public()
@@ -57,6 +68,41 @@ export class AuthController {
       message: 'Signed in successfully',
       data: await this.signIn.execute(
         new SignInCommand(dto.email, dto.password),
+      ),
+    };
+  }
+
+  // No @Public() — the global JwtAuthGuard (APP_GUARD in app.module.ts)
+  // already protects this route by default, so a missing/expired token
+  // yields 401 with zero extra code (design.md ADR-5). @SkipThrottle() opts
+  // this handler out of the class-level ThrottlerGuard (5 req/60s), which is
+  // scoped for sign-up/sign-in brute-force protection, not profile reads
+  // (design.md ADR-6) — without it, a profile screen reading on focus could
+  // spuriously hit 429.
+  @SkipThrottle()
+  @Get('me')
+  @ApiOkResponse({ description: 'Authenticated user profile' })
+  async getMe(@CurrentUser() user: AuthenticatedUser) {
+    return {
+      message: 'The profile was found successfully',
+      data: await this.getProfile.execute(user.id),
+    };
+  }
+
+  // See getMe() above for the @SkipThrottle() / no-@Public() rationale
+  // (design.md ADR-5, ADR-6). Returns the FULL profile, not { id } — a
+  // documented exception, see UpdateProfileUseCase (design.md ADR-4).
+  @SkipThrottle()
+  @Patch('me')
+  @ApiOkResponse({ description: 'Profile updated' })
+  async updateMe(
+    @CurrentUser() user: AuthenticatedUser,
+    @Body() dto: UpdateProfileDto,
+  ) {
+    return {
+      message: 'The profile was updated successfully',
+      data: await this.updateProfile.execute(
+        new UpdateProfileCommand(user.id, dto.name, dto.birthDate),
       ),
     };
   }
