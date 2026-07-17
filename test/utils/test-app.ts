@@ -46,7 +46,12 @@ export async function createAuthenticatedUser(
 
   const res = await request(app.getHttpServer())
     .post('/auth/sign-up')
-    .send({ name: 'Test User', email, password: 'password123' })
+    .send({
+      name: 'Test User',
+      email,
+      password: 'password123',
+      birthDate: '1990-05-20',
+    })
     .expect(201);
 
   return { token: res.body.data.accessToken, userId: res.body.data.id };
