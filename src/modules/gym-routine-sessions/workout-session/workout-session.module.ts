@@ -10,11 +10,13 @@ import { CreateWorkoutSessionExerciseUseCase } from './application/use-cases/cre
 import { UpdateWorkoutSessionExerciseUseCase } from './application/use-cases/update-workout-session-exercise.use-case';
 import { DeleteWorkoutSessionExerciseUseCase } from './application/use-cases/delete-workout-session-exercise.use-case';
 import { GetExerciseProgressUseCase } from './application/use-cases/get-exercise-progress.use-case';
+import { GetPersonalRecordsUseCase } from './application/use-cases/get-personal-records.use-case';
 import { WORKOUT_SESSION_REPOSITORY } from './domain/ports/workout-session.repository.port';
 import { WORKOUT_SESSION_EXERCISE_REPOSITORY } from './domain/ports/workout-session-exercise.repository.port';
 import { WorkoutSessionController } from './infrastructure/controllers/workout-session.controller';
 import { WorkoutSessionExerciseController } from './infrastructure/controllers/workout-session-exercise.controller';
 import { ExerciseProgressController } from './infrastructure/controllers/exercise-progress.controller';
+import { ExercisePersonalRecordsController } from './infrastructure/controllers/exercise-personal-records.controller';
 import { PrismaWorkoutSessionRepository } from './infrastructure/repositories/prisma-workout-session.repository';
 import { PrismaWorkoutSessionExerciseRepository } from './infrastructure/repositories/prisma-workout-session-exercise.repository';
 
@@ -28,6 +30,7 @@ import { PrismaWorkoutSessionExerciseRepository } from './infrastructure/reposit
     WorkoutSessionController,
     WorkoutSessionExerciseController,
     ExerciseProgressController,
+    ExercisePersonalRecordsController,
   ],
   providers: [
     {
@@ -47,6 +50,7 @@ import { PrismaWorkoutSessionExerciseRepository } from './infrastructure/reposit
     UpdateWorkoutSessionExerciseUseCase,
     DeleteWorkoutSessionExerciseUseCase,
     GetExerciseProgressUseCase,
+    GetPersonalRecordsUseCase,
   ],
 })
 export class WorkoutSessionModule {}

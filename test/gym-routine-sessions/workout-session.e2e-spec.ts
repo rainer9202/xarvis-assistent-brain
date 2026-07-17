@@ -614,7 +614,7 @@ describe('WorkoutSession (e2e)', () => {
         .expect(404);
     });
 
-    it("returns 404 for another user's custom exerciseId, indistinguishable from the nonexistent-id case (spec scenario \"Exercise belongs to another user's custom exercise\")", async () => {
+    it('returns 404 for another user\'s custom exerciseId, indistinguishable from the nonexistent-id case (spec scenario "Exercise belongs to another user\'s custom exercise")', async () => {
       const { token: otherToken } = await createAuthenticatedUser(app);
 
       const otherExerciseRes = await request(app.getHttpServer())
@@ -643,6 +643,500 @@ describe('WorkoutSession (e2e)', () => {
       expect(otherOwnedRes.body.statusCode).toEqual(
         nonexistentRes.body.statusCode,
       );
+    });
+  });
+
+  describe('GET /workout-sessions/exercises/records', () => {
+    it('returns one data entry per logged exercise, each with the true highest logged actualWeightGrams and the identifying session (spec scenario "Records across multiple exercises")', async () => {
+      const recordsExerciseAId = (
+        await request(app.getHttpServer())
+          .post('/exercises')
+          .set('Authorization', `Bearer ${token}`)
+          .send({ name: `Records Exercise A-${Date.now()}` })
+          .expect(201)
+      ).body.data.id as string;
+      exerciseIds.push(recordsExerciseAId);
+
+      const recordsExerciseBId = (
+        await request(app.getHttpServer())
+          .post('/exercises')
+          .set('Authorization', `Bearer ${token}`)
+          .send({ name: `Records Exercise B-${Date.now()}` })
+          .expect(201)
+      ).body.data.id as string;
+      exerciseIds.push(recordsExerciseBId);
+
+      const recordsExerciseCId = (
+        await request(app.getHttpServer())
+          .post('/exercises')
+          .set('Authorization', `Bearer ${token}`)
+          .send({ name: `Records Exercise C-${Date.now()}` })
+          .expect(201)
+      ).body.data.id as string;
+      exerciseIds.push(recordsExerciseCId);
+
+      const recordsRoutineId = (
+        await request(app.getHttpServer())
+          .post('/routines')
+          .set('Authorization', `Bearer ${token}`)
+          .send({
+            name: `Records Routine-${Date.now()}`,
+            exercises: [
+              {
+                exerciseId: recordsExerciseAId,
+                targetSets: 4,
+                targetReps: 10,
+                targetWeightGrams: 20000,
+              },
+              {
+                exerciseId: recordsExerciseBId,
+                targetSets: 4,
+                targetReps: 10,
+                targetWeightGrams: 20000,
+              },
+              {
+                exerciseId: recordsExerciseCId,
+                targetSets: 4,
+                targetReps: 10,
+                targetWeightGrams: 20000,
+              },
+            ],
+          })
+          .expect(201)
+      ).body.data.id as string;
+      routineIds.push(recordsRoutineId);
+
+      const sessionOneId = (
+        await request(app.getHttpServer())
+          .post('/workout-sessions')
+          .set('Authorization', `Bearer ${token}`)
+          .send({
+            routineId: recordsRoutineId,
+            date: new Date('2024-01-01T00:00:00Z').toISOString(),
+          })
+          .expect(201)
+      ).body.data.id as string;
+      sessionIds.push(sessionOneId);
+
+      const sessionTwoId = (
+        await request(app.getHttpServer())
+          .post('/workout-sessions')
+          .set('Authorization', `Bearer ${token}`)
+          .send({
+            routineId: recordsRoutineId,
+            date: new Date('2024-03-01T00:00:00Z').toISOString(),
+          })
+          .expect(201)
+      ).body.data.id as string;
+      sessionIds.push(sessionTwoId);
+
+      // Exercise A: two sessions, higher weight in session two.
+      await request(app.getHttpServer())
+        .post('/workout-session-exercises')
+        .set('Authorization', `Bearer ${token}`)
+        .send({
+          workoutSessionId: sessionOneId,
+          exerciseId: recordsExerciseAId,
+          actualSets: 4,
+          actualReps: 10,
+          actualWeightGrams: 18000,
+        })
+        .expect(201);
+      await request(app.getHttpServer())
+        .post('/workout-session-exercises')
+        .set('Authorization', `Bearer ${token}`)
+        .send({
+          workoutSessionId: sessionTwoId,
+          exerciseId: recordsExerciseAId,
+          actualSets: 4,
+          actualReps: 8,
+          actualWeightGrams: 22000,
+        })
+        .expect(201);
+
+      // Exercise B: single session.
+      await request(app.getHttpServer())
+        .post('/workout-session-exercises')
+        .set('Authorization', `Bearer ${token}`)
+        .send({
+          workoutSessionId: sessionOneId,
+          exerciseId: recordsExerciseBId,
+          actualSets: 3,
+          actualReps: 12,
+          actualWeightGrams: 15000,
+        })
+        .expect(201);
+
+      // Exercise C: single session, later.
+      await request(app.getHttpServer())
+        .post('/workout-session-exercises')
+        .set('Authorization', `Bearer ${token}`)
+        .send({
+          workoutSessionId: sessionTwoId,
+          exerciseId: recordsExerciseCId,
+          actualSets: 5,
+          actualReps: 6,
+          actualWeightGrams: 30000,
+        })
+        .expect(201);
+
+      const recordsRes = await request(app.getHttpServer())
+        .get('/workout-sessions/exercises/records')
+        .set('Authorization', `Bearer ${token}`)
+        .expect(200);
+
+      const entries = recordsRes.body.data as Array<{
+        exerciseId: string;
+        exerciseName: string;
+        maxWeightGrams: number;
+        sessionId: string;
+        sessionDate: string;
+        routineId: string;
+        routineName: string;
+      }>;
+
+      const entryA = entries.find((e) => e.exerciseId === recordsExerciseAId);
+      const entryB = entries.find((e) => e.exerciseId === recordsExerciseBId);
+      const entryC = entries.find((e) => e.exerciseId === recordsExerciseCId);
+
+      expect(entryA).toMatchObject({
+        maxWeightGrams: 22000,
+        sessionId: sessionTwoId,
+        routineId: recordsRoutineId,
+        routineName: expect.any(String),
+      });
+      expect(entryB).toMatchObject({
+        maxWeightGrams: 15000,
+        sessionId: sessionOneId,
+        routineId: recordsRoutineId,
+        routineName: expect.any(String),
+      });
+      expect(entryC).toMatchObject({
+        maxWeightGrams: 30000,
+        sessionId: sessionTwoId,
+        routineId: recordsRoutineId,
+        routineName: expect.any(String),
+      });
+    });
+
+    it('resolves a tie on identical max actualWeightGrams to the session with the EARLIER sessionDate (spec scenario "Tie on max weight resolves to earliest session")', async () => {
+      const tieExerciseId = (
+        await request(app.getHttpServer())
+          .post('/exercises')
+          .set('Authorization', `Bearer ${token}`)
+          .send({ name: `Tie Exercise-${Date.now()}` })
+          .expect(201)
+      ).body.data.id as string;
+      exerciseIds.push(tieExerciseId);
+
+      const tieRoutineId = (
+        await request(app.getHttpServer())
+          .post('/routines')
+          .set('Authorization', `Bearer ${token}`)
+          .send({
+            name: `Tie Routine-${Date.now()}`,
+            exercises: [
+              {
+                exerciseId: tieExerciseId,
+                targetSets: 4,
+                targetReps: 10,
+                targetWeightGrams: 20000,
+              },
+            ],
+          })
+          .expect(201)
+      ).body.data.id as string;
+      routineIds.push(tieRoutineId);
+
+      const earlierSessionId = (
+        await request(app.getHttpServer())
+          .post('/workout-sessions')
+          .set('Authorization', `Bearer ${token}`)
+          .send({
+            routineId: tieRoutineId,
+            date: new Date('2024-01-01T00:00:00Z').toISOString(),
+          })
+          .expect(201)
+      ).body.data.id as string;
+      sessionIds.push(earlierSessionId);
+
+      const laterSessionId = (
+        await request(app.getHttpServer())
+          .post('/workout-sessions')
+          .set('Authorization', `Bearer ${token}`)
+          .send({
+            routineId: tieRoutineId,
+            date: new Date('2024-05-01T00:00:00Z').toISOString(),
+          })
+          .expect(201)
+      ).body.data.id as string;
+      sessionIds.push(laterSessionId);
+
+      await request(app.getHttpServer())
+        .post('/workout-session-exercises')
+        .set('Authorization', `Bearer ${token}`)
+        .send({
+          workoutSessionId: earlierSessionId,
+          exerciseId: tieExerciseId,
+          actualSets: 4,
+          actualReps: 10,
+          actualWeightGrams: 25000,
+        })
+        .expect(201);
+      await request(app.getHttpServer())
+        .post('/workout-session-exercises')
+        .set('Authorization', `Bearer ${token}`)
+        .send({
+          workoutSessionId: laterSessionId,
+          exerciseId: tieExerciseId,
+          actualSets: 4,
+          actualReps: 10,
+          actualWeightGrams: 25000,
+        })
+        .expect(201);
+
+      const recordsRes = await request(app.getHttpServer())
+        .get('/workout-sessions/exercises/records')
+        .set('Authorization', `Bearer ${token}`)
+        .expect(200);
+
+      const entry = (
+        recordsRes.body.data as Array<{
+          exerciseId: string;
+          sessionId: string;
+          maxWeightGrams: number;
+        }>
+      ).find((e) => e.exerciseId === tieExerciseId);
+
+      expect(entry).toMatchObject({
+        sessionId: earlierSessionId,
+        maxWeightGrams: 25000,
+      });
+    });
+
+    it('excludes an exercise with zero logged history — no null, no zero-value placeholder (spec scenario "Exercise with zero logged history is absent")', async () => {
+      const loggedExerciseId = (
+        await request(app.getHttpServer())
+          .post('/exercises')
+          .set('Authorization', `Bearer ${token}`)
+          .send({ name: `Logged Only Exercise-${Date.now()}` })
+          .expect(201)
+      ).body.data.id as string;
+      exerciseIds.push(loggedExerciseId);
+
+      const neverLoggedExerciseId = (
+        await request(app.getHttpServer())
+          .post('/exercises')
+          .set('Authorization', `Bearer ${token}`)
+          .send({ name: `Never Logged For Records-${Date.now()}` })
+          .expect(201)
+      ).body.data.id as string;
+      exerciseIds.push(neverLoggedExerciseId);
+
+      const absentRoutineId = (
+        await request(app.getHttpServer())
+          .post('/routines')
+          .set('Authorization', `Bearer ${token}`)
+          .send({
+            name: `Absent Routine-${Date.now()}`,
+            exercises: [
+              {
+                exerciseId: loggedExerciseId,
+                targetSets: 4,
+                targetReps: 10,
+                targetWeightGrams: 20000,
+              },
+              {
+                exerciseId: neverLoggedExerciseId,
+                targetSets: 4,
+                targetReps: 10,
+                targetWeightGrams: 20000,
+              },
+            ],
+          })
+          .expect(201)
+      ).body.data.id as string;
+      routineIds.push(absentRoutineId);
+
+      const absentSessionId = (
+        await request(app.getHttpServer())
+          .post('/workout-sessions')
+          .set('Authorization', `Bearer ${token}`)
+          .send({ routineId: absentRoutineId, date: new Date().toISOString() })
+          .expect(201)
+      ).body.data.id as string;
+      sessionIds.push(absentSessionId);
+
+      await request(app.getHttpServer())
+        .post('/workout-session-exercises')
+        .set('Authorization', `Bearer ${token}`)
+        .send({
+          workoutSessionId: absentSessionId,
+          exerciseId: loggedExerciseId,
+          actualSets: 4,
+          actualReps: 10,
+          actualWeightGrams: 20000,
+        })
+        .expect(201);
+
+      const recordsRes = await request(app.getHttpServer())
+        .get('/workout-sessions/exercises/records')
+        .set('Authorization', `Bearer ${token}`)
+        .expect(200);
+
+      const entries = recordsRes.body.data as Array<{ exerciseId: string }>;
+
+      expect(entries.some((e) => e.exerciseId === loggedExerciseId)).toBe(true);
+      expect(entries.some((e) => e.exerciseId === neverLoggedExerciseId)).toBe(
+        false,
+      );
+    });
+
+    it('returns 200 with data: [] for a user with no logged history at all, never 404 (spec scenario "User with no logged history at all")', async () => {
+      const { token: freshToken } = await createAuthenticatedUser(app);
+
+      const recordsRes = await request(app.getHttpServer())
+        .get('/workout-sessions/exercises/records')
+        .set('Authorization', `Bearer ${freshToken}`)
+        .expect(200);
+
+      expect(recordsRes.body.data).toEqual([]);
+    });
+
+    it("🔍 never leaks another user's heavier logged lift for the same exercise into the requesting user's data entry (design.md Test Surfaces §4, cross-user isolation)", async () => {
+      const { token: otherToken } = await createAuthenticatedUser(app);
+
+      const sharedExerciseId = (
+        await request(app.getHttpServer())
+          .post('/exercises')
+          .set('Authorization', `Bearer ${token}`)
+          .send({ name: `Isolation Exercise-${Date.now()}` })
+          .expect(201)
+      ).body.data.id as string;
+      exerciseIds.push(sharedExerciseId);
+
+      const otherExerciseId = (
+        await request(app.getHttpServer())
+          .post('/exercises')
+          .set('Authorization', `Bearer ${otherToken}`)
+          .send({ name: `Isolation Exercise Other-${Date.now()}` })
+          .expect(201)
+      ).body.data.id as string;
+
+      const isolationRoutineId = (
+        await request(app.getHttpServer())
+          .post('/routines')
+          .set('Authorization', `Bearer ${token}`)
+          .send({
+            name: `Isolation Routine-${Date.now()}`,
+            exercises: [
+              {
+                exerciseId: sharedExerciseId,
+                targetSets: 4,
+                targetReps: 10,
+                targetWeightGrams: 20000,
+              },
+            ],
+          })
+          .expect(201)
+      ).body.data.id as string;
+      routineIds.push(isolationRoutineId);
+
+      const otherRoutineId = (
+        await request(app.getHttpServer())
+          .post('/routines')
+          .set('Authorization', `Bearer ${otherToken}`)
+          .send({
+            name: `Isolation Routine Other-${Date.now()}`,
+            exercises: [
+              {
+                exerciseId: otherExerciseId,
+                targetSets: 4,
+                targetReps: 10,
+                targetWeightGrams: 20000,
+              },
+            ],
+          })
+          .expect(201)
+      ).body.data.id as string;
+
+      const isolationSessionId = (
+        await request(app.getHttpServer())
+          .post('/workout-sessions')
+          .set('Authorization', `Bearer ${token}`)
+          .send({
+            routineId: isolationRoutineId,
+            date: new Date().toISOString(),
+          })
+          .expect(201)
+      ).body.data.id as string;
+      sessionIds.push(isolationSessionId);
+
+      const otherSessionId = (
+        await request(app.getHttpServer())
+          .post('/workout-sessions')
+          .set('Authorization', `Bearer ${otherToken}`)
+          .send({
+            routineId: otherRoutineId,
+            date: new Date().toISOString(),
+          })
+          .expect(201)
+      ).body.data.id as string;
+
+      // Requesting user logs a lighter weight for the shared exercise.
+      await request(app.getHttpServer())
+        .post('/workout-session-exercises')
+        .set('Authorization', `Bearer ${token}`)
+        .send({
+          workoutSessionId: isolationSessionId,
+          exerciseId: sharedExerciseId,
+          actualSets: 4,
+          actualReps: 10,
+          actualWeightGrams: 12000,
+        })
+        .expect(201);
+
+      // Other user logs a MUCH heavier weight, but on their own custom
+      // exercise (Exercise is user-scoped) and their own session — the
+      // requesting user's records must never reflect it.
+      await request(app.getHttpServer())
+        .post('/workout-session-exercises')
+        .set('Authorization', `Bearer ${otherToken}`)
+        .send({
+          workoutSessionId: otherSessionId,
+          exerciseId: otherExerciseId,
+          actualSets: 4,
+          actualReps: 10,
+          actualWeightGrams: 90000,
+        })
+        .expect(201);
+
+      const recordsRes = await request(app.getHttpServer())
+        .get('/workout-sessions/exercises/records')
+        .set('Authorization', `Bearer ${token}`)
+        .expect(200);
+
+      const entries = recordsRes.body.data as Array<{
+        exerciseId: string;
+        maxWeightGrams: number;
+      }>;
+
+      const sharedEntry = entries.find(
+        (e) => e.exerciseId === sharedExerciseId,
+      );
+      expect(sharedEntry).toMatchObject({ maxWeightGrams: 12000 });
+      expect(entries.some((e) => e.exerciseId === otherExerciseId)).toBe(false);
+
+      // Cleanup the other user's own resources (not tracked by the shared
+      // afterAll arrays, since they belong to a different user).
+      await prisma.workoutSessionExercise.deleteMany({
+        where: { workoutSessionId: otherSessionId },
+      });
+      await prisma.workoutSession.deleteMany({
+        where: { id: otherSessionId },
+      });
+      await prisma.routine.deleteMany({ where: { id: otherRoutineId } });
+      await prisma.exercise.deleteMany({ where: { id: otherExerciseId } });
     });
   });
 });
