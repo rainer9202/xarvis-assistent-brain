@@ -15,6 +15,7 @@ import { GetAllRoutinesUseCase } from '../../application/use-cases/get-all-routi
 import { GetRoutineByIdUseCase } from '../../application/use-cases/get-routine-by-id.use-case';
 import { CreateRoutineDto } from '../dto/create-routine.dto';
 import { UpdateRoutineDto } from '../dto/update-routine.dto';
+import { GetRoutinesQueryDto } from '../dto/get-routines-query.dto';
 import { RoutineController } from './routine.controller';
 
 const user = { id: 'user-1', email: 'test@example.com', name: 'Test User' };
@@ -59,18 +60,51 @@ describe('RoutineController', () => {
   });
 
   describe('findAll', () => {
-    it('delegates to GetAllRoutinesUseCase', async () => {
-      const data = [
+    it('returns items as data with no pagination keys when unpaginated', async () => {
+      const items = [
         { id: 'routine-1', name: 'Pecho', isActive: true, exerciseCount: 3 },
       ];
-      getAllExecute.mockResolvedValue(data);
+      getAllExecute.mockResolvedValue({ items });
 
-      const result = await controller.findAll(user);
+      const query: GetRoutinesQueryDto = {};
+      const result = await controller.findAll(query, user);
 
-      expect(getAllExecute).toHaveBeenCalledWith(user.id);
+      expect(getAllExecute).toHaveBeenCalledWith(user.id, undefined, undefined);
       expect(result).toEqual({
         message: 'Get all routines successfully',
-        data,
+        data: items,
+      });
+      expect(result).not.toHaveProperty('page');
+      expect(result).not.toHaveProperty('totalCount');
+    });
+
+    it('adds page/limit/totalCount/totalPages/hasMore as siblings of data when paginated', async () => {
+      const items = [
+        { id: 'routine-1', name: 'Pecho', isActive: true, exerciseCount: 3 },
+      ];
+      getAllExecute.mockResolvedValue({
+        items,
+        pagination: {
+          page: 1,
+          limit: 10,
+          totalCount: 25,
+          totalPages: 3,
+          hasMore: true,
+        },
+      });
+
+      const query: GetRoutinesQueryDto = { page: 1, limit: 10 };
+      const result = await controller.findAll(query, user);
+
+      expect(getAllExecute).toHaveBeenCalledWith(user.id, 1, 10);
+      expect(result).toEqual({
+        message: 'Get all routines successfully',
+        data: items,
+        page: 1,
+        limit: 10,
+        totalCount: 25,
+        totalPages: 3,
+        hasMore: true,
       });
     });
   });

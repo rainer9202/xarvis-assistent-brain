@@ -20,7 +20,11 @@ export type RoutineExerciseInput = {
 };
 
 export interface RoutineRepositoryPort {
-  findAll(userId: string): Promise<RoutineWithExerciseCount[]>;
+  findAll(
+    userId: string,
+    page?: number,
+    limit?: number,
+  ): Promise<RoutineWithExerciseCount[]>;
   findById(id: string, userId: string): Promise<RoutineEntity | null>;
   findByIdWithExercises(
     id: string,
@@ -37,6 +41,7 @@ export interface RoutineRepositoryPort {
   ): Promise<RoutineEntity>;
   delete(entity: RoutineEntity): Promise<void>;
   countSessionsByRoutineId(routineId: string): Promise<number>;
+  countByUserId(userId: string): Promise<number>;
 }
 
 export const ROUTINE_REPOSITORY = Symbol('RoutineRepositoryPort');

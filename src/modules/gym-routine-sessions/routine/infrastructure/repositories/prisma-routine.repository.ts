@@ -18,11 +18,22 @@ import {
 export class PrismaRoutineRepository implements RoutineRepositoryPort {
   constructor(private readonly prisma: PrismaService) {}
 
-  async findAll(userId: string): Promise<RoutineWithExerciseCount[]> {
+  async findAll(
+    userId: string,
+    page?: number,
+    limit?: number,
+  ): Promise<RoutineWithExerciseCount[]> {
+    const isPaginated = page !== undefined || limit !== undefined;
     const records = await this.prisma.routine.findMany({
       where: { userId },
       orderBy: { createdAt: 'asc' },
       include: { _count: { select: { exercises: true } } },
+      ...(isPaginated
+        ? {
+            skip: ((page ?? 1) - 1) * (limit ?? 20),
+            take: limit ?? 20,
+          }
+        : {}),
     });
     return records.map((record) => ({
       routine: this.toEntity(record),
@@ -166,6 +177,10 @@ export class PrismaRoutineRepository implements RoutineRepositoryPort {
 
   async countSessionsByRoutineId(routineId: string): Promise<number> {
     return this.prisma.workoutSession.count({ where: { routineId } });
+  }
+
+  async countByUserId(userId: string): Promise<number> {
+    return this.prisma.routine.count({ where: { userId } });
   }
 
   private isUniqueConstraintViolation(error: unknown): boolean {

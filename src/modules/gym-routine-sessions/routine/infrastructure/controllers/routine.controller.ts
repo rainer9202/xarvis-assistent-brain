@@ -8,6 +8,7 @@ import {
   Param,
   Patch,
   Post,
+  Query,
 } from '@nestjs/common';
 import {
   ApiConflictResponse,
@@ -32,6 +33,7 @@ import { GetAllRoutinesUseCase } from '../../application/use-cases/get-all-routi
 import { GetRoutineByIdUseCase } from '../../application/use-cases/get-routine-by-id.use-case';
 import { CreateRoutineDto } from '../dto/create-routine.dto';
 import { UpdateRoutineDto } from '../dto/update-routine.dto';
+import { GetRoutinesQueryDto } from '../dto/get-routines-query.dto';
 import { CurrentUser } from '@infra/decorators/current-user.decorator';
 import type { AuthenticatedUser } from '@infra/decorators/current-user.decorator';
 
@@ -50,10 +52,15 @@ export class RoutineController {
 
   @Get()
   @ApiOkResponse({ description: 'List of routines' })
-  async findAll(@CurrentUser() user: AuthenticatedUser) {
+  async findAll(
+    @Query() query: GetRoutinesQueryDto,
+    @CurrentUser() user: AuthenticatedUser,
+  ) {
+    const result = await this.getAll.execute(user.id, query.page, query.limit);
     return {
       message: `Get all ${domainName} successfully`,
-      data: await this.getAll.execute(user.id),
+      data: result.items,
+      ...(result.pagination ?? {}),
     };
   }
 

@@ -19,6 +19,7 @@ describe('PrismaRoutineRepository', () => {
       findFirst: jest.Mock;
       findUnique: jest.Mock;
       delete: jest.Mock;
+      count: jest.Mock;
     };
     workoutSession: { count: jest.Mock };
     $transaction: jest.Mock;
@@ -44,6 +45,7 @@ describe('PrismaRoutineRepository', () => {
         findFirst: jest.fn(),
         findUnique: jest.fn(),
         delete: jest.fn(),
+        count: jest.fn(),
       },
       workoutSession: { count: jest.fn() },
       $transaction: jest.fn((cb: (tx: unknown) => unknown) => cb(tx)),
@@ -73,6 +75,46 @@ describe('PrismaRoutineRepository', () => {
       });
       expect(result[0].exerciseCount).toBe(5);
       expect(result[0].routine).toBeInstanceOf(RoutineEntity);
+    });
+
+    it('applies skip/take when page/limit are provided (paginated mode)', async () => {
+      prisma.routine.findMany.mockResolvedValue([]);
+
+      await repository.findAll('user-1', 2, 10);
+
+      expect(prisma.routine.findMany).toHaveBeenCalledWith({
+        where: { userId: 'user-1' },
+        orderBy: { createdAt: 'asc' },
+        include: { _count: { select: { exercises: true } } },
+        skip: 10,
+        take: 10,
+      });
+    });
+
+    it('defaults page to 1 and limit to 20 when only one of them is provided', async () => {
+      prisma.routine.findMany.mockResolvedValue([]);
+
+      await repository.findAll('user-1', 3, undefined);
+
+      expect(prisma.routine.findMany).toHaveBeenCalledWith({
+        where: { userId: 'user-1' },
+        orderBy: { createdAt: 'asc' },
+        include: { _count: { select: { exercises: true } } },
+        skip: 40,
+        take: 20,
+      });
+    });
+
+    it('omits skip/take entirely when neither page nor limit is provided', async () => {
+      prisma.routine.findMany.mockResolvedValue([]);
+
+      await repository.findAll('user-1');
+
+      expect(prisma.routine.findMany).toHaveBeenCalledWith({
+        where: { userId: 'user-1' },
+        orderBy: { createdAt: 'asc' },
+        include: { _count: { select: { exercises: true } } },
+      });
     });
   });
 
@@ -257,6 +299,19 @@ describe('PrismaRoutineRepository', () => {
         where: { routineId: 'routine-1' },
       });
       expect(result).toBe(2);
+    });
+  });
+
+  describe('countByUserId', () => {
+    it('delegates to prisma.routine.count scoped by userId', async () => {
+      prisma.routine.count.mockResolvedValue(9);
+
+      const result = await repository.countByUserId('user-1');
+
+      expect(prisma.routine.count).toHaveBeenCalledWith({
+        where: { userId: 'user-1' },
+      });
+      expect(result).toBe(9);
     });
   });
 });

@@ -38,9 +38,11 @@ describe('GetAllWorkoutSessionsUseCase', () => {
 
   it('resolves routineName via a single batched GetAllRoutinesUseCase call (no N+1)', async () => {
     findAll.mockResolvedValue([{ session: session(), loggedExerciseCount: 0 }]);
-    getAllRoutinesExecute.mockResolvedValue([
-      { id: 'routine-1', name: 'Pecho', isActive: true, exerciseCount: 3 },
-    ]);
+    getAllRoutinesExecute.mockResolvedValue({
+      items: [
+        { id: 'routine-1', name: 'Pecho', isActive: true, exerciseCount: 3 },
+      ],
+    });
 
     const result = await useCase.execute('user-1');
 
@@ -61,9 +63,11 @@ describe('GetAllWorkoutSessionsUseCase', () => {
 
   it('maps partially-logged counts: logged 2, routine currently has 4 (spec scenario 1)', async () => {
     findAll.mockResolvedValue([{ session: session(), loggedExerciseCount: 2 }]);
-    getAllRoutinesExecute.mockResolvedValue([
-      { id: 'routine-1', name: 'Pecho', isActive: true, exerciseCount: 4 },
-    ]);
+    getAllRoutinesExecute.mockResolvedValue({
+      items: [
+        { id: 'routine-1', name: 'Pecho', isActive: true, exerciseCount: 4 },
+      ],
+    });
 
     const result = await useCase.execute('user-1');
 
@@ -75,9 +79,11 @@ describe('GetAllWorkoutSessionsUseCase', () => {
 
   it('maps none-logged counts: logged 0, routine currently has 5 (spec scenario 2)', async () => {
     findAll.mockResolvedValue([{ session: session(), loggedExerciseCount: 0 }]);
-    getAllRoutinesExecute.mockResolvedValue([
-      { id: 'routine-1', name: 'Pecho', isActive: true, exerciseCount: 5 },
-    ]);
+    getAllRoutinesExecute.mockResolvedValue({
+      items: [
+        { id: 'routine-1', name: 'Pecho', isActive: true, exerciseCount: 5 },
+      ],
+    });
 
     const result = await useCase.execute('user-1');
 
@@ -89,9 +95,11 @@ describe('GetAllWorkoutSessionsUseCase', () => {
 
   it('returns loggedExerciseCount as-is when it exceeds the routine current count, no clamping, no error (spec scenario 3 / ADR-2)', async () => {
     findAll.mockResolvedValue([{ session: session(), loggedExerciseCount: 6 }]);
-    getAllRoutinesExecute.mockResolvedValue([
-      { id: 'routine-1', name: 'Pecho', isActive: true, exerciseCount: 3 },
-    ]);
+    getAllRoutinesExecute.mockResolvedValue({
+      items: [
+        { id: 'routine-1', name: 'Pecho', isActive: true, exerciseCount: 3 },
+      ],
+    });
 
     const result = await useCase.execute('user-1');
 
@@ -108,9 +116,11 @@ describe('GetAllWorkoutSessionsUseCase', () => {
         loggedExerciseCount: 3,
       },
     ]);
-    getAllRoutinesExecute.mockResolvedValue([
-      { id: 'routine-1', name: 'Pecho', isActive: true, exerciseCount: 4 },
-    ]);
+    getAllRoutinesExecute.mockResolvedValue({
+      items: [
+        { id: 'routine-1', name: 'Pecho', isActive: true, exerciseCount: 4 },
+      ],
+    });
 
     const result = await useCase.execute('user-1');
 
@@ -122,9 +132,11 @@ describe('GetAllWorkoutSessionsUseCase', () => {
 
   it('keeps all pre-existing fields mapped unchanged (id, routineId, routineName, date, finishedAt, createdAt)', async () => {
     findAll.mockResolvedValue([{ session: session(), loggedExerciseCount: 1 }]);
-    getAllRoutinesExecute.mockResolvedValue([
-      { id: 'routine-1', name: 'Pecho', isActive: true, exerciseCount: 2 },
-    ]);
+    getAllRoutinesExecute.mockResolvedValue({
+      items: [
+        { id: 'routine-1', name: 'Pecho', isActive: true, exerciseCount: 2 },
+      ],
+    });
 
     const result = await useCase.execute('user-1');
 

@@ -27,12 +27,15 @@ export class GetAllWorkoutSessionsUseCase {
     try {
       // Fetched once here (not per session) to avoid an N+1 query — same
       // batched-Map pattern as GetAllMovementsUseCase/GetRoutineByIdUseCase.
-      const [items, routines] = await Promise.all([
+      // GetAllRoutinesUseCase now returns { items, pagination? } (additive
+      // pagination support), so we take .items — called unpaginated here,
+      // so pagination is always undefined.
+      const [items, routinesResult] = await Promise.all([
         this.repository.findAll(userId),
         this.getAllRoutines.execute(userId),
       ]);
       const routineById = new Map(
-        routines.map((r) => [
+        routinesResult.items.map((r) => [
           r.id,
           { name: r.name, exerciseCount: r.exerciseCount },
         ]),
