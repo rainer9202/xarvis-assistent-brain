@@ -4,6 +4,7 @@ import { normalizeJwtExpiry } from '@config/env/normalize-jwt-expiry';
 import { SignUpUseCase } from './application/use-cases/sign-up.use-case';
 import { SignInUseCase } from './application/use-cases/sign-in.use-case';
 import { RefreshTokenUseCase } from './application/use-cases/refresh-token.use-case';
+import { LogoutUseCase } from './application/use-cases/logout.use-case';
 import { GetAllUsersUseCase } from './application/use-cases/get-all-users.use-case';
 import { GetProfileUseCase } from './application/use-cases/get-profile.use-case';
 import { UpdateProfileUseCase } from './application/use-cases/update-profile.use-case';
@@ -61,6 +62,7 @@ import { PrismaRefreshTokenRepository } from './infrastructure/repositories/pris
     SignUpUseCase,
     SignInUseCase,
     RefreshTokenUseCase,
+    LogoutUseCase,
     GetAllUsersUseCase,
     GetProfileUseCase,
     UpdateProfileUseCase,

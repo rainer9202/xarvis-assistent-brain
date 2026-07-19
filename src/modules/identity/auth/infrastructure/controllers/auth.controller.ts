@@ -26,6 +26,10 @@ import {
   RefreshTokenCommand,
   RefreshTokenUseCase,
 } from '../../application/use-cases/refresh-token.use-case';
+import {
+  LogoutCommand,
+  LogoutUseCase,
+} from '../../application/use-cases/logout.use-case';
 import { GetAllUsersUseCase } from '../../application/use-cases/get-all-users.use-case';
 import { GetProfileUseCase } from '../../application/use-cases/get-profile.use-case';
 import {
@@ -35,6 +39,7 @@ import {
 import { SignUpDto } from '../dto/sign-up.dto';
 import { SignInDto } from '../dto/sign-in.dto';
 import { RefreshDto } from '../dto/refresh.dto';
+import { LogoutDto } from '../dto/logout.dto';
 import { UpdateProfileDto } from '../dto/update-profile.dto';
 
 // ThrottlerGuard is applied only here (AuthModule scopes its own
@@ -48,6 +53,7 @@ export class AuthController {
     private readonly signUp: SignUpUseCase,
     private readonly signIn: SignInUseCase,
     private readonly refreshToken: RefreshTokenUseCase,
+    private readonly logout: LogoutUseCase,
     private readonly getAllUsers: GetAllUsersUseCase,
     private readonly getProfile: GetProfileUseCase,
     private readonly updateProfile: UpdateProfileUseCase,
@@ -94,6 +100,20 @@ export class AuthController {
         new RefreshTokenCommand(dto.refreshToken),
       ),
     };
+  }
+
+  // @Public() — authority to log out is possession of the refresh token
+  // itself, not a live access token, so a client can log out even after
+  // its access token has expired (spec's "Revoke a refresh token via
+  // logout" requirement). Idempotent: an unknown/already-revoked token
+  // still returns 200 (LogoutUseCase never throws).
+  @Public()
+  @Post('logout')
+  @HttpCode(HttpStatus.OK)
+  @ApiOkResponse({ description: 'Refresh token revoked' })
+  async logoutOne(@Body() dto: LogoutDto) {
+    await this.logout.execute(new LogoutCommand(dto.refreshToken));
+    return { message: 'Logged out successfully', data: null };
   }
 
   // No @Public() — the global JwtAuthGuard (APP_GUARD in app.module.ts)

@@ -64,10 +64,10 @@ Rationale: first change touching auth's security posture with a genuine migratio
 
 ## Phase 5: Logout Endpoint (Commit 5)
 
-- [ ] 5.1 Create `LogoutDto` (`{ @ApiProperty @IsString @IsNotEmpty refreshToken: string }`)
-- [ ] 5.2 RED: write `logout.use-case.spec.ts` — valid token → revoked; already-revoked/unknown token → 200 no-op (idempotent)
-- [ ] 5.3 GREEN: implement `LogoutUseCase` (sha256 → `repository.revokeByHash`)
-- [ ] 5.4 Add `@Public() @Post('logout') @HttpCode(200)` handler to `AuthController`; register `RefreshTokenUseCase`/`LogoutUseCase` in `auth.module.ts`
+- [x] 5.1 Create `LogoutDto` (`{ @ApiProperty @IsString @IsNotEmpty refreshToken: string }`)
+- [x] 5.2 RED: write `logout.use-case.spec.ts` — valid token → revoked; already-revoked/unknown token → 200 no-op (idempotent)
+- [x] 5.3 GREEN: implement `LogoutUseCase` (sha256 → `repository.revokeByHash`)
+- [x] 5.4 Add `@Public() @Post('logout') @HttpCode(200)` handler to `AuthController`; register `RefreshTokenUseCase`/`LogoutUseCase` in `auth.module.ts`
 
 ## Phase 6: Guard Defense-in-Depth (Commit 6)
 
