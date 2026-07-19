@@ -6,6 +6,7 @@ import {
   Matches,
   MinLength,
 } from 'class-validator';
+import { IsDistinctFrom } from './is-distinct-from.validator';
 
 // Matches every format `app.module.ts`'s JwtModule.registerAsync factory can
 // actually pass through to jsonwebtoken's `expiresIn` sign option: a plain
@@ -14,7 +15,9 @@ import {
 // optionally spaced, s/m/h/d/w/y units). A typo here previously passed boot
 // validation and only surfaced as a thrown error inside jwtService.signAsync()
 // on the very first real sign-up/sign-in.
-const JWT_DURATION_PATTERN = /^\d+(\.\d+)?\s*(ms|s|m|h|d|w|y)?$/;
+// Exported so REFRESH_JWT_EXPIRES_IN below reuses the exact same regex
+// source of truth instead of duplicating it.
+export const JWT_DURATION_PATTERN = /^\d+(\.\d+)?\s*(ms|s|m|h|d|w|y)?$/;
 
 export class EnvironmentVariables {
   @IsString()
@@ -47,6 +50,25 @@ export class EnvironmentVariables {
       'JWT_EXPIRES_IN must be a plain number of seconds (e.g. "3600") or a duration string (e.g. "2h", "10m", "7d")',
   })
   JWT_EXPIRES_IN?: string;
+
+  @IsString()
+  @IsNotEmpty()
+  @MinLength(32)
+  // Boot-time half of the token-confusion defense-in-depth pair (see
+  // design.md's ADR and is-distinct-from.validator.ts): a refresh JWT signed
+  // with the same secret as an access token, carrying the same payload
+  // shape, would validate as a live access token on every protected route
+  // for up to REFRESH_JWT_EXPIRES_IN — this fails fast at boot instead.
+  @IsDistinctFrom('JWT_SECRET')
+  REFRESH_JWT_SECRET: string;
+
+  @IsOptional()
+  @IsString()
+  @Matches(JWT_DURATION_PATTERN, {
+    message:
+      'REFRESH_JWT_EXPIRES_IN must be a plain number of seconds (e.g. "3600") or a duration string (e.g. "2h", "10m", "30d")',
+  })
+  REFRESH_JWT_EXPIRES_IN?: string;
 
   // Fail-closed opt-in for local-debugging-only routes (e.g. GET /auth/users
   // — see auth.controller.ts). Must be exactly "true" to enable; unset or

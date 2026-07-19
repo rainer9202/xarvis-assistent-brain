@@ -7,6 +7,13 @@ process.env.DATABASE_URL ??=
 // argon2) — JWT_SECRET/JWT_EXPIRES_IN are the only auth-related env vars now.
 process.env.JWT_SECRET ??= 'test-secret-not-for-production-use-only';
 process.env.JWT_EXPIRES_IN ??= '2h';
+// REFRESH_JWT_SECRET must be a distinct 32+ char string from JWT_SECRET
+// (validateEnv()'s @IsDistinctFrom boot check — see is-distinct-from.
+// validator.ts) or the real AppModule bootstrap e2e specs exercise would
+// fail to boot.
+process.env.REFRESH_JWT_SECRET ??=
+  'test-refresh-secret-not-for-production-use';
+process.env.REFRESH_JWT_EXPIRES_IN ??= '30d';
 // e2e specs connect to the app over loopback (supertest -> app.getHttpServer()),
 // so trusting the 'loopback' preset (not the production RFC1918 default —
 // see getTrustedProxies()) lets test/identity/auth.e2e-spec.ts's functional

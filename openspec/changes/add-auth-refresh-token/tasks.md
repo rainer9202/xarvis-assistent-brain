@@ -41,11 +41,11 @@ Rationale: first change touching auth's security posture with a genuine migratio
 
 ## Phase 2: Env Config (Commit 2)
 
-- [ ] 2.1 Export `JWT_DURATION_PATTERN` from `environment-variables.ts` (currently private)
-- [ ] 2.2 RED: write a spec for a new `IsDistinctFrom` custom class-validator constraint — passes when sibling values differ, fails when equal
-- [ ] 2.3 GREEN: implement `@ValidatorConstraint`-backed `@IsDistinctFrom(propertyName)` decorator (reads sibling via `ValidationArguments.object`)
-- [ ] 2.4 Add `REFRESH_JWT_SECRET` (`@IsString @IsNotEmpty @MinLength(32) @IsDistinctFrom('JWT_SECRET')`) and `REFRESH_JWT_EXPIRES_IN` (`@IsOptional @IsString @Matches(JWT_DURATION_PATTERN)`) to `EnvironmentVariables`
-- [ ] 2.5 RED+GREEN: extend `environment-variables.spec.ts` — missing/short secret fails boot; malformed expiry fails boot; `REFRESH_JWT_SECRET === JWT_SECRET` fails boot; valid config with expiry omitted boots successfully (default `30d` applied at sign time, not at boot)
+- [x] 2.1 Export `JWT_DURATION_PATTERN` from `environment-variables.ts` (currently private)
+- [x] 2.2 RED: write a spec for a new `IsDistinctFrom` custom class-validator constraint — passes when sibling values differ, fails when equal
+- [x] 2.3 GREEN: implement `@ValidatorConstraint`-backed `@IsDistinctFrom(propertyName)` decorator (reads sibling via `ValidationArguments.object`)
+- [x] 2.4 Add `REFRESH_JWT_SECRET` (`@IsString @IsNotEmpty @MinLength(32) @IsDistinctFrom('JWT_SECRET')`) and `REFRESH_JWT_EXPIRES_IN` (`@IsOptional @IsString @Matches(JWT_DURATION_PATTERN)`) to `EnvironmentVariables`
+- [x] 2.5 RED+GREEN: extend `validate-env.spec.ts` (this repo's actual boot-validation spec file — `environment-variables.spec.ts` doesn't exist as a standalone file, `validateEnv()`/`validate-env.spec.ts` is where `JWT_SECRET`/`JWT_EXPIRES_IN` boot validation is already tested) — missing/short secret fails boot; malformed expiry fails boot; `REFRESH_JWT_SECRET === JWT_SECRET` fails boot; valid config with expiry omitted boots successfully (default `30d` applied at sign time, not at boot)
 
 ## Phase 3: AuthTokenIssuer + Sign-up/Sign-in Wiring (Commit 3)
 

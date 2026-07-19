@@ -14,6 +14,8 @@ services:
       CORS_ORIGINS: ${CORS_ORIGINS:-}
       JWT_SECRET: ${JWT_SECRET:?set JWT_SECRET in .env}
       JWT_EXPIRES_IN: ${JWT_EXPIRES_IN:-2h}
+      REFRESH_JWT_SECRET: ${REFRESH_JWT_SECRET:?set REFRESH_JWT_SECRET in .env, distinct from JWT_SECRET}
+      REFRESH_JWT_EXPIRES_IN: ${REFRESH_JWT_EXPIRES_IN:-30d}
     volumes:
       # :Z relabels the bind mount for exclusive container access under
       # SELinux (enforcing on Fedora/RHEL hosts); harmless no-op elsewhere.
