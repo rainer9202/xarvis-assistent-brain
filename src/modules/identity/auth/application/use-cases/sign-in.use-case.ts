@@ -1,8 +1,7 @@
 import { Inject, Injectable, UnauthorizedException } from '@nestjs/common';
-import { JwtService } from '@nestjs/jwt';
 import * as argon2 from 'argon2';
-import { buildAuthResponse } from '../shared/build-auth-response';
-import type { AuthResponse } from '../shared/build-auth-response';
+import { AuthTokenIssuer } from '../shared/auth-token-issuer';
+import type { AuthResponse } from '../shared/auth-token-issuer';
 import { USER_REPOSITORY } from '../../domain/ports/user.repository.port';
 import type { UserRepositoryPort } from '../../domain/ports/user.repository.port';
 
@@ -30,7 +29,7 @@ export class SignInUseCase {
   constructor(
     @Inject(USER_REPOSITORY)
     private readonly repository: UserRepositoryPort,
-    private readonly jwtService: JwtService,
+    private readonly authTokenIssuer: AuthTokenIssuer,
   ) {}
 
   async execute(command: SignInCommand): Promise<SignInResponse> {
@@ -64,6 +63,6 @@ export class SignInUseCase {
     }
     if (!passwordMatches) throw new UnauthorizedException();
 
-    return buildAuthResponse(this.jwtService, user);
+    return this.authTokenIssuer.issue(user);
   }
 }

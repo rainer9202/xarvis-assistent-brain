@@ -1,16 +1,17 @@
 import * as argon2 from 'argon2';
-import { JwtService } from '@nestjs/jwt';
 import { ConflictException } from '@domain/exceptions/domain.exception';
 import { UserEntity } from '../../domain/entities/user.entity';
 import type { UserRepositoryPort } from '../../domain/ports/user.repository.port';
+import { AuthTokenIssuer } from '../shared/auth-token-issuer';
+import type { AuthResponse } from '../shared/auth-token-issuer';
 import { SignUpCommand, SignUpUseCase } from './sign-up.use-case';
 
 describe('SignUpUseCase', () => {
   let findByEmail: jest.Mock;
   let create: jest.Mock;
   let repository: UserRepositoryPort;
-  let signAsync: jest.Mock;
-  let jwtService: JwtService;
+  let issue: jest.Mock;
+  let authTokenIssuer: AuthTokenIssuer;
   let useCase: SignUpUseCase;
 
   beforeEach(() => {
@@ -18,26 +19,32 @@ describe('SignUpUseCase', () => {
     create = jest.fn();
     repository = { findByEmail, create, findAll: jest.fn() };
 
-    signAsync = jest.fn().mockResolvedValue('signed-jwt-token');
-    jwtService = { signAsync } as unknown as JwtService;
+    issue = jest.fn();
+    authTokenIssuer = { issue } as unknown as AuthTokenIssuer;
 
-    useCase = new SignUpUseCase(repository, jwtService);
+    useCase = new SignUpUseCase(repository, authTokenIssuer);
   });
 
-  it('hashes the password (never persists plaintext) and returns {id, accessToken}', async () => {
+  it('hashes the password (never persists plaintext) and returns {id, accessToken, refreshToken} via AuthTokenIssuer', async () => {
     findByEmail.mockResolvedValue(null);
     let savedEntity: UserEntity | undefined;
+    let savedUser: UserEntity | undefined;
     create.mockImplementation((entity: UserEntity) => {
       savedEntity = entity;
-      return Promise.resolve(
-        new UserEntity({
-          id: 'user-1',
-          name: entity.name,
-          email: entity.email,
-          password: entity.password,
-        }),
-      );
+      savedUser = new UserEntity({
+        id: 'user-1',
+        name: entity.name,
+        email: entity.email,
+        password: entity.password,
+      });
+      return Promise.resolve(savedUser);
     });
+    const authResponse: AuthResponse = {
+      id: 'user-1',
+      accessToken: 'signed-access-jwt',
+      refreshToken: 'signed-refresh-jwt',
+    };
+    issue.mockResolvedValue(authResponse);
 
     const result = await useCase.execute(
       new SignUpCommand(
@@ -54,12 +61,8 @@ describe('SignUpUseCase', () => {
     expect(
       await argon2.verify(savedEntity!.password, 'plaintext-password'),
     ).toBe(true);
-    expect(signAsync).toHaveBeenCalledWith({
-      sub: 'user-1',
-      email: 'jane@example.com',
-      name: 'Jane Doe',
-    });
-    expect(result).toEqual({ id: 'user-1', accessToken: 'signed-jwt-token' });
+    expect(issue).toHaveBeenCalledWith(savedUser);
+    expect(result).toEqual(authResponse);
   });
 
   it('throws ConflictException when the email is already taken', async () => {
@@ -83,6 +86,7 @@ describe('SignUpUseCase', () => {
       ),
     ).rejects.toThrow(ConflictException);
     expect(create).not.toHaveBeenCalled();
+    expect(issue).not.toHaveBeenCalled();
   });
 
   // The TOCTOU race (two concurrent sign-ups for the same email both pass
@@ -107,5 +111,6 @@ describe('SignUpUseCase', () => {
         ),
       ),
     ).rejects.toThrow(ConflictException);
+    expect(issue).not.toHaveBeenCalled();
   });
 });

@@ -1,13 +1,21 @@
 import { Module } from '@nestjs/common';
 import { ThrottlerModule } from '@nestjs/throttler';
+import { normalizeJwtExpiry } from '@config/env/normalize-jwt-expiry';
 import { SignUpUseCase } from './application/use-cases/sign-up.use-case';
 import { SignInUseCase } from './application/use-cases/sign-in.use-case';
 import { GetAllUsersUseCase } from './application/use-cases/get-all-users.use-case';
 import { GetProfileUseCase } from './application/use-cases/get-profile.use-case';
 import { UpdateProfileUseCase } from './application/use-cases/update-profile.use-case';
+import {
+  AuthTokenIssuer,
+  REFRESH_JWT_CONFIG,
+} from './application/shared/auth-token-issuer';
+import type { RefreshJwtConfig } from './application/shared/auth-token-issuer';
 import { USER_REPOSITORY } from './domain/ports/user.repository.port';
+import { REFRESH_TOKEN_REPOSITORY } from './domain/ports/refresh-token.repository.port';
 import { AuthController } from './infrastructure/controllers/auth.controller';
 import { PrismaUserRepository } from './infrastructure/repositories/prisma-user.repository';
+import { PrismaRefreshTokenRepository } from './infrastructure/repositories/prisma-refresh-token.repository';
 
 @Module({
   imports: [
@@ -29,6 +37,26 @@ import { PrismaUserRepository } from './infrastructure/repositories/prisma-user.
       provide: USER_REPOSITORY,
       useClass: PrismaUserRepository,
     },
+    {
+      provide: REFRESH_TOKEN_REPOSITORY,
+      useClass: PrismaRefreshTokenRepository,
+    },
+    {
+      // Raw process.env access + normalizeJwtExpiry() happen here at the
+      // module-wiring boundary (same pattern as app.module.ts's JwtModule
+      // registration for the access token's JWT_EXPIRES_IN) — AuthTokenIssuer
+      // itself (application layer) only ever receives the already-resolved
+      // { secret, expiresIn } value via DI, never touching process.env or
+      // infrastructure config directly.
+      provide: REFRESH_JWT_CONFIG,
+      useFactory: (): RefreshJwtConfig => ({
+        secret: process.env.REFRESH_JWT_SECRET as string,
+        expiresIn: normalizeJwtExpiry(
+          process.env.REFRESH_JWT_EXPIRES_IN ?? '30d',
+        ) as unknown as RefreshJwtConfig['expiresIn'],
+      }),
+    },
+    AuthTokenIssuer,
     SignUpUseCase,
     SignInUseCase,
     GetAllUsersUseCase,

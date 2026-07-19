@@ -1,17 +1,16 @@
 import { Inject, Injectable } from '@nestjs/common';
-import { JwtService } from '@nestjs/jwt';
 import * as argon2 from 'argon2';
 import { ConflictException } from '@domain/exceptions/domain.exception';
-import { buildAuthResponse } from '../shared/build-auth-response';
-import type { AuthResponse } from '../shared/build-auth-response';
+import { AuthTokenIssuer } from '../shared/auth-token-issuer';
+import type { AuthResponse } from '../shared/auth-token-issuer';
 import { UserEntity } from '../../domain/entities/user.entity';
 import { USER_REPOSITORY } from '../../domain/ports/user.repository.port';
 import type { UserRepositoryPort } from '../../domain/ports/user.repository.port';
 
-// Deliberately returns { id, accessToken } instead of AGENTS.md's default
-// "Create returns { id: string } only" rule: the client needs a working
-// session immediately after registering, so this is a documented exception,
-// not an oversight.
+// Deliberately returns { id, accessToken, refreshToken } instead of
+// AGENTS.md's default "Create returns { id: string } only" rule: the client
+// needs a working session immediately after registering, so this is a
+// documented exception, not an oversight.
 export type SignUpResponse = AuthResponse;
 
 export class SignUpCommand {
@@ -28,7 +27,7 @@ export class SignUpUseCase {
   constructor(
     @Inject(USER_REPOSITORY)
     private readonly repository: UserRepositoryPort,
-    private readonly jwtService: JwtService,
+    private readonly authTokenIssuer: AuthTokenIssuer,
   ) {}
 
   async execute(command: SignUpCommand): Promise<SignUpResponse> {
@@ -48,6 +47,6 @@ export class SignUpUseCase {
     });
     const saved = await this.repository.create(entity);
 
-    return buildAuthResponse(this.jwtService, saved);
+    return this.authTokenIssuer.issue(saved);
   }
 }

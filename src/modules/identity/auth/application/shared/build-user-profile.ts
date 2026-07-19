@@ -10,7 +10,7 @@ export type UserProfileResponse = {
 // Shared by GetProfileUseCase and UpdateProfileUseCase so both endpoints
 // return a byte-identical shape (design.md ADR-2). Lives under
 // application/shared/ (not application/use-cases/) — see
-// build-auth-response.ts for the established precedent of this convention.
+// auth-token-issuer.ts for the established precedent of this convention.
 //
 // Formatting via toISOString().slice(0, 10) is correct only because
 // birthDate is persisted as UTC-midnight by the sign-up path
