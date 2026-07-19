@@ -22,6 +22,10 @@ import {
   SignInCommand,
   SignInUseCase,
 } from '../../application/use-cases/sign-in.use-case';
+import {
+  RefreshTokenCommand,
+  RefreshTokenUseCase,
+} from '../../application/use-cases/refresh-token.use-case';
 import { GetAllUsersUseCase } from '../../application/use-cases/get-all-users.use-case';
 import { GetProfileUseCase } from '../../application/use-cases/get-profile.use-case';
 import {
@@ -30,6 +34,7 @@ import {
 } from '../../application/use-cases/update-profile.use-case';
 import { SignUpDto } from '../dto/sign-up.dto';
 import { SignInDto } from '../dto/sign-in.dto';
+import { RefreshDto } from '../dto/refresh.dto';
 import { UpdateProfileDto } from '../dto/update-profile.dto';
 
 // ThrottlerGuard is applied only here (AuthModule scopes its own
@@ -42,6 +47,7 @@ export class AuthController {
   constructor(
     private readonly signUp: SignUpUseCase,
     private readonly signIn: SignInUseCase,
+    private readonly refreshToken: RefreshTokenUseCase,
     private readonly getAllUsers: GetAllUsersUseCase,
     private readonly getProfile: GetProfileUseCase,
     private readonly updateProfile: UpdateProfileUseCase,
@@ -68,6 +74,24 @@ export class AuthController {
       message: 'Signed in successfully',
       data: await this.signIn.execute(
         new SignInCommand(dto.email, dto.password),
+      ),
+    };
+  }
+
+  // @Public() — exchanging a refresh token is the whole point of not
+  // having a live access token anymore. No @SkipThrottle(): this is a
+  // security-sensitive credential-exchange endpoint, same brute-force
+  // exposure class as sign-up/sign-in, so it stays under the class-level
+  // ThrottlerGuard (5 req/60s).
+  @Public()
+  @Post('refresh')
+  @HttpCode(HttpStatus.OK)
+  @ApiOkResponse({ description: 'Access and refresh tokens rotated' })
+  async refreshOne(@Body() dto: RefreshDto) {
+    return {
+      message: 'Tokens refreshed successfully',
+      data: await this.refreshToken.execute(
+        new RefreshTokenCommand(dto.refreshToken),
       ),
     };
   }

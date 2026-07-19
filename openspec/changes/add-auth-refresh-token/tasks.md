@@ -49,18 +49,18 @@ Rationale: first change touching auth's security posture with a genuine migratio
 
 ## Phase 3: AuthTokenIssuer + Sign-up/Sign-in Wiring (Commit 3)
 
-- [ ] 3.1 RED: write `auth-token-issuer.spec.ts` — issues access token (existing shape) + refresh token (`{ sub, type: 'refresh' }`, signed with `REFRESH_JWT_SECRET`, `expiresIn: REFRESH_JWT_EXPIRES_IN ?? '30d'`), persists hashed refresh row via repository
-- [ ] 3.2 GREEN: create injectable `AuthTokenIssuer` (`application/shared/auth-token-issuer.ts`), replacing `build-auth-response.ts`
-- [ ] 3.3 Update `SignUpUseCase`/`SignInUseCase` unit specs to assert `{ id, accessToken, refreshToken }` returned via `AuthTokenIssuer`
-- [ ] 3.4 GREEN: wire `SignUpUseCase`/`SignInUseCase` to use `AuthTokenIssuer`; delete `build-auth-response.ts`
-- [ ] 3.5 Register `AuthTokenIssuer` and `{ provide: REFRESH_TOKEN_REPOSITORY, useClass: PrismaRefreshTokenRepository }` in `auth.module.ts` providers
+- [x] 3.1 RED: write `auth-token-issuer.spec.ts` — issues access token (existing shape) + refresh token (`{ sub, type: 'refresh' }`, signed with `REFRESH_JWT_SECRET`, `expiresIn: REFRESH_JWT_EXPIRES_IN ?? '30d'`), persists hashed refresh row via repository
+- [x] 3.2 GREEN: create injectable `AuthTokenIssuer` (`application/shared/auth-token-issuer.ts`), replacing `build-auth-response.ts`
+- [x] 3.3 Update `SignUpUseCase`/`SignInUseCase` unit specs to assert `{ id, accessToken, refreshToken }` returned via `AuthTokenIssuer`
+- [x] 3.4 GREEN: wire `SignUpUseCase`/`SignInUseCase` to use `AuthTokenIssuer`; delete `build-auth-response.ts`
+- [x] 3.5 Register `AuthTokenIssuer` and `{ provide: REFRESH_TOKEN_REPOSITORY, useClass: PrismaRefreshTokenRepository }` in `auth.module.ts` providers (plus a `REFRESH_JWT_CONFIG` provider — required by the repo's pre-commit review gate to keep `process.env`/`normalizeJwtExpiry` out of the application layer; see apply-progress)
 
 ## Phase 4: Refresh Endpoint (Commit 4)
 
-- [ ] 4.1 Create `RefreshDto` (`{ @ApiProperty @IsString @IsNotEmpty refreshToken: string }`)
-- [ ] 4.2 RED: write `refresh-token.use-case.spec.ts` — valid token → revokes old, issues new pair; unknown/expired/malformed → 401; already-revoked (reuse) → 401, same shape, re-revoke is a no-op; payload with `type !== 'refresh'` → 401
-- [ ] 4.3 GREEN: implement `RefreshTokenUseCase` per design's Data Flow (verify → type check → hash lookup → reuse/expiry checks → revoke old → `AuthTokenIssuer.issue`)
-- [ ] 4.4 Add `@Public() @Post('refresh') @HttpCode(200)` handler to `AuthController` (no `@SkipThrottle`)
+- [x] 4.1 Create `RefreshDto` (`{ @ApiProperty @IsString @IsNotEmpty refreshToken: string }`)
+- [x] 4.2 RED: write `refresh-token.use-case.spec.ts` — valid token → revokes old, issues new pair; unknown/expired/malformed → 401; already-revoked (reuse) → 401, same shape, re-revoke is a no-op; payload with `type !== 'refresh'` → 401
+- [x] 4.3 GREEN: implement `RefreshTokenUseCase` per design's Data Flow (verify → type check → hash lookup → reuse/expiry checks → revoke old → `AuthTokenIssuer.issue`)
+- [x] 4.4 Add `@Public() @Post('refresh') @HttpCode(200)` handler to `AuthController` (no `@SkipThrottle`)
 
 ## Phase 5: Logout Endpoint (Commit 5)
 
