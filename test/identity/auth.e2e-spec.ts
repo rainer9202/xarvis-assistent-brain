@@ -434,4 +434,151 @@ describe('Auth (e2e)', () => {
         .expect(401);
     });
   });
+
+  describe('POST /auth/refresh and POST /auth/logout', () => {
+    // Signs up directly (rather than createAuthenticatedUser) so the
+    // returned refreshToken is available — createAuthenticatedUser only
+    // returns { token, userId }. Returns clientIp too so every subsequent
+    // refresh/logout call in the SAME test reuses it: ThrottlerGuard keys
+    // its bucket by class+handler+IP (see the file-level comment above), so
+    // reusing one IP across a test's own refresh/logout calls stays well
+    // under the 5-req/60s handler bucket while still giving each TEST its
+    // own isolated bucket via nextTestClientIp().
+    async function signUpForRefreshFlow() {
+      const email = `auth-e2e-refresh-${Date.now()}-${Math.random().toString(36).slice(2)}@example.com`;
+      const clientIp = nextTestClientIp();
+
+      const signUpRes = await request(app.getHttpServer())
+        .post('/auth/sign-up')
+        .set('X-Forwarded-For', clientIp)
+        .send({
+          name: 'Refresh Flow User',
+          email,
+          password: 'password123',
+          birthDate: '1990-05-20',
+        })
+        .expect(201);
+      createdUserIds.push(signUpRes.body.data.id);
+
+      return {
+        clientIp,
+        email,
+        userId: signUpRes.body.data.id as string,
+        accessToken: signUpRes.body.data.accessToken as string,
+        refreshToken: signUpRes.body.data.refreshToken as string,
+      };
+    }
+
+    it('sign-up response includes a refreshToken alongside id/accessToken, distinct from the access token', async () => {
+      const { userId, accessToken, refreshToken } =
+        await signUpForRefreshFlow();
+
+      expect(userId).toEqual(expect.any(String));
+      expect(accessToken).toEqual(expect.any(String));
+      expect(refreshToken).toEqual(expect.any(String));
+      expect(refreshToken).not.toEqual(accessToken);
+    });
+
+    it('sign-in response includes a refreshToken alongside id/accessToken', async () => {
+      const { email, clientIp, userId } = await signUpForRefreshFlow();
+
+      const signInRes = await request(app.getHttpServer())
+        .post('/auth/sign-in')
+        .set('X-Forwarded-For', clientIp)
+        .send({ email, password: 'password123' })
+        .expect(200);
+
+      expect(signInRes.body.data.id).toEqual(userId);
+      expect(signInRes.body.data.accessToken).toEqual(expect.any(String));
+      expect(signInRes.body.data.refreshToken).toEqual(expect.any(String));
+    });
+
+    it('POST /auth/refresh with a valid token returns 200 with a NEW access+refresh pair, the new access token works against a protected route, and the OLD refresh token then returns 401 on reuse', async () => {
+      const { clientIp, refreshToken: oldRefreshToken } =
+        await signUpForRefreshFlow();
+
+      const refreshRes = await request(app.getHttpServer())
+        .post('/auth/refresh')
+        .set('X-Forwarded-For', clientIp)
+        .send({ refreshToken: oldRefreshToken })
+        .expect(200);
+
+      expect(refreshRes.body.data.accessToken).toEqual(expect.any(String));
+      expect(refreshRes.body.data.refreshToken).toEqual(expect.any(String));
+      expect(refreshRes.body.data.refreshToken).not.toEqual(oldRefreshToken);
+
+      await request(app.getHttpServer())
+        .get('/accounts')
+        .set('Authorization', `Bearer ${refreshRes.body.data.accessToken}`)
+        .expect(200);
+
+      await request(app.getHttpServer())
+        .post('/auth/refresh')
+        .set('X-Forwarded-For', clientIp)
+        .send({ refreshToken: oldRefreshToken })
+        .expect(401);
+    });
+
+    it('🔍 reusing an already-rotated/revoked refresh token returns 401 with the IDENTICAL body shape as an unknown token (no info leak)', async () => {
+      const { clientIp, refreshToken: oldRefreshToken } =
+        await signUpForRefreshFlow();
+
+      // Rotate once so oldRefreshToken becomes revoked.
+      await request(app.getHttpServer())
+        .post('/auth/refresh')
+        .set('X-Forwarded-For', clientIp)
+        .send({ refreshToken: oldRefreshToken })
+        .expect(200);
+
+      const reuseRes = await request(app.getHttpServer())
+        .post('/auth/refresh')
+        .set('X-Forwarded-For', clientIp)
+        .send({ refreshToken: oldRefreshToken })
+        .expect(401);
+
+      const unknownRes = await request(app.getHttpServer())
+        .post('/auth/refresh')
+        .set('X-Forwarded-For', clientIp)
+        .send({ refreshToken: 'this-token-never-existed' })
+        .expect(401);
+
+      // Both branches throw the same bare UnauthorizedException (design.md's
+      // reuse-detection ADR) — asserting deep body equality proves a reused
+      // token is genuinely indistinguishable from one that never existed.
+      expect(reuseRes.body).toEqual(unknownRes.body);
+    });
+
+    it('POST /auth/logout returns 200, a subsequent refresh with that token returns 401, and logout is idempotent (still 200 on repeat)', async () => {
+      const { clientIp, refreshToken } = await signUpForRefreshFlow();
+
+      await request(app.getHttpServer())
+        .post('/auth/logout')
+        .set('X-Forwarded-For', clientIp)
+        .send({ refreshToken })
+        .expect(200);
+
+      await request(app.getHttpServer())
+        .post('/auth/refresh')
+        .set('X-Forwarded-For', clientIp)
+        .send({ refreshToken })
+        .expect(401);
+
+      // Idempotent: logging out again with the same (already-revoked) token
+      // still succeeds — LogoutUseCase never throws.
+      await request(app.getHttpServer())
+        .post('/auth/logout')
+        .set('X-Forwarded-For', clientIp)
+        .send({ refreshToken })
+        .expect(200);
+    });
+
+    it('🔍 a refresh-typed token presented as a Bearer access token on a protected route returns 401, proving JwtAuthGuard rejects token-type confusion', async () => {
+      const { refreshToken } = await signUpForRefreshFlow();
+
+      await request(app.getHttpServer())
+        .get('/accounts')
+        .set('Authorization', `Bearer ${refreshToken}`)
+        .expect(401);
+    });
+  });
 });

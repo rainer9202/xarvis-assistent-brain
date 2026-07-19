@@ -1,3 +1,4 @@
+import { randomUUID } from 'node:crypto';
 import { Inject, Injectable } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import type { JwtSignOptions } from '@nestjs/jwt';
@@ -17,8 +18,20 @@ export type AuthResponse = {
 // token's JwtPayload) so the two token classes are structurally
 // distinguishable even if their secrets were ever misconfigured to collide
 // (see design.md's "token-confusion defense in depth" ADR and
-// JwtAuthGuard's matching payload.type check).
-type RefreshJwtPayload = { sub: string; type: 'refresh'; exp: number };
+// JwtAuthGuard's matching payload.type check). `jti` is a per-token random
+// nonce, NOT a claim JwtAuthGuard or RefreshTokenUseCase ever reads — it
+// exists purely so two refresh tokens issued for the SAME user within the
+// SAME wall-clock second (jsonwebtoken's `iat` claim is second-granularity)
+// are never byte-identical, since `tokenHash` is UNIQUE at the DB layer and
+// an identical token would otherwise throw a real P2002 on the second
+// `create()` (observed via sign-up immediately followed by sign-in, or two
+// rapid refresh calls, in the same second).
+type RefreshJwtPayload = {
+  sub: string;
+  type: 'refresh';
+  jti: string;
+  exp: number;
+};
 
 // Dependency rule: application -> domain only, never infrastructure. The
 // refresh secret/expiry must be resolved (env read + normalizeJwtExpiry())
@@ -57,7 +70,7 @@ export class AuthTokenIssuer {
     });
 
     const refreshToken = await this.jwtService.signAsync(
-      { sub: user.id, type: 'refresh' },
+      { sub: user.id, type: 'refresh', jti: randomUUID() },
       {
         secret: this.refreshJwtConfig.secret,
         expiresIn: this.refreshJwtConfig.expiresIn,

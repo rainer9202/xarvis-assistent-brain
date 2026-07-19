@@ -76,12 +76,16 @@ Rationale: first change touching auth's security posture with a genuine migratio
 
 ## Phase 7: E2E Coverage, Stale Doc Fix, Final Verification (Commit 7)
 
-- [ ] 7.1 e2e: `POST /auth/refresh` with a valid token → 200, new access+refresh pair, old refresh token now returns 401
-- [ ] 7.2 e2e: reusing an already-rotated/revoked refresh token → 401, identical shape to an unknown token
-- [ ] 7.3 e2e: `POST /auth/logout` → 200; subsequent refresh with that token → 401; logout is idempotent (200 again on repeat)
-- [ ] 7.4 e2e: `sign-up`/`sign-in` responses include `refreshToken` alongside `id`/`accessToken`
-- [ ] 7.5 e2e: a refresh token presented as a Bearer access token on a protected route → 401 (proves Phase 6's guard check)
-- [ ] 7.6 Update the stale `Success Criteria` line "Global `JwtAuthGuard` unchanged; refresh/logout are `@Public()`" in `openspec/changes/add-auth-refresh-token/proposal.md` — no longer accurate after Phase 6's justified minimal additive check; rewrite to cite the design's defense-in-depth decision so it doesn't read as a contradicted acceptance criterion at archive time
-- [ ] 7.7 Run `pnpm typecheck && pnpm lint` — must be clean
-- [ ] 7.8 Run `pnpm test` (unit) — all green
-- [ ] 7.9 Run `pnpm test:e2e` against the docker-compose `db` service — all green, including 7.1-7.5
+- [x] 7.1 e2e: `POST /auth/refresh` with a valid token → 200, new access+refresh pair, old refresh token now returns 401
+- [x] 7.2 e2e: reusing an already-rotated/revoked refresh token → 401, identical shape to an unknown token
+- [x] 7.3 e2e: `POST /auth/logout` → 200; subsequent refresh with that token → 401; logout is idempotent (200 again on repeat)
+- [x] 7.4 e2e: `sign-up`/`sign-in` responses include `refreshToken` alongside `id`/`accessToken`
+- [x] 7.5 e2e: a refresh token presented as a Bearer access token on a protected route → 401 (proves Phase 6's guard check)
+- [x] 7.6 Update the stale `Success Criteria` line "Global `JwtAuthGuard` unchanged; refresh/logout are `@Public()`" in `openspec/changes/add-auth-refresh-token/proposal.md` — no longer accurate after Phase 6's justified minimal additive check; rewrite to cite the design's defense-in-depth decision so it doesn't read as a contradicted acceptance criterion at archive time
+- [x] 7.7 Run `pnpm typecheck && pnpm lint` — must be clean
+- [x] 7.8 Run `pnpm test` (unit) — all green
+- [x] 7.9 Run `pnpm test:e2e` against the docker-compose `db` service — all green, including 7.1-7.5
+
+### Bug fix discovered during 7.1-7.5 (not in original plan)
+
+- [x] 7.10 (unplanned, discovered via e2e coverage) `AuthTokenIssuer.issue()` signed the refresh JWT payload as `{ sub, type: 'refresh' }` with no per-token nonce — two tokens issued for the SAME user within the SAME wall-clock second (jsonwebtoken's `iat` claim is second-granularity) were byte-identical, causing a real `P2002` unique-constraint violation on `refresh_tokens.token_hash` (reproduced by e2e: sign-up immediately followed by sign-in for the same user → 500). Fixed by adding a random `jti` (via `node:crypto`'s `randomUUID()`) to the refresh JWT payload — RED/GREEN/TRIANGULATE cycle in `auth-token-issuer.spec.ts`, safety net 2/2 passing before the change, 3/3 passing after.
