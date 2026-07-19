@@ -14,6 +14,7 @@ import {
 import { GetAllWorkoutSessionsUseCase } from '../../application/use-cases/get-all-workout-sessions.use-case';
 import { GetWorkoutSessionByIdUseCase } from '../../application/use-cases/get-workout-session-by-id.use-case';
 import { CreateWorkoutSessionDto } from '../dto/create-workout-session.dto';
+import { GetWorkoutSessionsQueryDto } from '../dto/get-workout-sessions-query.dto';
 import { WorkoutSessionController } from './workout-session.controller';
 
 const user = { id: 'user-1', email: 'test@example.com', name: 'Test User' };
@@ -67,18 +68,51 @@ describe('WorkoutSessionController', () => {
   });
 
   describe('findAll', () => {
-    it('delegates to GetAllWorkoutSessionsUseCase', async () => {
-      const data = [
+    it('returns items as data with no pagination keys when unpaginated', async () => {
+      const items = [
         { id: 'session-1', routineId: 'routine-1', routineName: 'Pecho' },
       ];
-      getAllExecute.mockResolvedValue(data);
+      getAllExecute.mockResolvedValue({ items });
 
-      const result = await controller.findAll(user);
+      const query: GetWorkoutSessionsQueryDto = {};
+      const result = await controller.findAll(query, user);
 
-      expect(getAllExecute).toHaveBeenCalledWith(user.id);
+      expect(getAllExecute).toHaveBeenCalledWith(user.id, undefined, undefined);
       expect(result).toEqual({
         message: 'Get all workout-sessions successfully',
-        data,
+        data: items,
+      });
+      expect(result).not.toHaveProperty('page');
+      expect(result).not.toHaveProperty('totalCount');
+    });
+
+    it('adds page/limit/totalCount/totalPages/hasMore as siblings of data when paginated', async () => {
+      const items = [
+        { id: 'session-1', routineId: 'routine-1', routineName: 'Pecho' },
+      ];
+      getAllExecute.mockResolvedValue({
+        items,
+        pagination: {
+          page: 1,
+          limit: 10,
+          totalCount: 25,
+          totalPages: 3,
+          hasMore: true,
+        },
+      });
+
+      const query: GetWorkoutSessionsQueryDto = { page: 1, limit: 10 };
+      const result = await controller.findAll(query, user);
+
+      expect(getAllExecute).toHaveBeenCalledWith(user.id, 1, 10);
+      expect(result).toEqual({
+        message: 'Get all workout-sessions successfully',
+        data: items,
+        page: 1,
+        limit: 10,
+        totalCount: 25,
+        totalPages: 3,
+        hasMore: true,
       });
     });
   });

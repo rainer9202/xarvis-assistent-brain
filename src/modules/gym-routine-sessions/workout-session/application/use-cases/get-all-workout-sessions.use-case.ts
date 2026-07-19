@@ -15,6 +15,20 @@ export type GetAllWorkoutSessionsResponse = {
   totalExerciseCount: number;
 };
 
+export type GetAllWorkoutSessionsResult = {
+  items: GetAllWorkoutSessionsResponse[];
+  pagination?: {
+    page: number;
+    limit: number;
+    totalCount: number;
+    totalPages: number;
+    hasMore: boolean;
+  };
+};
+
+const DEFAULT_PAGE = 1;
+const DEFAULT_LIMIT = 20;
+
 @Injectable()
 export class GetAllWorkoutSessionsUseCase {
   constructor(
@@ -23,16 +37,32 @@ export class GetAllWorkoutSessionsUseCase {
     private readonly getAllRoutines: GetAllRoutinesUseCase,
   ) {}
 
-  async execute(userId: string): Promise<GetAllWorkoutSessionsResponse[]> {
+  async execute(
+    userId: string,
+    page?: number,
+    limit?: number,
+  ): Promise<GetAllWorkoutSessionsResult> {
     try {
+      const isPaginated = page !== undefined || limit !== undefined;
+      const effectivePage = page ?? DEFAULT_PAGE;
+      const effectiveLimit = limit ?? DEFAULT_LIMIT;
+
       // Fetched once here (not per session) to avoid an N+1 query — same
       // batched-Map pattern as GetAllMovementsUseCase/GetRoutineByIdUseCase.
       // GetAllRoutinesUseCase now returns { items, pagination? } (additive
-      // pagination support), so we take .items — called unpaginated here,
-      // so pagination is always undefined.
-      const [items, routinesResult] = await Promise.all([
-        this.repository.findAll(userId),
+      // pagination support), so we take .items — called unpaginated here
+      // (this use case's own pagination is independent of the routines
+      // lookup, which always needs the full routine list to resolve names).
+      const [sessionItems, routinesResult, totalCount] = await Promise.all([
+        this.repository.findAll(
+          userId,
+          isPaginated ? effectivePage : undefined,
+          isPaginated ? effectiveLimit : undefined,
+        ),
         this.getAllRoutines.execute(userId),
+        isPaginated
+          ? this.repository.countByUserId(userId)
+          : Promise.resolve(undefined),
       ]);
       const routineById = new Map(
         routinesResult.items.map((r) => [
@@ -41,7 +71,7 @@ export class GetAllWorkoutSessionsUseCase {
         ]),
       );
 
-      return items.map(({ session, loggedExerciseCount }) => {
+      const items = sessionItems.map(({ session, loggedExerciseCount }) => {
         const routine = routineById.get(session.routineId);
         return {
           id: session.id!,
@@ -59,6 +89,21 @@ export class GetAllWorkoutSessionsUseCase {
           totalExerciseCount: routine?.exerciseCount ?? 0,
         };
       });
+
+      if (!isPaginated || totalCount === undefined) {
+        return { items };
+      }
+
+      return {
+        items,
+        pagination: {
+          page: effectivePage,
+          limit: effectiveLimit,
+          totalCount,
+          totalPages: Math.ceil(totalCount / effectiveLimit),
+          hasMore: effectivePage * effectiveLimit < totalCount,
+        },
+      };
     } catch (error) {
       if (error instanceof DomainException) throw error;
       throw new Error(`Unexpected error fetching workout sessions: ${error}`);

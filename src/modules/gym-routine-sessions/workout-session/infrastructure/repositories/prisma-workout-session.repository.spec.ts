@@ -15,6 +15,7 @@ describe('PrismaWorkoutSessionRepository', () => {
       create: jest.Mock;
       update: jest.Mock;
       delete: jest.Mock;
+      count: jest.Mock;
     };
   };
 
@@ -36,6 +37,7 @@ describe('PrismaWorkoutSessionRepository', () => {
         create: jest.fn(),
         update: jest.fn(),
         delete: jest.fn(),
+        count: jest.fn(),
       },
     };
     repository = new PrismaWorkoutSessionRepository(
@@ -87,6 +89,46 @@ describe('PrismaWorkoutSessionRepository', () => {
       await repository.findAll('user-1');
 
       expect(prisma.workoutSession.findMany).toHaveBeenCalledTimes(1);
+    });
+
+    it('applies skip/take when page/limit are provided (paginated mode)', async () => {
+      prisma.workoutSession.findMany.mockResolvedValue([]);
+
+      await repository.findAll('user-1', 2, 10);
+
+      expect(prisma.workoutSession.findMany).toHaveBeenCalledWith({
+        where: { userId: 'user-1' },
+        orderBy: { date: 'desc' },
+        include: { _count: { select: { exercises: true } } },
+        skip: 10,
+        take: 10,
+      });
+    });
+
+    it('defaults page to 1 and limit to 20 when only one of them is provided', async () => {
+      prisma.workoutSession.findMany.mockResolvedValue([]);
+
+      await repository.findAll('user-1', 3, undefined);
+
+      expect(prisma.workoutSession.findMany).toHaveBeenCalledWith({
+        where: { userId: 'user-1' },
+        orderBy: { date: 'desc' },
+        include: { _count: { select: { exercises: true } } },
+        skip: 40,
+        take: 20,
+      });
+    });
+
+    it('omits skip/take entirely when neither page nor limit is provided', async () => {
+      prisma.workoutSession.findMany.mockResolvedValue([]);
+
+      await repository.findAll('user-1');
+
+      expect(prisma.workoutSession.findMany).toHaveBeenCalledWith({
+        where: { userId: 'user-1' },
+        orderBy: { date: 'desc' },
+        include: { _count: { select: { exercises: true } } },
+      });
     });
   });
 
@@ -194,6 +236,19 @@ describe('PrismaWorkoutSessionRepository', () => {
       expect(prisma.workoutSession.delete).toHaveBeenCalledWith({
         where: { id: 'session-1' },
       });
+    });
+  });
+
+  describe('countByUserId', () => {
+    it('delegates to prisma.workoutSession.count scoped by userId', async () => {
+      prisma.workoutSession.count.mockResolvedValue(6);
+
+      const result = await repository.countByUserId('user-1');
+
+      expect(prisma.workoutSession.count).toHaveBeenCalledWith({
+        where: { userId: 'user-1' },
+      });
+      expect(result).toBe(6);
     });
   });
 });

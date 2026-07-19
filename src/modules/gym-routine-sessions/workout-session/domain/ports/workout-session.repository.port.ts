@@ -12,7 +12,11 @@ export type WorkoutSessionWithLoggedCount = {
 };
 
 export interface WorkoutSessionRepositoryPort {
-  findAll(userId: string): Promise<WorkoutSessionWithLoggedCount[]>;
+  findAll(
+    userId: string,
+    page?: number,
+    limit?: number,
+  ): Promise<WorkoutSessionWithLoggedCount[]>;
   findById(id: string, userId: string): Promise<WorkoutSessionEntity | null>;
   findByIdWithExercises(
     id: string,
@@ -21,6 +25,7 @@ export interface WorkoutSessionRepositoryPort {
   save(entity: WorkoutSessionEntity): Promise<WorkoutSessionEntity>;
   update(entity: WorkoutSessionEntity): Promise<WorkoutSessionEntity>;
   delete(entity: WorkoutSessionEntity): Promise<void>;
+  countByUserId(userId: string): Promise<number>;
 }
 
 export const WORKOUT_SESSION_REPOSITORY = Symbol(

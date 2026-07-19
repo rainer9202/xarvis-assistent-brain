@@ -16,11 +16,22 @@ import {
 export class PrismaWorkoutSessionRepository implements WorkoutSessionRepositoryPort {
   constructor(private readonly prisma: PrismaService) {}
 
-  async findAll(userId: string): Promise<WorkoutSessionWithLoggedCount[]> {
+  async findAll(
+    userId: string,
+    page?: number,
+    limit?: number,
+  ): Promise<WorkoutSessionWithLoggedCount[]> {
+    const isPaginated = page !== undefined || limit !== undefined;
     const records = await this.prisma.workoutSession.findMany({
       where: { userId },
       orderBy: { date: 'desc' },
       include: { _count: { select: { exercises: true } } },
+      ...(isPaginated
+        ? {
+            skip: ((page ?? 1) - 1) * (limit ?? 20),
+            take: limit ?? 20,
+          }
+        : {}),
     });
     return records.map((r) => ({
       session: this.toEntity(r),
@@ -81,6 +92,10 @@ export class PrismaWorkoutSessionRepository implements WorkoutSessionRepositoryP
 
   async delete(entity: WorkoutSessionEntity): Promise<void> {
     await this.prisma.workoutSession.delete({ where: { id: entity.id! } });
+  }
+
+  async countByUserId(userId: string): Promise<number> {
+    return this.prisma.workoutSession.count({ where: { userId } });
   }
 
   private toEntity(record: WorkoutSessionModel): WorkoutSessionEntity {

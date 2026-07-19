@@ -29,6 +29,7 @@ describe('GetAllWorkoutSessionsUseCase', () => {
       save: jest.fn(),
       update: jest.fn(),
       delete: jest.fn(),
+      countByUserId: jest.fn(),
     };
     getAllRoutinesExecute = jest.fn();
     useCase = new GetAllWorkoutSessionsUseCase(repository, {
@@ -47,7 +48,8 @@ describe('GetAllWorkoutSessionsUseCase', () => {
     const result = await useCase.execute('user-1');
 
     expect(getAllRoutinesExecute).toHaveBeenCalledTimes(1);
-    expect(result).toEqual([
+    expect(findAll).toHaveBeenCalledWith('user-1', undefined, undefined);
+    expect(result.items).toEqual([
       {
         id: 'session-1',
         routineId: 'routine-1',
@@ -59,6 +61,38 @@ describe('GetAllWorkoutSessionsUseCase', () => {
         totalExerciseCount: 3,
       },
     ]);
+    expect(result.pagination).toBeUndefined();
+  });
+
+  it('does not call countByUserId when neither page nor limit is provided', async () => {
+    findAll.mockResolvedValue([]);
+    getAllRoutinesExecute.mockResolvedValue({ items: [] });
+
+    await useCase.execute('user-1');
+
+    expect(repository.countByUserId).not.toHaveBeenCalled();
+  });
+
+  it('adds pagination metadata as a sibling of items when page/limit are provided', async () => {
+    findAll.mockResolvedValue([{ session: session(), loggedExerciseCount: 0 }]);
+    getAllRoutinesExecute.mockResolvedValue({
+      items: [
+        { id: 'routine-1', name: 'Pecho', isActive: true, exerciseCount: 3 },
+      ],
+    });
+    (repository.countByUserId as jest.Mock).mockResolvedValue(25);
+
+    const result = await useCase.execute('user-1', 1, 10);
+
+    expect(findAll).toHaveBeenCalledWith('user-1', 1, 10);
+    expect(repository.countByUserId).toHaveBeenCalledWith('user-1');
+    expect(result.pagination).toEqual({
+      page: 1,
+      limit: 10,
+      totalCount: 25,
+      totalPages: 3,
+      hasMore: true,
+    });
   });
 
   it('maps partially-logged counts: logged 2, routine currently has 4 (spec scenario 1)', async () => {
@@ -71,7 +105,7 @@ describe('GetAllWorkoutSessionsUseCase', () => {
 
     const result = await useCase.execute('user-1');
 
-    expect(result[0]).toMatchObject({
+    expect(result.items[0]).toMatchObject({
       loggedExerciseCount: 2,
       totalExerciseCount: 4,
     });
@@ -87,7 +121,7 @@ describe('GetAllWorkoutSessionsUseCase', () => {
 
     const result = await useCase.execute('user-1');
 
-    expect(result[0]).toMatchObject({
+    expect(result.items[0]).toMatchObject({
       loggedExerciseCount: 0,
       totalExerciseCount: 5,
     });
@@ -103,7 +137,7 @@ describe('GetAllWorkoutSessionsUseCase', () => {
 
     const result = await useCase.execute('user-1');
 
-    expect(result[0]).toMatchObject({
+    expect(result.items[0]).toMatchObject({
       loggedExerciseCount: 6,
       totalExerciseCount: 3,
     });
@@ -124,7 +158,7 @@ describe('GetAllWorkoutSessionsUseCase', () => {
 
     const result = await useCase.execute('user-1');
 
-    expect(result[0]).toMatchObject({
+    expect(result.items[0]).toMatchObject({
       loggedExerciseCount: 3,
       totalExerciseCount: 0,
     });
@@ -140,7 +174,7 @@ describe('GetAllWorkoutSessionsUseCase', () => {
 
     const result = await useCase.execute('user-1');
 
-    expect(result[0]).toMatchObject({
+    expect(result.items[0]).toMatchObject({
       id: 'session-1',
       routineId: 'routine-1',
       routineName: 'Pecho',
