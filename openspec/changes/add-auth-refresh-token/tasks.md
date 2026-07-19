@@ -71,8 +71,8 @@ Rationale: first change touching auth's security posture with a genuine migratio
 
 ## Phase 6: Guard Defense-in-Depth (Commit 6)
 
-- [ ] 6.1 RED: write `jwt-auth.guard.spec.ts` case — a token that verifies successfully but has `payload.type === 'refresh'` is rejected with 401
-- [ ] 6.2 GREEN: add minimal additive check in `JwtAuthGuard.canActivate` rejecting `payload.type === 'refresh'` immediately after signature verification (no new DB access; legitimate access tokens unaffected)
+- [x] 6.1 RED: write `jwt-auth.guard.spec.ts` case — a token that verifies successfully but has `payload.type === 'refresh'` is rejected with 401
+- [x] 6.2 GREEN: add minimal additive check in `JwtAuthGuard.canActivate` rejecting `payload.type === 'refresh'` immediately after signature verification (no new DB access; legitimate access tokens unaffected)
 
 ## Phase 7: E2E Coverage, Stale Doc Fix, Final Verification (Commit 7)
 

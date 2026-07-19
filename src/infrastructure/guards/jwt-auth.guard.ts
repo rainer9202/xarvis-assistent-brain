@@ -6,13 +6,16 @@ import {
 } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
 import { JwtService } from '@nestjs/jwt';
-import { RequestWithUser } from '@infra/decorators/current-user.decorator';
+import type { RequestWithUser } from '@infra/decorators/current-user.decorator';
 import { IS_PUBLIC_KEY } from '@infra/decorators/public.decorator';
 
 interface JwtPayload {
   sub: string;
   email: string;
   name: string;
+  // Absent on a real access token; only present (as 'refresh') on a
+  // refresh JWT — see the `type` check in canActivate() below.
+  type?: string;
 }
 
 // Fully replaces the deleted Better-Auth-based guard: hand-rolled JWT
@@ -37,6 +40,18 @@ export class JwtAuthGuard implements CanActivate {
 
     try {
       const payload = await this.jwtService.verifyAsync<JwtPayload>(token);
+
+      // Token-confusion defense in depth (design.md ADR): a refresh JWT's
+      // payload is deliberately { sub, type: 'refresh' } — no email/name —
+      // so this check is on payload SHAPE, not signature, and rejects a
+      // refresh token used as a Bearer access token EVEN IF
+      // REFRESH_JWT_SECRET were ever misconfigured equal to JWT_SECRET.
+      // No new DB access added; legitimate access tokens (which never carry
+      // `type`) are unaffected.
+      if (payload.type === 'refresh') {
+        throw new UnauthorizedException();
+      }
+
       request.user = {
         id: payload.sub,
         email: payload.email,

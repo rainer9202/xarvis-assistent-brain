@@ -98,6 +98,24 @@ describe('JwtAuthGuard', () => {
     );
   });
 
+  it('throws UnauthorizedException for a token that verifies successfully but carries a refresh-token payload (type: "refresh") — token-confusion defense in depth', async () => {
+    // See design.md's "token-confusion defense in depth" ADR: a refresh JWT
+    // deliberately has no email/name, only { sub, type: 'refresh' }. This
+    // check is on the decoded payload SHAPE, not the signature, so it holds
+    // even if REFRESH_JWT_SECRET were ever misconfigured to equal
+    // JWT_SECRET (see is-distinct-from.validator.ts for the boot-time half
+    // of this defense-in-depth pair).
+    getAllAndOverride.mockReturnValue(false);
+    verifyAsync.mockResolvedValue({ sub: 'user-1', type: 'refresh' });
+    const context = buildContext({
+      authorization: 'Bearer a-refresh-token-used-as-access-token',
+    });
+
+    await expect(guard.canActivate(context)).rejects.toThrow(
+      UnauthorizedException,
+    );
+  });
+
   it('throws UnauthorizedException for a token signed with an algorithm other than HS256', async () => {
     // Exercises the real JwtService (not the mocked one used everywhere else
     // in this file) so the app.module.ts JwtModule.registerAsync factory's
