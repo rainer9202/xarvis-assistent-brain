@@ -70,10 +70,10 @@ Unlike the additive-only sibling changes, this adds a migration. Rollback is two
 
 ## Success Criteria
 
-- [ ] `POST /auth/refresh` with a valid token returns a NEW access + NEW refresh token and revokes the old.
-- [ ] Reusing a rotated/revoked token returns `401`, indistinguishable from an unknown token.
-- [ ] `POST /auth/logout` revokes the token; a subsequent refresh with it returns `401`; logout is idempotent.
-- [ ] Sign-up/sign-in return `{ id, accessToken, refreshToken }`.
-- [ ] Missing/malformed `REFRESH_JWT_SECRET`/`REFRESH_JWT_EXPIRES_IN` fails fast at boot.
-- [ ] `refresh`/`logout` are `@Public()`. `JwtAuthGuard` gained one minimal additive check (rejects `payload.type === 'refresh'` on any protected route) as a deliberate defense-in-depth measure — see design.md's "token-confusion defense in depth" ADR; this is a justified, reviewed security hardening, not scope creep, and does not change the guard's behavior for any legitimate access token.
-- [ ] Unit + e2e suites green under Strict TDD.
+- [x] `POST /auth/refresh` with a valid token returns a NEW access + NEW refresh token and revokes the old.
+- [x] Reusing a rotated/revoked token returns `401`, indistinguishable from an unknown token.
+- [x] `POST /auth/logout` revokes the token; a subsequent refresh with it returns `401`; logout is idempotent.
+- [x] Sign-up/sign-in return `{ id, accessToken, refreshToken }`.
+- [x] Missing/malformed `REFRESH_JWT_SECRET`/`REFRESH_JWT_EXPIRES_IN` fails fast at boot.
+- [x] `refresh`/`logout` are `@Public()`. `JwtAuthGuard` gained one minimal additive check (rejects `payload.type === 'refresh'` on any protected route) as a deliberate defense-in-depth measure — see design.md's "token-confusion defense in depth" ADR; this is a justified, reviewed security hardening, not scope creep, and does not change the guard's behavior for any legitimate access token.
+- [x] Unit + e2e suites green under Strict TDD.
