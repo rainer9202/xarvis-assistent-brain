@@ -19,6 +19,7 @@ describe('GetAllExercisesUseCase', () => {
       delete: jest.fn(),
       countRoutineExercisesByExerciseId: jest.fn(),
       countSessionExercisesByExerciseId: jest.fn(),
+      countByUserId: jest.fn(),
     };
     useCase = new GetAllExercisesUseCase(repository);
   });
@@ -41,11 +42,44 @@ describe('GetAllExercisesUseCase', () => {
 
     const result = await useCase.execute('user-1');
 
-    expect(findAll).toHaveBeenCalledWith('user-1');
-    expect(result).toHaveLength(2);
-    expect(result[0]).toMatchObject({ id: 'global-1', isCustom: false });
-    expect(result[1]).toMatchObject({ id: 'own-1', isCustom: true });
+    expect(findAll).toHaveBeenCalledWith('user-1', undefined, undefined);
+    expect(result.items).toHaveLength(2);
+    expect(result.items[0]).toMatchObject({ id: 'global-1', isCustom: false });
+    expect(result.items[1]).toMatchObject({ id: 'own-1', isCustom: true });
     // userId itself must never leak into the response.
-    expect(result[0]).not.toHaveProperty('userId');
+    expect(result.items[0]).not.toHaveProperty('userId');
+    expect(result.pagination).toBeUndefined();
+  });
+
+  it('does not call countByUserId when neither page nor limit is provided', async () => {
+    findAll.mockResolvedValue([]);
+
+    await useCase.execute('user-1');
+
+    expect(repository.countByUserId).not.toHaveBeenCalled();
+  });
+
+  it('adds pagination metadata as a sibling of items when page/limit are provided', async () => {
+    findAll.mockResolvedValue([
+      new ExerciseEntity({
+        id: 'ex-1',
+        userId: 'user-1',
+        name: 'Curl',
+        createdAt: new Date('2024-01-01T00:00:00Z'),
+      }),
+    ]);
+    (repository.countByUserId as jest.Mock).mockResolvedValue(25);
+
+    const result = await useCase.execute('user-1', 1, 10);
+
+    expect(findAll).toHaveBeenCalledWith('user-1', 1, 10);
+    expect(repository.countByUserId).toHaveBeenCalledWith('user-1');
+    expect(result.pagination).toEqual({
+      page: 1,
+      limit: 10,
+      totalCount: 25,
+      totalPages: 3,
+      hasMore: true,
+    });
   });
 });

@@ -1,7 +1,11 @@
 import { ExerciseEntity } from '../entities/exercise.entity';
 
 export interface ExerciseRepositoryPort {
-  findAll(userId: string): Promise<ExerciseEntity[]>;
+  findAll(
+    userId: string,
+    page?: number,
+    limit?: number,
+  ): Promise<ExerciseEntity[]>;
   findByIds(ids: string[], userId: string): Promise<ExerciseEntity[]>;
   findById(id: string, userId: string): Promise<ExerciseEntity | null>;
   findOwnById(id: string, userId: string): Promise<ExerciseEntity | null>;
@@ -10,6 +14,7 @@ export interface ExerciseRepositoryPort {
   delete(entity: ExerciseEntity): Promise<void>;
   countRoutineExercisesByExerciseId(exerciseId: string): Promise<number>;
   countSessionExercisesByExerciseId(exerciseId: string): Promise<number>;
+  countByUserId(userId: string): Promise<number>;
 }
 
 export const EXERCISE_REPOSITORY = Symbol('ExerciseRepositoryPort');

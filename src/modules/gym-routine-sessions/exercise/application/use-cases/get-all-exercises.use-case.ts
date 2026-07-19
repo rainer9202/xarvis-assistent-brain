@@ -21,6 +21,20 @@ export type GetAllExercisesResponse = {
   createdAt: Date;
 };
 
+export type GetAllExercisesResult = {
+  items: GetAllExercisesResponse[];
+  pagination?: {
+    page: number;
+    limit: number;
+    totalCount: number;
+    totalPages: number;
+    hasMore: boolean;
+  };
+};
+
+const DEFAULT_PAGE = 1;
+const DEFAULT_LIMIT = 20;
+
 @Injectable()
 export class GetAllExercisesUseCase {
   constructor(
@@ -28,10 +42,28 @@ export class GetAllExercisesUseCase {
     private readonly repository: ExerciseRepositoryPort,
   ) {}
 
-  async execute(userId: string): Promise<GetAllExercisesResponse[]> {
+  async execute(
+    userId: string,
+    page?: number,
+    limit?: number,
+  ): Promise<GetAllExercisesResult> {
     try {
-      const entities = await this.repository.findAll(userId);
-      return entities.map((item) => ({
+      const isPaginated = page !== undefined || limit !== undefined;
+      const effectivePage = page ?? DEFAULT_PAGE;
+      const effectiveLimit = limit ?? DEFAULT_LIMIT;
+
+      const [entities, totalCount] = await Promise.all([
+        this.repository.findAll(
+          userId,
+          isPaginated ? effectivePage : undefined,
+          isPaginated ? effectiveLimit : undefined,
+        ),
+        isPaginated
+          ? this.repository.countByUserId(userId)
+          : Promise.resolve(undefined),
+      ]);
+
+      const items = entities.map((item) => ({
         id: item.id!,
         name: item.name,
         nameEs: item.nameEs,
@@ -51,6 +83,21 @@ export class GetAllExercisesUseCase {
         isCustom: item.userId !== null && item.userId !== undefined,
         createdAt: item.createdAt!,
       }));
+
+      if (!isPaginated || totalCount === undefined) {
+        return { items };
+      }
+
+      return {
+        items,
+        pagination: {
+          page: effectivePage,
+          limit: effectiveLimit,
+          totalCount,
+          totalPages: Math.ceil(totalCount / effectiveLimit),
+          hasMore: effectivePage * effectiveLimit < totalCount,
+        },
+      };
     } catch (error) {
       if (error instanceof DomainException) throw error;
       throw new Error(`Unexpected error fetching exercises: ${error}`);

@@ -8,6 +8,7 @@ import {
   Param,
   Patch,
   Post,
+  Query,
 } from '@nestjs/common';
 import {
   ApiCreatedResponse,
@@ -31,6 +32,7 @@ import { GetAllExercisesUseCase } from '../../application/use-cases/get-all-exer
 import { GetExerciseByIdUseCase } from '../../application/use-cases/get-exercise-by-id.use-case';
 import { CreateExerciseDto } from '../dto/create-exercise.dto';
 import { UpdateExerciseDto } from '../dto/update-exercise.dto';
+import { GetExercisesQueryDto } from '../dto/get-exercises-query.dto';
 import { CurrentUser } from '@infra/decorators/current-user.decorator';
 import type { AuthenticatedUser } from '@infra/decorators/current-user.decorator';
 
@@ -49,10 +51,15 @@ export class ExerciseController {
 
   @Get()
   @ApiOkResponse({ description: 'List of exercises (own + global catalog)' })
-  async findAll(@CurrentUser() user: AuthenticatedUser) {
+  async findAll(
+    @Query() query: GetExercisesQueryDto,
+    @CurrentUser() user: AuthenticatedUser,
+  ) {
+    const result = await this.getAll.execute(user.id, query.page, query.limit);
     return {
       message: `Get all ${domainName} successfully`,
-      data: await this.getAll.execute(user.id),
+      data: result.items,
+      ...(result.pagination ?? {}),
     };
   }
 

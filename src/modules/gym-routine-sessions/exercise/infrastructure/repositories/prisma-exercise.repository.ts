@@ -8,10 +8,21 @@ import { ExerciseModel } from '@config/database/generated/prisma/models.js';
 export class PrismaExerciseRepository implements ExerciseRepositoryPort {
   constructor(private readonly prisma: PrismaService) {}
 
-  async findAll(userId: string): Promise<ExerciseEntity[]> {
+  async findAll(
+    userId: string,
+    page?: number,
+    limit?: number,
+  ): Promise<ExerciseEntity[]> {
+    const isPaginated = page !== undefined || limit !== undefined;
     const records = await this.prisma.exercise.findMany({
       where: { OR: [{ userId }, { userId: null }] },
       orderBy: { name: 'asc' },
+      ...(isPaginated
+        ? {
+            skip: ((page ?? 1) - 1) * (limit ?? 20),
+            take: limit ?? 20,
+          }
+        : {}),
     });
     return records.map((r) => this.toEntity(r));
   }
@@ -90,6 +101,12 @@ export class PrismaExerciseRepository implements ExerciseRepositoryPort {
 
   async countSessionExercisesByExerciseId(exerciseId: string): Promise<number> {
     return this.prisma.workoutSessionExercise.count({ where: { exerciseId } });
+  }
+
+  async countByUserId(userId: string): Promise<number> {
+    return this.prisma.exercise.count({
+      where: { OR: [{ userId }, { userId: null }] },
+    });
   }
 
   private toEntity(record: ExerciseModel): ExerciseEntity {

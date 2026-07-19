@@ -15,6 +15,7 @@ describe('PrismaExerciseRepository', () => {
       create: jest.Mock;
       update: jest.Mock;
       delete: jest.Mock;
+      count: jest.Mock;
     };
     routineExercise: {
       count: jest.Mock;
@@ -50,6 +51,7 @@ describe('PrismaExerciseRepository', () => {
         create: jest.fn(),
         update: jest.fn(),
         delete: jest.fn(),
+        count: jest.fn(),
       },
       routineExercise: { count: jest.fn() },
       workoutSessionExercise: { count: jest.fn() },
@@ -75,6 +77,43 @@ describe('PrismaExerciseRepository', () => {
         orderBy: { name: 'asc' },
       });
       expect(result[0]).toBeInstanceOf(ExerciseEntity);
+    });
+
+    it('applies skip/take when page/limit are provided (paginated mode)', async () => {
+      prisma.exercise.findMany.mockResolvedValue([]);
+
+      await repository.findAll('user-1', 2, 10);
+
+      expect(prisma.exercise.findMany).toHaveBeenCalledWith({
+        where: { OR: [{ userId: 'user-1' }, { userId: null }] },
+        orderBy: { name: 'asc' },
+        skip: 10,
+        take: 10,
+      });
+    });
+
+    it('defaults page to 1 and limit to 20 when only one of them is provided', async () => {
+      prisma.exercise.findMany.mockResolvedValue([]);
+
+      await repository.findAll('user-1', 3, undefined);
+
+      expect(prisma.exercise.findMany).toHaveBeenCalledWith({
+        where: { OR: [{ userId: 'user-1' }, { userId: null }] },
+        orderBy: { name: 'asc' },
+        skip: 40,
+        take: 20,
+      });
+    });
+
+    it('omits skip/take entirely when neither page nor limit is provided', async () => {
+      prisma.exercise.findMany.mockResolvedValue([]);
+
+      await repository.findAll('user-1');
+
+      expect(prisma.exercise.findMany).toHaveBeenCalledWith({
+        where: { OR: [{ userId: 'user-1' }, { userId: null }] },
+        orderBy: { name: 'asc' },
+      });
     });
   });
 
@@ -229,6 +268,19 @@ describe('PrismaExerciseRepository', () => {
         where: { exerciseId: 'ex-1' },
       });
       expect(result).toBe(1);
+    });
+  });
+
+  describe('countByUserId', () => {
+    it('counts own OR global rows scoped for the given user', async () => {
+      prisma.exercise.count.mockResolvedValue(7);
+
+      const result = await repository.countByUserId('user-1');
+
+      expect(prisma.exercise.count).toHaveBeenCalledWith({
+        where: { OR: [{ userId: 'user-1' }, { userId: null }] },
+      });
+      expect(result).toBe(7);
     });
   });
 });

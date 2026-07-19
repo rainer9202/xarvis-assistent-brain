@@ -15,6 +15,7 @@ import { GetAllExercisesUseCase } from '../../application/use-cases/get-all-exer
 import { GetExerciseByIdUseCase } from '../../application/use-cases/get-exercise-by-id.use-case';
 import { CreateExerciseDto } from '../dto/create-exercise.dto';
 import { UpdateExerciseDto } from '../dto/update-exercise.dto';
+import { GetExercisesQueryDto } from '../dto/get-exercises-query.dto';
 import { ExerciseController } from './exercise.controller';
 
 const user = { id: 'user-1', email: 'test@example.com', name: 'Test User' };
@@ -68,16 +69,47 @@ describe('ExerciseController', () => {
   });
 
   describe('findAll', () => {
-    it('delegates to GetAllExercisesUseCase', async () => {
-      const data = [{ id: 'ex-1', name: 'Push-up', isCustom: false }];
-      getAllExecute.mockResolvedValue(data);
+    it('returns items as data with no pagination keys when unpaginated', async () => {
+      const items = [{ id: 'ex-1', name: 'Push-up', isCustom: false }];
+      getAllExecute.mockResolvedValue({ items });
 
-      const result = await controller.findAll(user);
+      const query: GetExercisesQueryDto = {};
+      const result = await controller.findAll(query, user);
 
-      expect(getAllExecute).toHaveBeenCalledWith(user.id);
+      expect(getAllExecute).toHaveBeenCalledWith(user.id, undefined, undefined);
       expect(result).toEqual({
         message: 'Get all exercises successfully',
-        data,
+        data: items,
+      });
+      expect(result).not.toHaveProperty('page');
+      expect(result).not.toHaveProperty('totalCount');
+    });
+
+    it('adds page/limit/totalCount/totalPages/hasMore as siblings of data when paginated', async () => {
+      const items = [{ id: 'ex-1', name: 'Push-up', isCustom: false }];
+      getAllExecute.mockResolvedValue({
+        items,
+        pagination: {
+          page: 1,
+          limit: 10,
+          totalCount: 25,
+          totalPages: 3,
+          hasMore: true,
+        },
+      });
+
+      const query: GetExercisesQueryDto = { page: 1, limit: 10 };
+      const result = await controller.findAll(query, user);
+
+      expect(getAllExecute).toHaveBeenCalledWith(user.id, 1, 10);
+      expect(result).toEqual({
+        message: 'Get all exercises successfully',
+        data: items,
+        page: 1,
+        limit: 10,
+        totalCount: 25,
+        totalPages: 3,
+        hasMore: true,
       });
     });
   });
