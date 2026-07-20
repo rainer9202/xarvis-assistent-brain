@@ -30,6 +30,7 @@ import {
 } from '../../application/use-cases/delete-workout-session.use-case';
 import { GetAllWorkoutSessionsUseCase } from '../../application/use-cases/get-all-workout-sessions.use-case';
 import { GetWorkoutSessionByIdUseCase } from '../../application/use-cases/get-workout-session-by-id.use-case';
+import { GetWorkoutSessionStatsUseCase } from '../../application/use-cases/get-workout-session-stats.use-case';
 import { CreateWorkoutSessionDto } from '../dto/create-workout-session.dto';
 import { GetWorkoutSessionsQueryDto } from '../dto/get-workout-sessions-query.dto';
 import { CurrentUser } from '@infra/decorators/current-user.decorator';
@@ -43,6 +44,7 @@ export class WorkoutSessionController {
   constructor(
     private readonly getAll: GetAllWorkoutSessionsUseCase,
     private readonly getById: GetWorkoutSessionByIdUseCase,
+    private readonly getStatsUseCase: GetWorkoutSessionStatsUseCase,
     private readonly create: CreateWorkoutSessionUseCase,
     private readonly finish: FinishWorkoutSessionUseCase,
     private readonly remove: DeleteWorkoutSessionUseCase,
@@ -59,6 +61,18 @@ export class WorkoutSessionController {
       message: `Get all ${domainName} successfully`,
       data: result.items,
       ...(result.pagination ?? {}),
+    };
+  }
+
+  // Registered BEFORE the `:id` route below — Nest matches routes in
+  // declaration order, so `stats` would otherwise be swallowed as an `:id`
+  // param.
+  @Get('stats')
+  @ApiOkResponse({ description: 'Aggregated workout session stats' })
+  async getStats(@CurrentUser() user: AuthenticatedUser) {
+    return {
+      message: 'Get workout session stats successfully',
+      data: await this.getStatsUseCase.execute(user.id),
     };
   }
 

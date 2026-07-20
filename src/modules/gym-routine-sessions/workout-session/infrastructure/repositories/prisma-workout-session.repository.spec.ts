@@ -251,4 +251,21 @@ describe('PrismaWorkoutSessionRepository', () => {
       expect(result).toBe(6);
     });
   });
+
+  describe('findAllForStats', () => {
+    it('selects only date/finishedAt, scoped by userId, ordered by date desc', async () => {
+      prisma.workoutSession.findMany.mockResolvedValue([
+        { date: record.date, finishedAt: null },
+      ]);
+
+      const result = await repository.findAllForStats('user-1');
+
+      expect(prisma.workoutSession.findMany).toHaveBeenCalledWith({
+        where: { userId: 'user-1' },
+        orderBy: { date: 'desc' },
+        select: { date: true, finishedAt: true },
+      });
+      expect(result).toEqual([{ date: record.date, finishedAt: null }]);
+    });
+  });
 });

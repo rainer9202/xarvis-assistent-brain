@@ -4,6 +4,7 @@ import { WorkoutSessionEntity } from '../../domain/entities/workout-session.enti
 import { WorkoutSessionExerciseEntity } from '../../domain/entities/workout-session-exercise.entity';
 import type {
   WorkoutSessionRepositoryPort,
+  WorkoutSessionStatsRow,
   WorkoutSessionWithExercises,
   WorkoutSessionWithLoggedCount,
 } from '../../domain/ports/workout-session.repository.port';
@@ -96,6 +97,14 @@ export class PrismaWorkoutSessionRepository implements WorkoutSessionRepositoryP
 
   async countByUserId(userId: string): Promise<number> {
     return this.prisma.workoutSession.count({ where: { userId } });
+  }
+
+  async findAllForStats(userId: string): Promise<WorkoutSessionStatsRow[]> {
+    return this.prisma.workoutSession.findMany({
+      where: { userId },
+      orderBy: { date: 'desc' },
+      select: { date: true, finishedAt: true },
+    });
   }
 
   private toEntity(record: WorkoutSessionModel): WorkoutSessionEntity {

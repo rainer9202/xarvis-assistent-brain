@@ -6,6 +6,7 @@ import { FinishWorkoutSessionUseCase } from './application/use-cases/finish-work
 import { DeleteWorkoutSessionUseCase } from './application/use-cases/delete-workout-session.use-case';
 import { GetAllWorkoutSessionsUseCase } from './application/use-cases/get-all-workout-sessions.use-case';
 import { GetWorkoutSessionByIdUseCase } from './application/use-cases/get-workout-session-by-id.use-case';
+import { GetWorkoutSessionStatsUseCase } from './application/use-cases/get-workout-session-stats.use-case';
 import { CreateWorkoutSessionExerciseUseCase } from './application/use-cases/create-workout-session-exercise.use-case';
 import { UpdateWorkoutSessionExerciseUseCase } from './application/use-cases/update-workout-session-exercise.use-case';
 import { DeleteWorkoutSessionExerciseUseCase } from './application/use-cases/delete-workout-session-exercise.use-case';
@@ -43,6 +44,7 @@ import { PrismaWorkoutSessionExerciseRepository } from './infrastructure/reposit
     },
     GetAllWorkoutSessionsUseCase,
     GetWorkoutSessionByIdUseCase,
+    GetWorkoutSessionStatsUseCase,
     CreateWorkoutSessionUseCase,
     FinishWorkoutSessionUseCase,
     DeleteWorkoutSessionUseCase,

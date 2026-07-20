@@ -13,6 +13,7 @@ import {
 } from '../../application/use-cases/delete-workout-session.use-case';
 import { GetAllWorkoutSessionsUseCase } from '../../application/use-cases/get-all-workout-sessions.use-case';
 import { GetWorkoutSessionByIdUseCase } from '../../application/use-cases/get-workout-session-by-id.use-case';
+import { GetWorkoutSessionStatsUseCase } from '../../application/use-cases/get-workout-session-stats.use-case';
 import { CreateWorkoutSessionDto } from '../dto/create-workout-session.dto';
 import { GetWorkoutSessionsQueryDto } from '../dto/get-workout-sessions-query.dto';
 import { WorkoutSessionController } from './workout-session.controller';
@@ -23,6 +24,7 @@ describe('WorkoutSessionController', () => {
   let controller: WorkoutSessionController;
   let getAllExecute: jest.Mock;
   let getByIdExecute: jest.Mock;
+  let getStatsExecute: jest.Mock;
   let createExecute: jest.Mock;
   let finishExecute: jest.Mock;
   let removeExecute: jest.Mock;
@@ -30,6 +32,7 @@ describe('WorkoutSessionController', () => {
   beforeEach(async () => {
     getAllExecute = jest.fn();
     getByIdExecute = jest.fn();
+    getStatsExecute = jest.fn();
     createExecute = jest.fn();
     finishExecute = jest.fn();
     removeExecute = jest.fn();
@@ -44,6 +47,10 @@ describe('WorkoutSessionController', () => {
         {
           provide: GetWorkoutSessionByIdUseCase,
           useValue: { execute: getByIdExecute },
+        },
+        {
+          provide: GetWorkoutSessionStatsUseCase,
+          useValue: { execute: getStatsExecute },
         },
         {
           provide: CreateWorkoutSessionUseCase,
@@ -113,6 +120,26 @@ describe('WorkoutSessionController', () => {
         totalCount: 25,
         totalPages: 3,
         hasMore: true,
+      });
+    });
+  });
+
+  describe('getStats', () => {
+    it('delegates to GetWorkoutSessionStatsUseCase and wraps the result under data', async () => {
+      const data = {
+        totalCount: 42,
+        countThisMonth: 6,
+        currentStreak: 3,
+        avgDurationMinutes: 54,
+      };
+      getStatsExecute.mockResolvedValue(data);
+
+      const result = await controller.getStats(user);
+
+      expect(getStatsExecute).toHaveBeenCalledWith(user.id);
+      expect(result).toEqual({
+        message: 'Get workout session stats successfully',
+        data,
       });
     });
   });

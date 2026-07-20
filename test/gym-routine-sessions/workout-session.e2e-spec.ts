@@ -451,6 +451,8 @@ describe('WorkoutSession (e2e)', () => {
     });
   });
 
+  let secondUserToken: string;
+
   it("🔍 a second user cannot touch the first user's workout session", async () => {
     const createRes = await request(app.getHttpServer())
       .post('/workout-sessions')
@@ -459,17 +461,108 @@ describe('WorkoutSession (e2e)', () => {
       .expect(201);
     sessionIds.push(createRes.body.data.id);
 
-    const { token: otherToken } = await createAuthenticatedUser(app);
+    ({ token: secondUserToken } = await createAuthenticatedUser(app));
 
     await request(app.getHttpServer())
       .patch(`/workout-sessions/${createRes.body.data.id}/finish`)
-      .set('Authorization', `Bearer ${otherToken}`)
+      .set('Authorization', `Bearer ${secondUserToken}`)
       .expect(404);
 
     await request(app.getHttpServer())
       .delete(`/workout-sessions/${createRes.body.data.id}`)
-      .set('Authorization', `Bearer ${otherToken}`)
+      .set('Authorization', `Bearer ${secondUserToken}`)
       .expect(404);
+  });
+
+  describe('GET /workout-sessions/stats', () => {
+    // Reuses `secondUserToken` (created above, owns zero workout sessions of
+    // its own) instead of a fresh sign-up, to stay within AuthController's 5
+    // sign-ups/60s-per-IP throttle (AGENTS.md "Authentication and data
+    // ownership") — this file already performs 5 sign-ups elsewhere. Cross-
+    // user isolation for this endpoint is not re-tested here: it shares the
+    // exact same `where: { userId }` repository scoping already covered
+    // end-to-end by the "second user cannot touch..." and
+    // records-isolation tests in this same file.
+    it('returns all-zero stats for a user with zero workout sessions, then reports currentStreak: 3 once the 3 most recent sessions are all finished (spec scenarios: no sessions / active streak)', async () => {
+      const zeroStateRes = await request(app.getHttpServer())
+        .get('/workout-sessions/stats')
+        .set('Authorization', `Bearer ${secondUserToken}`)
+        .expect(200);
+
+      expect(zeroStateRes.body).toEqual({
+        statusCode: 200,
+        message: 'Get workout session stats successfully',
+        data: {
+          totalCount: 0,
+          countThisMonth: 0,
+          currentStreak: 0,
+          avgDurationMinutes: 0,
+        },
+      });
+
+      const streakExerciseId = (
+        await request(app.getHttpServer())
+          .post('/exercises')
+          .set('Authorization', `Bearer ${secondUserToken}`)
+          .send({ name: `Streak Exercise-${Date.now()}` })
+          .expect(201)
+      ).body.data.id as string;
+      exerciseIds.push(streakExerciseId);
+
+      const streakRoutineId = (
+        await request(app.getHttpServer())
+          .post('/routines')
+          .set('Authorization', `Bearer ${secondUserToken}`)
+          .send({
+            name: `Streak Routine-${Date.now()}`,
+            exercises: [
+              {
+                exerciseId: streakExerciseId,
+                targetSets: 4,
+                targetReps: 10,
+                targetWeightGrams: 20000,
+              },
+            ],
+          })
+          .expect(201)
+      ).body.data.id as string;
+      routineIds.push(streakRoutineId);
+
+      // 3 most-recent sessions, each created and immediately finished, dates
+      // ascending so the last one created is the most recent.
+      const streakSessionDates = [
+        '2024-01-01T00:00:00Z',
+        '2024-01-02T00:00:00Z',
+        '2024-01-03T00:00:00Z',
+      ];
+      for (const date of streakSessionDates) {
+        const sessionRes = await request(app.getHttpServer())
+          .post('/workout-sessions')
+          .set('Authorization', `Bearer ${secondUserToken}`)
+          .send({ routineId: streakRoutineId, date })
+          .expect(201);
+        const sessionId = sessionRes.body.data.id as string;
+        sessionIds.push(sessionId);
+
+        await request(app.getHttpServer())
+          .patch(`/workout-sessions/${sessionId}/finish`)
+          .set('Authorization', `Bearer ${secondUserToken}`)
+          .expect(200);
+      }
+
+      const streakStateRes = await request(app.getHttpServer())
+        .get('/workout-sessions/stats')
+        .set('Authorization', `Bearer ${secondUserToken}`)
+        .expect(200);
+
+      expect(streakStateRes.body.data).toMatchObject({
+        totalCount: 3,
+        currentStreak: 3,
+      });
+      expect(streakStateRes.body.data.avgDurationMinutes).toEqual(
+        expect.any(Number),
+      );
+    });
   });
 
   describe('GET /workout-sessions/exercises/:exerciseId/progress', () => {
