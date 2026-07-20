@@ -4,7 +4,7 @@ export type CategoryProps = BaseEntityProps & {
   name: string;
   icon: string;
   movementType: string;
-  userId?: string | null;
+  userId: string;
   isActive?: boolean;
 };
 
@@ -12,7 +12,7 @@ export class CategoryEntity extends BaseEntity {
   private _name: string = '';
   private _icon: string = '';
   private _movementType: string = '';
-  private _userId?: string | null;
+  private _userId: string = '';
   private _isActive?: boolean;
 
   constructor(props?: CategoryProps) {
@@ -42,7 +42,7 @@ export class CategoryEntity extends BaseEntity {
     this._icon = value;
   }
 
-  get userId(): string | null | undefined {
+  get userId(): string {
     return this._userId;
   }
 

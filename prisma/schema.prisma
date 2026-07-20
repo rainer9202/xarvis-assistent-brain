@@ -87,12 +87,12 @@ model Category {
   name         String
   icon         String
   movementType String   @map("movement_type")
-  userId       String?  @map("user_id")
+  userId       String   @map("user_id")
   isActive     Boolean  @default(true) @map("is_active")
   createdAt    DateTime @default(now()) @map("created_at")
   updatedAt    DateTime @updatedAt @map("updated_at")
 
-  user      User?      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user      User       @relation(fields: [userId], references: [id], onDelete: Cascade)
   movements Movement[]
 
   @@unique([name, movementType, userId])
