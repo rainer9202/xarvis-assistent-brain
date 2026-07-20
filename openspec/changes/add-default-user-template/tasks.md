@@ -58,12 +58,12 @@ Rationale: this change crosses a new cross-cutting primitive (`TransactionRunner
 
 ## Phase 3: Provisioner + Transactional Sign-Up Wiring (Commit 3)
 
-- [ ] 3.1 RED: write `default-user-data-provisioner.spec.ts` — `provision(userId, tx)` calls all 3 `ProvisionDefault*UseCase`s with the same `userId`/`tx`; a failure in any one propagates (no swallowing)
-- [ ] 3.2 GREEN: implement `DefaultUserDataProvisioner` in `identity/auth/application/shared/default-user-data-provisioner.ts`
-- [ ] 3.3 Update `auth.module.ts` — import `AccountModule`/`CategoryModule`/`GroupModule`, register `DefaultUserDataProvisioner`
-- [ ] 3.4 RED: extend `sign-up.use-case.spec.ts` — successful sign-up calls `TransactionRunner.run()` wrapping `userRepo.create(entity, tx)` + `provisioner.provision(userId, tx)`; a provisioning failure rejects the whole sign-up (no `User` row persisted — assert `run()`'s callback throwing propagates, not caught)
-- [ ] 3.5 GREEN: wire `SignUpUseCase` to inject `TransactionRunner` and `DefaultUserDataProvisioner`, wrap both writes in one `run()` call
-- [ ] 3.6 Run `pnpm test` for `sign-up.use-case.spec.ts` and all Phase 2 specs together — confirm green
+- [x] 3.1 RED: write `default-user-data-provisioner.spec.ts` — `provision(userId, tx)` calls all 3 `ProvisionDefault*UseCase`s with the same `userId`/`tx`; a failure in any one propagates (no swallowing)
+- [x] 3.2 GREEN: implement `DefaultUserDataProvisioner` in `identity/auth/application/shared/default-user-data-provisioner.ts`
+- [x] 3.3 Update `auth.module.ts` — import `AccountModule`/`CategoryModule`/`GroupModule`, register `DefaultUserDataProvisioner`
+- [x] 3.4 RED: extend `sign-up.use-case.spec.ts` — successful sign-up calls `TransactionRunner.run()` wrapping `userRepo.create(entity, tx)` + `provisioner.provision(userId, tx)`; a provisioning failure rejects the whole sign-up (no `User` row persisted — assert `run()`'s callback throwing propagates, not caught)
+- [x] 3.5 GREEN: wire `SignUpUseCase` to inject `TransactionRunner` and `DefaultUserDataProvisioner`, wrap both writes in one `run()` call
+- [x] 3.6 Run `pnpm test` for `sign-up.use-case.spec.ts` and all Phase 2 specs together — confirm green
 
 ## Phase 4: isCustom Removal + Category Query Cleanup (Commit 4)
 

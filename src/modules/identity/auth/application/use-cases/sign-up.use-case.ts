@@ -1,8 +1,13 @@
 import { Inject, Injectable } from '@nestjs/common';
 import * as argon2 from 'argon2';
 import { ConflictException } from '@domain/exceptions/domain.exception';
+import {
+  TRANSACTION_RUNNER,
+  type TransactionRunner,
+} from '@domain/ports/transaction-runner.port';
 import { AuthTokenIssuer } from '../shared/auth-token-issuer';
 import type { AuthResponse } from '../shared/auth-token-issuer';
+import { DefaultUserDataProvisioner } from '../shared/default-user-data-provisioner';
 import { UserEntity } from '../../domain/entities/user.entity';
 import { USER_REPOSITORY } from '../../domain/ports/user.repository.port';
 import type { UserRepositoryPort } from '../../domain/ports/user.repository.port';
@@ -28,6 +33,9 @@ export class SignUpUseCase {
     @Inject(USER_REPOSITORY)
     private readonly repository: UserRepositoryPort,
     private readonly authTokenIssuer: AuthTokenIssuer,
+    @Inject(TRANSACTION_RUNNER)
+    private readonly transactionRunner: TransactionRunner,
+    private readonly provisioner: DefaultUserDataProvisioner,
   ) {}
 
   async execute(command: SignUpCommand): Promise<SignUpResponse> {
@@ -45,7 +53,16 @@ export class SignUpUseCase {
       password: hashedPassword,
       birthDate: new Date(command.birthDate),
     });
-    const saved = await this.repository.create(entity);
+
+    // Transactional/all-or-nothing (see design.md): user-create + default-
+    // template provisioning commit or roll back as one unit — a
+    // provisioning failure must never leave a half-provisioned or
+    // compensating-delete-dependent User row behind.
+    const saved = await this.transactionRunner.run(async (tx) => {
+      const savedUser = await this.repository.create(entity, tx);
+      await this.provisioner.provision(savedUser.id!, tx);
+      return savedUser;
+    });
 
     return this.authTokenIssuer.issue(saved);
   }

@@ -1,6 +1,9 @@
 import { Module } from '@nestjs/common';
 import { ThrottlerModule } from '@nestjs/throttler';
 import { normalizeJwtExpiry } from '@config/env/normalize-jwt-expiry';
+import { AccountModule } from '@modules/money-manager/account/account.module';
+import { CategoryModule } from '@modules/money-manager/category/category.module';
+import { GroupModule } from '@modules/money-manager/group/group.module';
 import { SignUpUseCase } from './application/use-cases/sign-up.use-case';
 import { SignInUseCase } from './application/use-cases/sign-in.use-case';
 import { RefreshTokenUseCase } from './application/use-cases/refresh-token.use-case';
@@ -13,6 +16,7 @@ import {
   REFRESH_JWT_CONFIG,
 } from './application/shared/auth-token-issuer';
 import type { RefreshJwtConfig } from './application/shared/auth-token-issuer';
+import { DefaultUserDataProvisioner } from './application/shared/default-user-data-provisioner';
 import { USER_REPOSITORY } from './domain/ports/user.repository.port';
 import { REFRESH_TOKEN_REPOSITORY } from './domain/ports/refresh-token.repository.port';
 import { AuthController } from './infrastructure/controllers/auth.controller';
@@ -32,6 +36,13 @@ import { PrismaRefreshTokenRepository } from './infrastructure/repositories/pris
     // other or with test/auth-rate-limit.e2e-spec.ts's dedicated 429 test,
     // regardless of how many functional tests get added later.
     ThrottlerModule.forRoot([{ name: 'default', ttl: 60_000, limit: 5 }]),
+    // Import the 3 money-manager feature modules purely to inject their
+    // exported ProvisionDefault*UseCase into DefaultUserDataProvisioner —
+    // AuthModule never touches their repositories directly (see AGENTS.md
+    // "Cross-module dependencies").
+    AccountModule,
+    CategoryModule,
+    GroupModule,
   ],
   controllers: [AuthController],
   providers: [
@@ -59,6 +70,7 @@ import { PrismaRefreshTokenRepository } from './infrastructure/repositories/pris
       }),
     },
     AuthTokenIssuer,
+    DefaultUserDataProvisioner,
     SignUpUseCase,
     SignInUseCase,
     RefreshTokenUseCase,
