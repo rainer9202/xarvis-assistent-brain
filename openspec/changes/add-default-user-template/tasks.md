@@ -46,15 +46,15 @@ Rationale: this change crosses a new cross-cutting primitive (`TransactionRunner
 
 ## Phase 2: Default Templates + Per-Module Provisioning Use Cases (Commit 2)
 
-- [ ] 2.1 Create `src/modules/money-manager/account/domain/default-accounts.ts` — in-code constants: `Principal` (`AT02`, `isPrincipal:true`), `Ahorro` (`AT04`), `Efectivo` (`AT01`), no `creditLimitCents`
-- [ ] 2.2 Create `src/modules/money-manager/category/domain/default-categories.ts` — re-export/relocate the existing 15 `DEFAULT_CATEGORIES` from `prisma/seed.ts` so both seed and provisioning import the single shared constant
-- [ ] 2.3 Create `src/modules/money-manager/group/domain/default-groups.ts` — `Casa`, `Gastos Hormigas`, no `budgetCents`
-- [ ] 2.4 RED: write `provision-default-accounts.use-case.spec.ts` — given a `userId`, creates exactly 3 accounts via the port, `Principal` explicitly `isPrincipal:true` (not the `accountCount===0` inference), passes `tx` through to `repository.save`
-- [ ] 2.5 GREEN: implement `ProvisionDefaultAccountsUseCase` in `account/application/use-cases/`, exported from `AccountModule`
-- [ ] 2.6 RED: write `provision-default-categories.use-case.spec.ts` — creates exactly 15 categories from the shared constant, each `userId`-owned, `tx` passed through
-- [ ] 2.7 GREEN: implement `ProvisionDefaultCategoriesUseCase` in `category/application/use-cases/`, exported from `CategoryModule`
-- [ ] 2.8 RED: write `provision-default-groups.use-case.spec.ts` — creates exactly 2 groups, no `budgetCents`, `tx` passed through
-- [ ] 2.9 GREEN: implement `ProvisionDefaultGroupsUseCase` in `group/application/use-cases/`, exported from `GroupModule`
+- [x] 2.1 Create `src/modules/money-manager/account/domain/default-accounts.ts` — in-code constants: `Principal` (`AT02`, `isPrincipal:true`), `Ahorro` (`AT04`), `Efectivo` (`AT01`), no `creditLimitCents`
+- [x] 2.2 Create `src/modules/money-manager/category/domain/default-categories.ts` — re-export/relocate the existing 15 `DEFAULT_CATEGORIES` from `prisma/seed.ts` so both seed and provisioning import the single shared constant
+- [x] 2.3 Create `src/modules/money-manager/group/domain/default-groups.ts` — `Casa`, `Gastos Hormigas`, no `budgetCents`
+- [x] 2.4 RED: write `provision-default-accounts.use-case.spec.ts` — given a `userId`, creates exactly 3 accounts via the port, `Principal` explicitly `isPrincipal:true` (not the `accountCount===0` inference), passes `tx` through to `repository.save`
+- [x] 2.5 GREEN: implement `ProvisionDefaultAccountsUseCase` in `account/application/use-cases/`, exported from `AccountModule`
+- [x] 2.6 RED: write `provision-default-categories.use-case.spec.ts` — creates exactly 15 categories from the shared constant, each `userId`-owned, `tx` passed through
+- [x] 2.7 GREEN: implement `ProvisionDefaultCategoriesUseCase` in `category/application/use-cases/`, exported from `CategoryModule`
+- [x] 2.8 RED: write `provision-default-groups.use-case.spec.ts` — creates exactly 2 groups, no `budgetCents`, `tx` passed through
+- [x] 2.9 GREEN: implement `ProvisionDefaultGroupsUseCase` in `group/application/use-cases/`, exported from `GroupModule`
 
 ## Phase 3: Provisioner + Transactional Sign-Up Wiring (Commit 3)
 

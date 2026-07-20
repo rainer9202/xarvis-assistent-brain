@@ -4,7 +4,7 @@ import * as path from 'node:path';
 import * as argon2 from 'argon2';
 import { PrismaPg } from '@prisma/adapter-pg';
 import { PrismaClient } from '../src/infrastructure/config/database/generated/prisma/client.js';
-import type { MovementTypeCode } from '../src/domain/enums/movement-type.enum.js';
+import { DEFAULT_CATEGORIES } from '../src/modules/money-manager/category/domain/default-categories.js';
 
 const adapter = new PrismaPg({ connectionString: process.env.DATABASE_URL });
 const prisma = new PrismaClient({ adapter });
@@ -14,36 +14,6 @@ const DEFAULT_USER = {
   email: 'rainer@gmail.com',
   password: 'rainer.123',
 };
-
-type SeedCategory = {
-  name: string;
-  icon: string;
-  movementType: MovementTypeCode;
-};
-
-// icon values are Ionicons names (https://ionic.io/ionicons) — the frontend
-// renders these directly, the backend just stores/validates the string.
-const DEFAULT_CATEGORIES: SeedCategory[] = [
-  { name: 'Supermercado', icon: 'cart-outline', movementType: 'MT01' },
-  { name: 'Transporte', icon: 'car-outline', movementType: 'MT01' },
-  { name: 'Alquiler', icon: 'home-outline', movementType: 'MT01' },
-  { name: 'Servicios', icon: 'flash-outline', movementType: 'MT01' },
-  { name: 'Salud', icon: 'medkit-outline', movementType: 'MT01' },
-  { name: 'Entretenimiento', icon: 'film-outline', movementType: 'MT01' },
-  { name: 'Restaurantes', icon: 'restaurant-outline', movementType: 'MT01' },
-  { name: 'Ropa', icon: 'shirt-outline', movementType: 'MT01' },
-  { name: 'Sueldo', icon: 'briefcase-outline', movementType: 'MT02' },
-  { name: 'Freelance', icon: 'laptop-outline', movementType: 'MT02' },
-  { name: 'Inversiones', icon: 'trending-up-outline', movementType: 'MT02' },
-  { name: 'Regalos', icon: 'gift-outline', movementType: 'MT02' },
-  { name: 'Ahorro', icon: 'wallet-outline', movementType: 'MT03' },
-  { name: 'Pago de tarjeta', icon: 'card-outline', movementType: 'MT03' },
-  {
-    name: 'Entre cuentas',
-    icon: 'swap-horizontal-outline',
-    movementType: 'MT03',
-  },
-];
 
 // Shape of each record in src/modules/gym-routine-sessions/data/exercises.json
 // — see that folder's README.md/exercises.schema.json for provenance/full

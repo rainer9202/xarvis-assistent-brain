@@ -4,6 +4,7 @@ import { UpdateGroupUseCase } from './application/use-cases/update-group.use-cas
 import { DeleteGroupUseCase } from './application/use-cases/delete-group.use-case';
 import { GetAllGroupsUseCase } from './application/use-cases/get-all-groups.use-case';
 import { GetGroupByIdUseCase } from './application/use-cases/get-group-by-id.use-case';
+import { ProvisionDefaultGroupsUseCase } from './application/use-cases/provision-default-groups.use-case';
 import { GROUP_REPOSITORY } from './domain/ports/group.repository.port';
 import { GroupController } from './infrastructure/controllers/group.controller';
 import { PrismaGroupRepository } from './infrastructure/repositories/prisma-group.repository';
@@ -20,7 +21,12 @@ import { PrismaGroupRepository } from './infrastructure/repositories/prisma-grou
     CreateGroupUseCase,
     UpdateGroupUseCase,
     DeleteGroupUseCase,
+    ProvisionDefaultGroupsUseCase,
   ],
-  exports: [GetGroupByIdUseCase, GetAllGroupsUseCase],
+  exports: [
+    GetGroupByIdUseCase,
+    GetAllGroupsUseCase,
+    ProvisionDefaultGroupsUseCase,
+  ],
 })
 export class GroupModule {}

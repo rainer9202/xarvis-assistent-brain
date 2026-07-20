@@ -4,6 +4,7 @@ import { UpdateCategoryUseCase } from './application/use-cases/update-category.u
 import { DeleteCategoryUseCase } from './application/use-cases/delete-category.use-case';
 import { GetAllCategoriesUseCase } from './application/use-cases/get-all-categories.use-case';
 import { GetCategoryByIdUseCase } from './application/use-cases/get-category-by-id.use-case';
+import { ProvisionDefaultCategoriesUseCase } from './application/use-cases/provision-default-categories.use-case';
 import { CATEGORY_REPOSITORY } from './domain/ports/category.repository.port';
 import { CategoryController } from './infrastructure/controllers/category.controller';
 import { PrismaCategoryRepository } from './infrastructure/repositories/prisma-category.repository';
@@ -20,7 +21,12 @@ import { PrismaCategoryRepository } from './infrastructure/repositories/prisma-c
     UpdateCategoryUseCase,
     DeleteCategoryUseCase,
     GetCategoryByIdUseCase,
+    ProvisionDefaultCategoriesUseCase,
   ],
-  exports: [GetCategoryByIdUseCase, GetAllCategoriesUseCase],
+  exports: [
+    GetCategoryByIdUseCase,
+    GetAllCategoriesUseCase,
+    ProvisionDefaultCategoriesUseCase,
+  ],
 })
 export class CategoryModule {}
