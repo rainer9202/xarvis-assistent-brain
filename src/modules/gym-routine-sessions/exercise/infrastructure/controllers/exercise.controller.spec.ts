@@ -76,13 +76,41 @@ describe('ExerciseController', () => {
       const query: GetExercisesQueryDto = {};
       const result = await controller.findAll(query, user);
 
-      expect(getAllExecute).toHaveBeenCalledWith(user.id, undefined, undefined);
+      expect(getAllExecute).toHaveBeenCalledWith(
+        user.id,
+        undefined,
+        undefined,
+        undefined,
+        undefined,
+      );
       expect(result).toEqual({
         message: 'Get all exercises successfully',
         data: items,
       });
       expect(result).not.toHaveProperty('page');
       expect(result).not.toHaveProperty('totalCount');
+    });
+
+    it('forwards search and isCustom to the use case', async () => {
+      const items = [
+        { id: 'ex-1', name: 'Barbell Bench Press', isCustom: true },
+      ];
+      getAllExecute.mockResolvedValue({ items });
+
+      const query: GetExercisesQueryDto = { search: 'press', isCustom: true };
+      const result = await controller.findAll(query, user);
+
+      expect(getAllExecute).toHaveBeenCalledWith(
+        user.id,
+        undefined,
+        undefined,
+        'press',
+        true,
+      );
+      expect(result).toEqual({
+        message: 'Get all exercises successfully',
+        data: items,
+      });
     });
 
     it('adds page/limit/totalCount/totalPages/hasMore as siblings of data when paginated', async () => {
@@ -101,7 +129,13 @@ describe('ExerciseController', () => {
       const query: GetExercisesQueryDto = { page: 1, limit: 10 };
       const result = await controller.findAll(query, user);
 
-      expect(getAllExecute).toHaveBeenCalledWith(user.id, 1, 10);
+      expect(getAllExecute).toHaveBeenCalledWith(
+        user.id,
+        1,
+        10,
+        undefined,
+        undefined,
+      );
       expect(result).toEqual({
         message: 'Get all exercises successfully',
         data: items,

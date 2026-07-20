@@ -55,7 +55,13 @@ export class ExerciseController {
     @Query() query: GetExercisesQueryDto,
     @CurrentUser() user: AuthenticatedUser,
   ) {
-    const result = await this.getAll.execute(user.id, query.page, query.limit);
+    const result = await this.getAll.execute(
+      user.id,
+      query.page,
+      query.limit,
+      query.search,
+      query.isCustom,
+    );
     return {
       message: `Get all ${domainName} successfully`,
       data: result.items,

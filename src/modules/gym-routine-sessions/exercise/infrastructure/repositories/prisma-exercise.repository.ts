@@ -3,6 +3,7 @@ import { PrismaService } from '@config/database/prisma.service';
 import { ExerciseEntity } from '../../domain/entities/exercise.entity';
 import type { ExerciseRepositoryPort } from '../../domain/ports/exercise.repository.port';
 import { ExerciseModel } from '@config/database/generated/prisma/models.js';
+import type { Prisma } from '@config/database/generated/prisma/client.js';
 
 @Injectable()
 export class PrismaExerciseRepository implements ExerciseRepositoryPort {
@@ -12,10 +13,12 @@ export class PrismaExerciseRepository implements ExerciseRepositoryPort {
     userId: string,
     page?: number,
     limit?: number,
+    search?: string,
+    isCustom?: boolean,
   ): Promise<ExerciseEntity[]> {
     const isPaginated = page !== undefined || limit !== undefined;
     const records = await this.prisma.exercise.findMany({
-      where: { OR: [{ userId }, { userId: null }] },
+      where: this.buildWhereClause(userId, search, isCustom),
       orderBy: { name: 'asc' },
       ...(isPaginated
         ? {
@@ -25,6 +28,31 @@ export class PrismaExerciseRepository implements ExerciseRepositoryPort {
         : {}),
     });
     return records.map((r) => this.toEntity(r));
+  }
+
+  // Ownership (own vs. global vs. either, via isCustom) and name search
+  // (case-insensitive partial match) are independent filters that both need
+  // to hold at once, so a search term is AND-ed against the ownership
+  // clause rather than merged into a single flat object — the ownership
+  // clause itself is an OR when isCustom is omitted, which a naive object
+  // spread would silently clobber.
+  private buildWhereClause(
+    userId: string,
+    search?: string,
+    isCustom?: boolean,
+  ): Prisma.ExerciseWhereInput {
+    const ownership: Prisma.ExerciseWhereInput =
+      isCustom === true
+        ? { userId }
+        : isCustom === false
+          ? { userId: null }
+          : { OR: [{ userId }, { userId: null }] };
+
+    if (!search) return ownership;
+
+    return {
+      AND: [ownership, { name: { contains: search, mode: 'insensitive' } }],
+    };
   }
 
   async findByIds(ids: string[], userId: string): Promise<ExerciseEntity[]> {
@@ -103,9 +131,13 @@ export class PrismaExerciseRepository implements ExerciseRepositoryPort {
     return this.prisma.workoutSessionExercise.count({ where: { exerciseId } });
   }
 
-  async countByUserId(userId: string): Promise<number> {
+  async countByUserId(
+    userId: string,
+    search?: string,
+    isCustom?: boolean,
+  ): Promise<number> {
     return this.prisma.exercise.count({
-      where: { OR: [{ userId }, { userId: null }] },
+      where: this.buildWhereClause(userId, search, isCustom),
     });
   }
 

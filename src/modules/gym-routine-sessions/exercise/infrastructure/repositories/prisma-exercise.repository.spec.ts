@@ -115,6 +115,55 @@ describe('PrismaExerciseRepository', () => {
         orderBy: { name: 'asc' },
       });
     });
+
+    it('combines the own-OR-global ownership filter with a case-insensitive name search', async () => {
+      prisma.exercise.findMany.mockResolvedValue([]);
+
+      await repository.findAll('user-1', undefined, undefined, 'press');
+
+      expect(prisma.exercise.findMany).toHaveBeenCalledWith({
+        where: {
+          AND: [
+            { OR: [{ userId: 'user-1' }, { userId: null }] },
+            { name: { contains: 'press', mode: 'insensitive' } },
+          ],
+        },
+        orderBy: { name: 'asc' },
+      });
+    });
+
+    it('scopes to only the caller-owned rows when isCustom is true', async () => {
+      prisma.exercise.findMany.mockResolvedValue([]);
+
+      await repository.findAll('user-1', undefined, undefined, 'press', true);
+
+      expect(prisma.exercise.findMany).toHaveBeenCalledWith({
+        where: {
+          AND: [
+            { userId: 'user-1' },
+            { name: { contains: 'press', mode: 'insensitive' } },
+          ],
+        },
+        orderBy: { name: 'asc' },
+      });
+    });
+
+    it('scopes to only global rows when isCustom is false', async () => {
+      prisma.exercise.findMany.mockResolvedValue([]);
+
+      await repository.findAll(
+        'user-1',
+        undefined,
+        undefined,
+        undefined,
+        false,
+      );
+
+      expect(prisma.exercise.findMany).toHaveBeenCalledWith({
+        where: { userId: null },
+        orderBy: { name: 'asc' },
+      });
+    });
   });
 
   describe('findByIds', () => {
@@ -281,6 +330,22 @@ describe('PrismaExerciseRepository', () => {
         where: { OR: [{ userId: 'user-1' }, { userId: null }] },
       });
       expect(result).toBe(7);
+    });
+
+    it('applies the same search/isCustom filters as findAll', async () => {
+      prisma.exercise.count.mockResolvedValue(2);
+
+      const result = await repository.countByUserId('user-1', 'press', true);
+
+      expect(prisma.exercise.count).toHaveBeenCalledWith({
+        where: {
+          AND: [
+            { userId: 'user-1' },
+            { name: { contains: 'press', mode: 'insensitive' } },
+          ],
+        },
+      });
+      expect(result).toBe(2);
     });
   });
 });

@@ -42,7 +42,13 @@ describe('GetAllExercisesUseCase', () => {
 
     const result = await useCase.execute('user-1');
 
-    expect(findAll).toHaveBeenCalledWith('user-1', undefined, undefined);
+    expect(findAll).toHaveBeenCalledWith(
+      'user-1',
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+    );
     expect(result.items).toHaveLength(2);
     expect(result.items[0]).toMatchObject({ id: 'global-1', isCustom: false });
     expect(result.items[1]).toMatchObject({ id: 'own-1', isCustom: true });
@@ -72,8 +78,12 @@ describe('GetAllExercisesUseCase', () => {
 
     const result = await useCase.execute('user-1', 1, 10);
 
-    expect(findAll).toHaveBeenCalledWith('user-1', 1, 10);
-    expect(repository.countByUserId).toHaveBeenCalledWith('user-1');
+    expect(findAll).toHaveBeenCalledWith('user-1', 1, 10, undefined, undefined);
+    expect(repository.countByUserId).toHaveBeenCalledWith(
+      'user-1',
+      undefined,
+      undefined,
+    );
     expect(result.pagination).toEqual({
       page: 1,
       limit: 10,
@@ -81,5 +91,32 @@ describe('GetAllExercisesUseCase', () => {
       totalPages: 3,
       hasMore: true,
     });
+  });
+
+  it('forwards search and isCustom to the repository', async () => {
+    findAll.mockResolvedValue([]);
+
+    await useCase.execute('user-1', undefined, undefined, 'press', true);
+
+    expect(findAll).toHaveBeenCalledWith(
+      'user-1',
+      undefined,
+      undefined,
+      'press',
+      true,
+    );
+  });
+
+  it('forwards search and isCustom to countByUserId when paginated', async () => {
+    findAll.mockResolvedValue([]);
+    (repository.countByUserId as jest.Mock).mockResolvedValue(0);
+
+    await useCase.execute('user-1', 1, 10, 'press', true);
+
+    expect(repository.countByUserId).toHaveBeenCalledWith(
+      'user-1',
+      'press',
+      true,
+    );
   });
 });

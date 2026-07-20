@@ -1,8 +1,42 @@
 import { ApiPropertyOptional } from '@nestjs/swagger';
-import { IsInt, IsOptional, Max, Min } from 'class-validator';
-import { Type } from 'class-transformer';
+import {
+  IsBoolean,
+  IsInt,
+  IsOptional,
+  IsString,
+  Max,
+  Min,
+} from 'class-validator';
+import { Transform, Type } from 'class-transformer';
 
 export class GetExercisesQueryDto {
+  @ApiPropertyOptional({
+    example: 'press',
+    description:
+      'Case-insensitive partial match filter on exercise name (own + global catalog).',
+  })
+  @IsOptional()
+  @IsString()
+  search?: string;
+
+  @ApiPropertyOptional({
+    example: true,
+    description:
+      "Filter by ownership: true returns only the caller's own custom " +
+      'exercises, false returns only the global catalog. Omit to include both.',
+  })
+  @IsOptional()
+  @Transform(({ value }: { value: unknown }) => {
+    if (value === 'true' || value === true) return true;
+    if (value === 'false' || value === false) return false;
+    // Anything else (e.g. "yesplease") passes through unchanged so
+    // @IsBoolean() below rejects it with a 400 instead of this transform
+    // silently coercing garbage input into false.
+    return value;
+  })
+  @IsBoolean()
+  isCustom?: boolean;
+
   @ApiPropertyOptional({
     example: 1,
     minimum: 1,

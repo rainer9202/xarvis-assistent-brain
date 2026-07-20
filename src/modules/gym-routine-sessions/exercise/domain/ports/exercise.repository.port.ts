@@ -5,6 +5,8 @@ export interface ExerciseRepositoryPort {
     userId: string,
     page?: number,
     limit?: number,
+    search?: string,
+    isCustom?: boolean,
   ): Promise<ExerciseEntity[]>;
   findByIds(ids: string[], userId: string): Promise<ExerciseEntity[]>;
   findById(id: string, userId: string): Promise<ExerciseEntity | null>;
@@ -14,7 +16,11 @@ export interface ExerciseRepositoryPort {
   delete(entity: ExerciseEntity): Promise<void>;
   countRoutineExercisesByExerciseId(exerciseId: string): Promise<number>;
   countSessionExercisesByExerciseId(exerciseId: string): Promise<number>;
-  countByUserId(userId: string): Promise<number>;
+  countByUserId(
+    userId: string,
+    search?: string,
+    isCustom?: boolean,
+  ): Promise<number>;
 }
 
 export const EXERCISE_REPOSITORY = Symbol('ExerciseRepositoryPort');

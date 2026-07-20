@@ -141,4 +141,57 @@ describe('Exercise (e2e)', () => {
 
     await prisma.exercise.delete({ where: { id: global.id } });
   });
+
+  it('search matches both global and custom exercises server-side, case-insensitively', async () => {
+    const suffix = Date.now();
+    const createRes = await request(app.getHttpServer())
+      .post('/exercises')
+      .set('Authorization', `Bearer ${token}`)
+      .send({ name: `My Press-${suffix}` })
+      .expect(201);
+    createdIds.push(createRes.body.data.id);
+
+    const global = await prisma.exercise.create({
+      data: { userId: null, name: `Barbell Bench Press-${suffix}` },
+    });
+
+    const res = await request(app.getHttpServer())
+      .get(`/exercises?search=PRESS-${suffix}`)
+      .set('Authorization', `Bearer ${token}`)
+      .expect(200);
+
+    const ids = res.body.data.map((e: { id: string }) => e.id);
+    expect(ids).toContain(createRes.body.data.id);
+    expect(ids).toContain(global.id);
+
+    await prisma.exercise.delete({ where: { id: global.id } });
+  });
+
+  it('combines search with isCustom=true to return only the caller-owned matches', async () => {
+    const suffix = Date.now();
+    const createRes = await request(app.getHttpServer())
+      .post('/exercises')
+      .set('Authorization', `Bearer ${token}`)
+      .send({ name: `My Press-${suffix}` })
+      .expect(201);
+    createdIds.push(createRes.body.data.id);
+
+    const global = await prisma.exercise.create({
+      data: { userId: null, name: `Barbell Bench Press-${suffix}` },
+    });
+
+    const res = await request(app.getHttpServer())
+      .get(`/exercises?search=press-${suffix}&isCustom=true`)
+      .set('Authorization', `Bearer ${token}`)
+      .expect(200);
+
+    const ids = res.body.data.map((e: { id: string }) => e.id);
+    expect(ids).toContain(createRes.body.data.id);
+    expect(ids).not.toContain(global.id);
+    expect(
+      res.body.data.every((e: { isCustom: boolean }) => e.isCustom === true),
+    ).toBe(true);
+
+    await prisma.exercise.delete({ where: { id: global.id } });
+  });
 });

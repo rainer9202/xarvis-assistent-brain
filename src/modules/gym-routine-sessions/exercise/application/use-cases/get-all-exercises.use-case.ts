@@ -46,6 +46,8 @@ export class GetAllExercisesUseCase {
     userId: string,
     page?: number,
     limit?: number,
+    search?: string,
+    isCustom?: boolean,
   ): Promise<GetAllExercisesResult> {
     try {
       const isPaginated = page !== undefined || limit !== undefined;
@@ -57,9 +59,11 @@ export class GetAllExercisesUseCase {
           userId,
           isPaginated ? effectivePage : undefined,
           isPaginated ? effectiveLimit : undefined,
+          search,
+          isCustom,
         ),
         isPaginated
-          ? this.repository.countByUserId(userId)
+          ? this.repository.countByUserId(userId, search, isCustom)
           : Promise.resolve(undefined),
       ]);
 
