@@ -3,6 +3,8 @@ import { PrismaService } from '@config/database/prisma.service';
 import { CategoryEntity } from '../../domain/entities/category.entity';
 import type { CategoryRepositoryPort } from '../../domain/ports/category.repository.port';
 import { CategoryModel } from '@config/database/generated/prisma/models.js';
+import type { Prisma } from '@config/database/generated/prisma/client.js';
+import type { TransactionContext } from '@domain/ports/transaction-runner.port';
 
 @Injectable()
 export class PrismaCategoryRepository implements CategoryRepositoryPort {
@@ -44,8 +46,12 @@ export class PrismaCategoryRepository implements CategoryRepositoryPort {
     return record ? this.toEntity(record) : null;
   }
 
-  async save(entity: CategoryEntity): Promise<CategoryEntity> {
-    const record = await this.prisma.category.create({
+  async save(
+    entity: CategoryEntity,
+    tx?: TransactionContext,
+  ): Promise<CategoryEntity> {
+    const db = (tx as Prisma.TransactionClient) ?? this.prisma;
+    const record = await db.category.create({
       data: {
         id: entity.id,
         name: entity.name,

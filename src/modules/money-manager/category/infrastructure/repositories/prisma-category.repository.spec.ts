@@ -178,6 +178,34 @@ describe('PrismaCategoryRepository', () => {
       expect(result).toBeInstanceOf(CategoryEntity);
       expect(result.name).toBe('Groceries');
     });
+
+    // TransactionRunner threading: save() must use the passed tx client
+    // instead of this.prisma when provided, so a batch provisioner (e.g.
+    // ProvisionDefaultCategoriesUseCase) can create all 15 default
+    // categories inside the same unit of work as the rest of sign-up.
+    it('uses the passed tx client instead of this.prisma when a tx is provided', async () => {
+      const entity = new CategoryEntity({
+        name: 'Groceries',
+        movementType: 'MT01',
+        userId: 'user-1',
+        isActive: true,
+      });
+      const txCreate = jest.fn().mockResolvedValue(record);
+      const tx = { category: { create: txCreate } };
+
+      await repository.save(entity, tx);
+
+      expect(txCreate).toHaveBeenCalledWith({
+        data: {
+          id: undefined,
+          name: 'Groceries',
+          movementType: 'MT01',
+          userId: 'user-1',
+          isActive: true,
+        },
+      });
+      expect(prisma.category.create).not.toHaveBeenCalled();
+    });
   });
 
   describe('update', () => {

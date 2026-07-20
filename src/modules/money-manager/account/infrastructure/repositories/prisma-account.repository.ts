@@ -7,6 +7,7 @@ import type {
 } from '../../domain/ports/account.repository.port';
 import { AccountModel } from '@config/database/generated/prisma/models.js';
 import type { Prisma } from '@config/database/generated/prisma/client.js';
+import type { TransactionContext } from '@domain/ports/transaction-runner.port';
 
 // Decimal is a LOCAL alias, imported ONLY here in infra — the domain layer
 // never sees Prisma's Decimal, only the integer cents this repository maps to.
@@ -37,9 +38,17 @@ export class PrismaAccountRepository implements AccountRepositoryPort {
     return record ? this.toEntity(record) : null;
   }
 
-  async save(entity: AccountEntity): Promise<AccountEntity> {
+  async save(
+    entity: AccountEntity,
+    tx?: TransactionContext,
+  ): Promise<AccountEntity> {
+    // Resolved ONCE and reused for BOTH the primary create() below and the
+    // P2002 catch-and-retry create() — a caller (e.g.
+    // DefaultUserDataProvisioner) that passed a tx must have every write in
+    // this method commit/rollback as part of that same transaction.
+    const db = (tx as Prisma.TransactionClient) ?? this.prisma;
     try {
-      const record = await this.prisma.account.create({
+      const record = await db.account.create({
         data: {
           id: entity.id,
           name: entity.name,
@@ -66,7 +75,7 @@ export class PrismaAccountRepository implements AccountRepositoryPort {
       // duck-typed P2002 pattern PrismaUserRepository.create() uses for
       // the equivalent email-uniqueness race.
       if (entity.isPrincipal && this.isUniqueConstraintViolation(error)) {
-        const record = await this.prisma.account.create({
+        const record = await db.account.create({
           data: {
             id: entity.id,
             name: entity.name,

@@ -4,6 +4,7 @@ import { GroupEntity } from '../../domain/entities/group.entity';
 import type { GroupRepositoryPort } from '../../domain/ports/group.repository.port';
 import { GroupModel } from '@config/database/generated/prisma/models.js';
 import type { Prisma } from '@config/database/generated/prisma/client.js';
+import type { TransactionContext } from '@domain/ports/transaction-runner.port';
 
 // Decimal is a LOCAL alias, imported ONLY here in infra — the domain layer
 // never sees Prisma's Decimal, only the integer cents this repository maps to.
@@ -35,8 +36,12 @@ export class PrismaGroupRepository implements GroupRepositoryPort {
     return record ? this.toEntity(record) : null;
   }
 
-  async save(entity: GroupEntity): Promise<GroupEntity> {
-    const record = await this.prisma.group.create({
+  async save(
+    entity: GroupEntity,
+    tx?: TransactionContext,
+  ): Promise<GroupEntity> {
+    const db = (tx as Prisma.TransactionClient) ?? this.prisma;
+    const record = await db.group.create({
       data: {
         id: entity.id,
         name: entity.name,

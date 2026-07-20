@@ -261,6 +261,61 @@ describe('PrismaAccountRepository', () => {
       );
       expect(prisma.account.create).toHaveBeenCalledTimes(1);
     });
+
+    // TransactionRunner threading: save() must resolve the passed tx client
+    // ONCE at the top and reuse it for BOTH the primary create() call and the
+    // P2002 catch-and-retry create() call below — a partial resolve (tx for
+    // one call, this.prisma for the other) would break the atomicity a
+    // caller like DefaultUserDataProvisioner relies on.
+    it('uses the passed tx client instead of this.prisma when a tx is provided', async () => {
+      const entity = new AccountEntity({
+        name: 'Principal',
+        type: 'AT02',
+        userId: 'user-1',
+        isActive: true,
+        isPrincipal: true,
+      });
+      const txCreate = jest.fn().mockResolvedValue(record);
+      const tx = { account: { create: txCreate } };
+
+      await repository.save(entity, tx);
+
+      expect(txCreate).toHaveBeenCalledWith({
+        data: {
+          id: undefined,
+          name: 'Principal',
+          type: 'AT02',
+          userId: 'user-1',
+          isActive: true,
+          isPrincipal: true,
+          creditLimitCents: null,
+        },
+      });
+      expect(prisma.account.create).not.toHaveBeenCalled();
+    });
+
+    it('uses the same tx client for BOTH the primary create and the P2002 retry create', async () => {
+      const entity = new AccountEntity({
+        name: 'Principal',
+        type: 'AT02',
+        userId: 'user-1',
+        isActive: true,
+        isPrincipal: true,
+      });
+      const txCreate = jest
+        .fn()
+        .mockRejectedValueOnce(
+          Object.assign(new Error('conflict'), { code: 'P2002' }),
+        )
+        .mockResolvedValueOnce({ ...record, isPrincipal: false });
+      const tx = { account: { create: txCreate } };
+
+      const result = await repository.save(entity, tx);
+
+      expect(txCreate).toHaveBeenCalledTimes(2);
+      expect(prisma.account.create).not.toHaveBeenCalled();
+      expect(result.isPrincipal).toBe(false);
+    });
   });
 
   describe('update', () => {

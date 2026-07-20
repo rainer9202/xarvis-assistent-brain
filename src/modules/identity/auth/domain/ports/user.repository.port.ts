@@ -1,9 +1,14 @@
+import type { TransactionContext } from '@domain/ports/transaction-runner.port';
 import { UserEntity } from '../entities/user.entity';
 
 export interface UserRepositoryPort {
   findByEmail(email: string): Promise<UserEntity | null>;
   findAll(): Promise<UserEntity[]>;
-  create(entity: UserEntity): Promise<UserEntity>;
+  // tx is an optional trailing param (see TransactionRunner design decision)
+  // so SignUpUseCase can thread the same transaction client through
+  // user-create + default-template provisioning as one atomic unit. Every
+  // existing no-arg call site is unaffected — it keeps using this.prisma.
+  create(entity: UserEntity, tx?: TransactionContext): Promise<UserEntity>;
   // Unlike Account/Category/Movement, User is the ownership root — it is
   // scoped by its own id alone, never by a second userId filter. The id
   // always comes from the caller's own verified JWT (@CurrentUser()), so

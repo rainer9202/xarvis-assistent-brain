@@ -157,6 +157,33 @@ describe('PrismaGroupRepository', () => {
         },
       });
     });
+
+    // TransactionRunner threading: save() must use the passed tx client
+    // instead of this.prisma when provided, so a batch provisioner (e.g.
+    // ProvisionDefaultGroupsUseCase) can create both default groups inside
+    // the same unit of work as the rest of sign-up.
+    it('uses the passed tx client instead of this.prisma when a tx is provided', async () => {
+      const entity = new GroupEntity({
+        name: 'Fixed Expenses',
+        userId: 'user-1',
+        isActive: true,
+      });
+      const txCreate = jest.fn().mockResolvedValue(record);
+      const tx = { group: { create: txCreate } };
+
+      await repository.save(entity, tx);
+
+      expect(txCreate).toHaveBeenCalledWith({
+        data: {
+          id: undefined,
+          name: 'Fixed Expenses',
+          userId: 'user-1',
+          isActive: true,
+          budgetCents: null,
+        },
+      });
+      expect(prisma.group.create).not.toHaveBeenCalled();
+    });
   });
 
   describe('update', () => {

@@ -1,7 +1,9 @@
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from '@config/database/prisma.service';
 import { UserModel } from '@config/database/generated/prisma/models.js';
+import type { Prisma } from '@config/database/generated/prisma/client.js';
 import { ConflictException } from '@domain/exceptions/domain.exception';
+import type { TransactionContext } from '@domain/ports/transaction-runner.port';
 import { UserEntity } from '../../domain/entities/user.entity';
 import type { UserRepositoryPort } from '../../domain/ports/user.repository.port';
 
@@ -19,9 +21,13 @@ export class PrismaUserRepository implements UserRepositoryPort {
     return records.map((record) => this.toEntity(record));
   }
 
-  async create(entity: UserEntity): Promise<UserEntity> {
+  async create(
+    entity: UserEntity,
+    tx?: TransactionContext,
+  ): Promise<UserEntity> {
+    const db = (tx as Prisma.TransactionClient) ?? this.prisma;
     try {
-      const record = await this.prisma.user.create({
+      const record = await db.user.create({
         data: {
           name: entity.name,
           email: entity.email,

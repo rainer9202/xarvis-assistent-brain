@@ -141,6 +141,34 @@ describe('PrismaUserRepository', () => {
         'connection refused',
       );
     });
+
+    // TransactionRunner threading: create() must use the passed transaction
+    // client (tx) instead of this.prisma when provided, so a caller (e.g.
+    // SignUpUseCase) can wrap this write in the same unit of work as other
+    // provisioning writes. Existing no-arg call sites are unaffected — see
+    // the earlier test above, which still uses this.prisma.
+    it('uses the passed tx client instead of this.prisma when a tx is provided', async () => {
+      const entity = new UserEntity({
+        name: 'Jane Doe',
+        email: 'jane@example.com',
+        password: 'hashed-password',
+      });
+      const txCreate = jest.fn().mockResolvedValue(record);
+      const tx = { user: { create: txCreate } };
+      prisma.user.create.mockResolvedValue(record);
+
+      await repository.create(entity, tx);
+
+      expect(txCreate).toHaveBeenCalledWith({
+        data: {
+          name: 'Jane Doe',
+          email: 'jane@example.com',
+          password: 'hashed-password',
+          birthDate: undefined,
+        },
+      });
+      expect(prisma.user.create).not.toHaveBeenCalled();
+    });
   });
 
   describe('findById', () => {
