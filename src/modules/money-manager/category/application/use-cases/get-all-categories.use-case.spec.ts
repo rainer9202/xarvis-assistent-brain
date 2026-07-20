@@ -42,25 +42,27 @@ describe('GetAllCategoriesUseCase', () => {
         movementType: 'MT01',
         movementTypeLabel: 'Gasto',
         isActive: true,
-        isCustom: true,
         createdAt,
       },
     ]);
   });
 
-  it('marks global (userId: null) rows as isCustom: false', async () => {
+  // isCustom was removed post-migration (see openspec/changes/
+  // add-default-user-template): every category is user-owned now, so the
+  // field would always be true — dead weight the frontend never consumed.
+  it('does not include an isCustom key in the response', async () => {
     const entity = new CategoryEntity({
-      id: 'cat-global-1',
-      name: 'Supermercado',
+      id: 'cat-1',
+      name: 'Groceries',
       movementType: 'MT01',
-      userId: null,
+      userId: 'user-1',
       isActive: true,
     });
     repository.findAll.mockResolvedValue([entity]);
 
     const result = await useCase.execute('user-1');
 
-    expect(result[0].isCustom).toBe(false);
+    expect(result[0]).not.toHaveProperty('isCustom');
   });
 
   it('falls back movementTypeLabel to the raw code when no label matches', async () => {

@@ -61,13 +61,16 @@ describe('PrismaCategoryRepository', () => {
   });
 
   describe('findAll', () => {
-    it('queries own OR global rows ordered by createdAt asc', async () => {
+    // Post-migration (Category.userId NOT NULL — see openspec/changes/
+    // add-default-user-template), every category is user-owned; the
+    // `OR: [{ userId }, { userId: null }]` global-row workaround is retired.
+    it('queries only own rows ordered by createdAt asc', async () => {
       prisma.category.findMany.mockResolvedValue([record]);
 
       const result = await repository.findAll('user-1');
 
       expect(prisma.category.findMany).toHaveBeenCalledWith({
-        where: { OR: [{ userId: 'user-1' }, { userId: null }] },
+        where: { userId: 'user-1' },
         orderBy: { createdAt: 'asc' },
       });
       expect(result).toHaveLength(1);
@@ -77,13 +80,13 @@ describe('PrismaCategoryRepository', () => {
   });
 
   describe('findById', () => {
-    it('queries own OR global for read access', async () => {
+    it('queries only own rows for read access', async () => {
       prisma.category.findFirst.mockResolvedValue(record);
 
       const result = await repository.findById('cat-1', 'user-1');
 
       expect(prisma.category.findFirst).toHaveBeenCalledWith({
-        where: { id: 'cat-1', OR: [{ userId: 'user-1' }, { userId: null }] },
+        where: { id: 'cat-1', userId: 'user-1' },
       });
       expect(result).toBeInstanceOf(CategoryEntity);
       expect(result?.movementType).toBe('MT01');

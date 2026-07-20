@@ -67,11 +67,11 @@ Rationale: this change crosses a new cross-cutting primitive (`TransactionRunner
 
 ## Phase 4: isCustom Removal + Category Query Cleanup (Commit 4)
 
-- [ ] 4.1 RED: update `get-all-categories.use-case.spec.ts` — response objects no longer contain an `isCustom` key
-- [ ] 4.2 GREEN: remove `isCustom` field from `GetAllCategoriesResponse` and its `item.userId !== null` derivation in `GetAllCategoriesUseCase`
-- [ ] 4.3 RED: update `prisma-category.repository.spec.ts` — `findAll`/`findById` query only `{ userId }`, never `OR: [{ userId }, { userId: null }]`
-- [ ] 4.4 GREEN: drop the `OR` clause from `findAll`/`findById` in `prisma-category.repository.ts`
-- [ ] 4.5 Run `pnpm test --testPathPatterns=category` — confirm green
+- [x] 4.1 RED: update `get-all-categories.use-case.spec.ts` — response objects no longer contain an `isCustom` key
+- [x] 4.2 GREEN: remove `isCustom` field from `GetAllCategoriesResponse` and its `item.userId !== null` derivation in `GetAllCategoriesUseCase`
+- [x] 4.3 RED: update `prisma-category.repository.spec.ts` — `findAll`/`findById` query only `{ userId }`, never `OR: [{ userId }, { userId: null }]`
+- [x] 4.4 GREEN: drop the `OR` clause from `findAll`/`findById` in `prisma-category.repository.ts`
+- [x] 4.5 Run `pnpm test --testPathPatterns=category` — confirm green
 
 ## Phase 5: Schema Migration — Category.userId NOT NULL (Commit 5, production-gated)
 

@@ -11,7 +11,6 @@ export type GetAllCategoriesResponse = {
   movementType: string;
   movementTypeLabel: string;
   isActive: boolean;
-  isCustom: boolean;
   createdAt: Date;
 };
 
@@ -33,10 +32,6 @@ export class GetAllCategoriesUseCase {
         movementTypeLabel:
           getMovementTypeLabel(item.movementType) ?? item.movementType,
         isActive: item.isActive!,
-        // userId is an internal detail never exposed directly — isCustom is
-        // the only ownership signal the frontend needs (edit/delete
-        // affordances), same pattern as Exercise's global-vs-own split.
-        isCustom: item.userId !== null && item.userId !== undefined,
         createdAt: item.createdAt!,
       }));
     } catch (error) {
