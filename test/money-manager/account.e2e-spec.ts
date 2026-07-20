@@ -231,16 +231,25 @@ describe('Account (e2e)', () => {
   // AGENTS.md), and this spec already spends one sign-up on `beforeAll` and
   // one on the "second user" test above, so budget for extra sign-ups here
   // is tight.
-  it('🔍 enforces the full principal-account lifecycle: first account auto-principal, atomic switch, reject direct unset, block delete', async () => {
+  it('🔍 enforces the full principal-account lifecycle: atomic switch, reject direct unset, block delete', async () => {
     const { token: freshToken } = await createAuthenticatedUser(app);
 
-    const firstRes = await request(app.getHttpServer())
-      .post('/accounts')
+    // Sign-up already auto-provisions the default account set (see
+    // openspec/changes/add-default-user-template) — "Principal" (AT02) is
+    // the one created with isPrincipal:true, so there is no longer a
+    // literal "first account ever created" to auto-infer principal from via
+    // the API; that inference itself is unit-tested directly in
+    // create-account.use-case.spec.ts ("defaults isPrincipal to false for a
+    // second (or later) account"). This test instead starts from the
+    // already-provisioned Principal account and a second account created
+    // through the API.
+    const listRes = await request(app.getHttpServer())
+      .get('/accounts')
       .set('Authorization', `Bearer ${freshToken}`)
-      .send({ name: `First-${Date.now()}`, type: 'AT02' })
-      .expect(201);
-    const firstId = firstRes.body.data.id;
-    createdIds.push(firstId);
+      .expect(200);
+    const firstId = listRes.body.data.find(
+      (acc: { name: string }) => acc.name === 'Principal',
+    ).id;
 
     const secondRes = await request(app.getHttpServer())
       .post('/accounts')
@@ -250,8 +259,8 @@ describe('Account (e2e)', () => {
     const secondId = secondRes.body.data.id;
     createdIds.push(secondId);
 
-    // The first account ever created for this user is auto-principal; the
-    // second defaults to non-principal.
+    // The provisioned Principal account is the current principal; the new
+    // account defaults to non-principal.
     await request(app.getHttpServer())
       .get(`/accounts/${firstId}`)
       .set('Authorization', `Bearer ${freshToken}`)
@@ -307,12 +316,12 @@ describe('Account (e2e)', () => {
       .set('Authorization', `Bearer ${freshToken}`)
       .expect(400);
 
-    // ...but the now-non-principal first account can be, since it has zero
-    // referencing movements.
+    // ...but the now-non-principal first account (the provisioned
+    // Principal, never pushed to createdIds since afterAll never created
+    // it) can be, since it has zero referencing movements.
     await request(app.getHttpServer())
       .delete(`/accounts/${firstId}`)
       .set('Authorization', `Bearer ${freshToken}`)
       .expect(200);
-    createdIds.splice(createdIds.indexOf(firstId), 1);
   });
 });

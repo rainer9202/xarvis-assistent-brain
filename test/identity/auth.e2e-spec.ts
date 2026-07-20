@@ -1,7 +1,15 @@
-import { INestApplication } from '@nestjs/common';
+import { INestApplication, ValidationPipe } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
+import { Test } from '@nestjs/testing';
+import { NestExpressApplication } from '@nestjs/platform-express';
 import { PrismaService } from '@config/database/prisma.service';
+import { getTrustedProxies } from '@config/env/get-trusted-proxies';
+import { DomainExceptionFilter } from '@infra/exceptions/http-exception.filter';
+import { ResponseInterceptor } from '@infra/interceptors/response.interceptor';
+import { ACCOUNT_REPOSITORY } from '@modules/money-manager/account/domain/ports/account.repository.port';
+import type { AccountRepositoryPort } from '@modules/money-manager/account/domain/ports/account.repository.port';
 import request from 'supertest';
+import { AppModule } from '../../src/app.module';
 import { createTestApp } from '../utils/test-app';
 
 // @nestjs/throttler's ThrottlerGuard (applied to AuthController — see
@@ -56,6 +64,131 @@ describe('Auth (e2e)', () => {
       .get('/accounts')
       .set('Authorization', `Bearer ${signUpRes.body.data.accessToken}`)
       .expect(200);
+  });
+
+  it('🔍 a new sign-up ends up owning exactly the default account/category/group template (see openspec/changes/add-default-user-template)', async () => {
+    const email = `auth-e2e-defaults-${Date.now()}@example.com`;
+    const clientIp = nextTestClientIp();
+
+    const signUpRes = await request(app.getHttpServer())
+      .post('/auth/sign-up')
+      .set('X-Forwarded-For', clientIp)
+      .send({
+        name: 'Defaults E2E User',
+        email,
+        password: 'password123',
+        birthDate: '1990-05-20',
+      })
+      .expect(201);
+    createdUserIds.push(signUpRes.body.data.id);
+    const token = signUpRes.body.data.accessToken as string;
+
+    const accountsRes = await request(app.getHttpServer())
+      .get('/accounts')
+      .set('Authorization', `Bearer ${token}`)
+      .expect(200);
+    expect(accountsRes.body.data).toHaveLength(3);
+    const accountNames = accountsRes.body.data.map(
+      (a: { name: string }) => a.name,
+    );
+    expect(accountNames.sort()).toEqual(
+      ['Ahorro', 'Efectivo', 'Principal'].sort(),
+    );
+    const principalAccounts = accountsRes.body.data.filter(
+      (a: { isPrincipal: boolean }) => a.isPrincipal,
+    );
+    expect(principalAccounts).toHaveLength(1);
+    expect(principalAccounts[0].name).toBe('Principal');
+
+    const categoriesRes = await request(app.getHttpServer())
+      .get('/categories')
+      .set('Authorization', `Bearer ${token}`)
+      .expect(200);
+    expect(categoriesRes.body.data).toHaveLength(15);
+
+    const groupsRes = await request(app.getHttpServer())
+      .get('/groups')
+      .set('Authorization', `Bearer ${token}`)
+      .expect(200);
+    expect(groupsRes.body.data).toHaveLength(2);
+    const groupNames = groupsRes.body.data.map((g: { name: string }) => g.name);
+    expect(groupNames.sort()).toEqual(['Casa', 'Gastos Hormigas'].sort());
+  });
+
+  it('🔍 a provisioning failure during sign-up leaves no orphaned User row (rollback proof)', async () => {
+    // Forces a real repository-level failure mid-provisioning by overriding
+    // ACCOUNT_REPOSITORY in a dedicated TestingModule/app instance just for
+    // this test — proves TransactionRunner's rollback contract end-to-end
+    // (unit-level coverage already exists in sign-up.use-case.spec.ts;
+    // this is the e2e proof the whole User+provisioning unit really rolls
+    // back together against the real database, not just a mocked one).
+    const failingAccountRepository: AccountRepositoryPort = {
+      findAll: jest.fn(),
+      findById: jest.fn(),
+      save: jest
+        .fn()
+        .mockRejectedValue(new Error('forced provisioning failure')),
+      update: jest.fn(),
+      delete: jest.fn(),
+      countMovementsByAccountId: jest.fn(),
+      findAllWithBalance: jest.fn(),
+      findByIdWithBalance: jest.fn(),
+      countByUserId: jest.fn(),
+      setPrincipal: jest.fn(),
+    };
+
+    const moduleRef = await Test.createTestingModule({
+      imports: [AppModule],
+    })
+      .overrideProvider(ACCOUNT_REPOSITORY)
+      .useValue(failingAccountRepository)
+      .compile();
+
+    const failingApp =
+      moduleRef.createNestApplication<NestExpressApplication>();
+    failingApp.set('trust proxy', getTrustedProxies());
+    failingApp.useGlobalPipes(
+      new ValidationPipe({ whitelist: true, transform: true }),
+    );
+    failingApp.useGlobalFilters(new DomainExceptionFilter());
+    failingApp.useGlobalInterceptors(new ResponseInterceptor());
+    await failingApp.init();
+
+    try {
+      const email = `auth-e2e-rollback-${Date.now()}@example.com`;
+
+      await request(failingApp.getHttpServer())
+        .post('/auth/sign-up')
+        .set('X-Forwarded-For', nextTestClientIp())
+        .send({
+          name: 'Rollback E2E User',
+          email,
+          password: 'password123',
+          birthDate: '1990-05-20',
+        })
+        .expect(500);
+
+      const orphanedUser = await prisma.user.findUnique({ where: { email } });
+      expect(orphanedUser).toBeNull();
+
+      // Retry with the SAME email against the real (non-failing) app —
+      // proves the failed attempt left no ConflictException-triggering row
+      // behind, i.e. the whole transaction rolled back, not just the parts
+      // after the throwing call.
+      const retryRes = await request(app.getHttpServer())
+        .post('/auth/sign-up')
+        .set('X-Forwarded-For', nextTestClientIp())
+        .send({
+          name: 'Rollback E2E User',
+          email,
+          password: 'password123',
+          birthDate: '1990-05-20',
+        })
+        .expect(201);
+      createdUserIds.push(retryRes.body.data.id);
+    } finally {
+      await failingApp.close();
+    }
   });
 
   it('🔍 rejects sign-up with a duplicate email with 409', async () => {

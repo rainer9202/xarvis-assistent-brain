@@ -187,37 +187,11 @@ describe('Category (e2e)', () => {
     });
   });
 
-  it('🔍 a global category (userId: null) is visible to every user but cannot be updated or deleted by any of them', async () => {
-    const global = await prisma.category.create({
-      data: {
-        name: `Global-${Date.now()}`,
-        icon,
-        movementType,
-        userId: null,
-      },
-    });
-
-    const listRes = await request(app.getHttpServer())
-      .get('/categories')
-      .set('Authorization', `Bearer ${token}`)
-      .expect(200);
-    const found = listRes.body.data.find(
-      (c: { id: string }) => c.id === global.id,
-    );
-    expect(found).toBeDefined();
-    expect(found.isCustom).toBe(false);
-
-    await request(app.getHttpServer())
-      .patch(`/categories/${global.id}`)
-      .set('Authorization', `Bearer ${token}`)
-      .send({ name: 'Hijacked' })
-      .expect(404);
-
-    await request(app.getHttpServer())
-      .delete(`/categories/${global.id}`)
-      .set('Authorization', `Bearer ${token}`)
-      .expect(404);
-
-    await prisma.category.delete({ where: { id: global.id } });
-  });
+  // The global (userId: null) category concept was retired by
+  // openspec/changes/add-default-user-template — every category is now
+  // owned by exactly one user (Category.userId is required, see
+  // prisma/schema.prisma), so there is no longer a "visible to every user"
+  // scenario left to cover here. See that change's design.md and
+  // prisma/scripts/provision-default-user-data.ts for the backfill that
+  // reassigned/removed the last of the old global rows.
 });

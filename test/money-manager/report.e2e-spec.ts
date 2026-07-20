@@ -89,7 +89,21 @@ describe('Report (e2e)', () => {
       .set('Authorization', `Bearer ${otherToken}`)
       .expect(200);
 
-    expect(res.body.data.accounts).toEqual([]);
+    // Sign-up now auto-provisions the default account set (see
+    // openspec/changes/add-default-user-template), so a fresh user is never
+    // literally account-less — the real isolation guarantee this test
+    // covers is that none of the FIRST user's own accounts (created above,
+    // tracked in accountIds) leak into a different user's report.
+    expect(
+      res.body.data.accounts.some((acc: { id: string }) =>
+        accountIds.includes(acc.id),
+      ),
+    ).toBe(false);
+    expect(
+      res.body.data.accounts.every(
+        (acc: { balanceCents: number }) => acc.balanceCents === 0,
+      ),
+    ).toBe(true);
     expect(res.body.data.totalBalanceCents).toBe(0);
   });
 });
